@@ -1,0 +1,82 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {cardState, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions} from "../js/model.js";
+import {ago, esc} from "../js/util.js";
+
+const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
+const minsAgo = m => new Date(Date.now() - m * 60000).toISOString();
+
+test("cardState: rework beats active beats done; skipped counts as done; else pending", () => {
+  assert.equal(cardState(stages("done", "active", "rework")), "rework");
+  assert.equal(cardState(stages("done", "active", "pending")), "active");
+  assert.equal(cardState(stages("done", "skipped")), "done");
+  assert.equal(cardState(stages("done", "pending")), "pending");
+  assert.equal(cardState({}), "pending");
+});
+
+test("stageSince: rework stage first, its started over the card's updated", () => {
+  const c = {updated: "2026-10-19T10:00:00Z", stages: [
+    {state: "active", started: "2026-10-19T09:00:00Z"},
+    {state: "rework", started: "2026-10-19T08:00:00Z"}]};
+  assert.equal(stageSince(c), "2026-10-19T08:00:00Z");
+  assert.equal(stageSince({updated: "U", stages: [{state: "active"}]}), "U");
+  assert.equal(stageSince({updated: "U", stages: [{state: "done"}]}), null);
+});
+
+test("isDone: completed field, or status Done/complete/finished in any case", () => {
+  assert.equal(isDone({data: {completed: "2026-10-19T10:00:00Z"}}), true);
+  for (const status of ["Done", "COMPLETE", "completed", "Finished"]) assert.equal(isDone({data: {status}}), true, status);
+  assert.equal(isDone({data: {status: "building"}}), false);
+  assert.equal(isDone({data: {status: "not done"}}), false);
+  assert.equal(isDone({data: {}}), false);
+});
+
+test("subsOf: own subs plus the card's progress from this dispatch to the next one for the card, sorted", () => {
+  const events = [
+    {at: "2026-10-19T10:00:00Z", text: "builder dispatched", card: "c1", sub: [{at: "2026-10-19T10:30:00Z", text: "own check-in"}]},
+    {at: "2026-10-19T10:10:00Z", text: "other card", card: "c2"},
+    {at: "2026-10-19T11:00:00Z", text: "refuter dispatched", card: "c1"}];
+  const cards = [{_id: "c1", progress: [
+    {at: "2026-10-19T09:59:00Z", text: "before"},
+    {at: "2026-10-19T10:20:00Z", text: "build green"},
+    {at: "2026-10-19T10:05:00Z", text: "spec read"},
+    {at: "2026-10-19T11:00:00Z", text: "refuter start"}]}];
+  assert.deepEqual(subsOf(events, 0, cards).map(x => x.text), ["spec read", "build green", "own check-in"]);
+  assert.deepEqual(subsOf(events, 2, cards).map(x => x.text), ["refuter start"]);
+  assert.deepEqual(subsOf(events, 1, cards), []);
+});
+
+test("lastAt: counts sub-events and card progress, ignores bad dates", () => {
+  const events = [{at: "2026-10-19T10:00:00Z", sub: [{at: "2026-10-19T12:00:00Z"}, {at: "garbage"}]}, {at: "nope"}];
+  assert.equal(lastAt(events), "2026-10-19T12:00:00Z");
+  assert.equal(lastAt(events, [{progress: [{at: "2026-10-19T13:00:00Z"}, {at: "bad"}]}]), "2026-10-19T13:00:00Z");
+  assert.equal(lastAt([{at: "bad"}]), null);
+});
+
+test("liveIds: drops hidden finished sessions; falls back to the newest unfinished", () => {
+  const sessions = [{id: "new", data: {}}, {id: "old", data: {}}, {id: "fin", data: {status: "Done"}}];
+  assert.deepEqual(liveIds(["fin", "old"], visibleSessions(sessions, false)), ["old"]);
+  assert.deepEqual(liveIds(["fin"], visibleSessions(sessions, false)), ["new"]);
+  assert.deepEqual(liveIds(["fin"], visibleSessions(sessions, true)), ["fin"]);
+  assert.deepEqual(liveIds([], []), []);
+});
+
+test("visibleSessions: unfinished first, finished after only when shown", () => {
+  const sessions = [{id: "fin", data: {completed: "x"}}, {id: "a", data: {}}];
+  assert.deepEqual(visibleSessions(sessions, true).map(s => s.id), ["a", "fin"]);
+  assert.deepEqual(visibleSessions(sessions, false).map(s => s.id), ["a"]);
+});
+
+test("ago: minutes, hours and days", () => {
+  assert.equal(ago(minsAgo(59)), "59m");
+  assert.equal(ago(minsAgo(61)), "1h 1m");
+  assert.equal(ago(minsAgo(25 * 60)), "1d 1h");
+  assert.equal(ago(minsAgo(-5)), "0m");
+});
+
+test("esc: escapes the five HTML characters and nullish input", () => {
+  assert.equal(esc(`<a href="x">Tom & Jerry's</a>`), "&lt;a href=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;");
+  assert.equal(esc(null), "");
+  assert.equal(esc(undefined), "");
+  assert.equal(esc(0), "0");
+});
