@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {cardState, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions} from "../js/model.js";
-import {ago, esc} from "../js/util.js";
+import {ago, esc, adoUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
 const minsAgo = m => new Date(Date.now() - m * 60000).toISOString();
@@ -79,4 +79,12 @@ test("esc: escapes the five HTML characters and nullish input", () => {
   assert.equal(esc(null), "");
   assert.equal(esc(undefined), "");
   assert.equal(esc(0), "0");
+});
+
+test("adoUrl: Petsoft by default, the session's org/project when given, default when malformed", () => {
+  assert.equal(adoUrl(17983), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/17983");
+  assert.equal(adoUrl("18001", "Cosairus/Cosairus Payment Services"), "https://dev.azure.com/Cosairus/Cosairus%20Payment%20Services/_workitems/edit/18001");
+  assert.equal(adoUrl(1, "no-slash"), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1");
+  assert.equal(adoUrl(1, "a/b/c"), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1");
+  assert.equal(adoUrl(`1" onmouseover="x`), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1%22%20onmouseover%3D%22x");
 });

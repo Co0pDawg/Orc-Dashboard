@@ -10,7 +10,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `css/tokens.css` | Color and font tokens (light, dark, 1337) and the body base |
 | `css/base.css` | Skin-neutral layout and controls |
 | `css/sleek.css`, `css/leet.css` | Every rule of one skin, prefixed `.sleek` / `.leet` |
-| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `adoUrl` |
+| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `adoUrl` (per-session ADO project) |
 | `js/model.js` | Pure data logic: card state, stage timing, sub-event windows, visible/live sessions |
 | `js/prefs.js` | Every localStorage read and write |
 | `js/state.js` | The shared runtime state object |
@@ -24,7 +24,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 
 ## Data contract (what the page reads)
 
-- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, events[]`. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
+- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, ado?, events[]`. `ado` is the Azure DevOps `"org/project"` that the session's ticket and task links open in. It defaults to `Cosairus/Petsoft`; set `"Cosairus/Cosairus Payment Services"` for Rise. Petsoft and CosairusAccountingModule use the default. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
 - `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. A stage is `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`; `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
 - Times are ISO with offset.
@@ -37,7 +37,7 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 
 | When | Write |
 |---|---|
-| **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line]) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
+| **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line], plus `ado` when the repo's work items are not in Cosairus/Petsoft) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
 | **Dispatch** | The card's stage turns `active` with `started`; set `agent`. Append an event `{at, text: "<agent> dispatched on #<task>", card: "<card id>"}`. Update `now` and `status`. The brief carries `BOARD: <board URL> card <card id>` (marching orders item 10). |
 | **Check-in** (Fable reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
 | **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |

@@ -14,15 +14,15 @@ export function leetLog(events, updated, live, sid, cards){
   return `<div class="ph"><span class="id">activity</span><span>${events.length} events</span>${live ? sinceHtml(lastAt(events, cards), "quiet ", true) : ""}${updated ? `<span class="st">${esc(t12(updated))}</span>` : ""}</div>
     ${rows.length ? `<ol class="feed">${rows.map((r, i) => `<li class="${r.cls}${i === rows.length - 1 ? " cursor" : ""}">${r.html}</li>`).join("")}</ol>` : `<p class="lbl">nothing logged yet</p>`}`;
 }
-/** A ticket pane's body. */
-export function leetCard(c){
+/** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
+export function leetCard(c, ado){
   const s = cardState(c);
   const plan = (c.stages || []).map((x, i) => `<li class="${esc(x.state)}"><span class="n">${i + 1}.</span><span class="k">${esc(x.label)}</span><span class="s">${esc(WORD[x.state] || x.state)}${x.state === "active" || x.state === "rework" ? " " + sinceHtml(x.started || c.updated) : ""}</span></li>`).join("");
   const kv = [["agent", c.agent], ["tokens", c.tokens], ["commit", c.commit]].filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
   return `<div class="ph">
       ${c.updated ? `<time>${esc(t12(c.updated))}</time>` : ""}
-      ${c.task ? `<a class="id" href="${esc(adoUrl(c.task))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
-      ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(adoUrl(c.ticket))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
+      ${c.task ? `<a class="id" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
+      ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
       <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>
     </div>
     <h3>${esc(c.title)}</h3>
@@ -39,7 +39,7 @@ export function leetHead(sess, cards){
       <div class="prompt"><b>fable@orch</b>:<i>~/${esc(sess.id)}</i>$ watch board</div>
       <h1 class="title">${esc(s.title)}</h1>
       <div class="facts">
-        ${s.ticket ? `<span>ticket <a href="${esc(adoUrl(s.ticket))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}
+        ${s.ticket ? `<span>ticket <a href="${esc(adoUrl(s.ticket, s.ado))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}
         ${s.branch ? `<span>branch <b>${esc(s.branch)}</b></span>` : ""}
         ${s.started ? `<span>started <b>${esc(fmt(s.started))}</b></span>` : ""}
         ${s.status ? `<span>status <b>${esc(s.status)}</b></span>` : ""}
