@@ -1,0 +1,22 @@
+/* Design tokens for both skins (Sleek light/dark, 1337 terminal) and the body base. Colors live only here. */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --ink:#1b1f2a; --muted:#5d6475; --line:#dde0e8;
+  --accent:#3346c4; --accent-soft:#e6e9fb;
+  --ok:#1f7a4d; --ok-soft:#e1f2e8; --run:#a15c00; --run-soft:#fbefd9; --bad:#b4232c; --bad-soft:#fbe3e4;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --t-bg:#070908; --t-pane:#0d100f; --t-ink:#dfe4dc; --t-dim:#7f8a82; --t-faint:#2a302d;
+  --t-r:3px; --t-bar:#79e36a; --t-edge:#f2f5f0; --t-green:#79e36a; --t-on-green:#071006; --t-lime:#d4e157; --t-amber:#f5b94a; --t-red:#ff5d62; --t-red-bg:#3b1013;
+  --t-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12141b; --surface:#1b1e28; --ink:#e7e9f0; --muted:#9aa1b3; --line:#2c3040;
+  --accent:#8f9cff; --accent-soft:#252b4d;
+  --ok:#5cc98f; --ok-soft:#173326; --run:#f0b45a; --run-soft:#3a2b12; --bad:#ff7a82; --bad-soft:#3d1c20; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141b; --surface:#1b1e28; --ink:#e7e9f0; --muted:#9aa1b3; --line:#2c3040;
+  --accent:#8f9cff; --accent-soft:#252b4d;
+  --ok:#5cc98f; --ok-soft:#173326; --run:#f0b45a; --run-soft:#3a2b12; --bad:#ff7a82; --bad-soft:#3d1c20; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+body.leet{background:var(--t-bg);color:var(--t-ink);font-family:var(--t-mono);font-size:13px;color-scheme:dark;-webkit-font-smoothing:antialiased}

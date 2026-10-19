@@ -1,1 +1,63 @@
-# Orc-Dashboard
+# Orchestration Board
+
+A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1, `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; Fable and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
+
+## Files
+
+| Path | Role |
+|---|---|
+| `orchestration-board.html` | Page shell: title, fonts, the four stylesheets, static markup, Sortable, `js/main.js` |
+| `css/tokens.css` | Color and font tokens (light, dark, 1337) and the body base |
+| `css/base.css` | Skin-neutral layout and controls |
+| `css/sleek.css`, `css/leet.css` | Every rule of one skin, prefixed `.sleek` / `.leet` |
+| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `adoUrl` |
+| `js/model.js` | Pure data logic: card state, stage timing, sub-event windows, visible/live sessions |
+| `js/prefs.js` | Every localStorage read and write |
+| `js/state.js` | The shared runtime state object |
+| `js/render/shared.js`, `sleek.js`, `leet.js` | HTML strings for panes, logs and headers |
+| `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
+| `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
+| `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast |
+| `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
+| `tests/model.test.js` | `node:test` suite for `model.js` and `util.js` |
+| `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
+
+## Data contract (what the page reads)
+
+- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, events[]`. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
+- `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. A stage is `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`; `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
+- A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
+- Times are ISO with offset.
+
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.showDone`, `board.barColor`.
+
+## Preview
+
+```
+node dev/serve.js          # or: npm run serve
+```
+
+Open http://localhost:8123/dev/preview.html (add `#leet` for the 1337 skin). `file://` cannot load ES modules. The harness stubs `window.claude.use("db")` with `dev/fixture.js` and loads the real page shell, so it never carries its own copy of the markup.
+
+Headless screenshot (Windows, Git Bash):
+
+```
+timeout 60 "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --disable-gpu \
+  --user-data-dir=<fresh dir> --virtual-time-budget=6000 --window-size=1400,900 \
+  --screenshot=<png> "http://localhost:8123/dev/preview.html#leet"
+```
+
+The PNG can land a few seconds after Edge exits.
+
+## Test
+
+```
+npm test         # node:test over tests/*.test.js
+npm run check    # node --check on every .js file
+```
+
+No dependencies; Node 22 or later.
+
+## Publish
+
+The page is `orchestration-board.html`; the Artifact skeleton wraps it, so it has no doctype and its `<title>` stays in the first 8 KB. The supporting files go up through the Artifact `files` map with paths relative to this folder (`css/tokens.css`, `css/base.css`, `css/sleek.css`, `css/leet.css`, `js/**/*.js`), which is why every URL in the page is a plain relative path. `dev/`, `tests/`, `package.json` and the docs are not published. Data changes never need a republish.
