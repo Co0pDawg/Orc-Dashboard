@@ -29,6 +29,24 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
 - Times are ISO with offset.
 
+## Writing protocol (Fable and its agents)
+
+The single source for when the board is written. `~/.claude/CLAUDE.md` says to follow it, so keep it accurate.
+
+Writes go through the ArtifactData tool (load it with ToolSearch `select:ArtifactData`) against the board URL. Writing more than one doc uses `batch`, and every write to an existing doc pins `if_version` to the version last read; on a conflict, re-get and redo. Take times from `date -Iseconds` so they carry an offset. Bump the session's `updated` on every write so it sorts first. Never republish the page for data.
+
+| When | Write |
+|---|---|
+| **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line]) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
+| **Dispatch** | The card's stage turns `active` with `started`; set `agent`. Append an event `{at, text: "<agent> dispatched on #<task>", card: "<card id>"}`. Update `now` and `status`. The brief carries `BOARD: <board URL> card <card id>` (marching orders item 10). |
+| **Check-in** (Fable reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
+| **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |
+| **Report** | The stage turns `done` or `rework` (a rework stage gets a fresh `started`). Set `tokens` and `note`. Append the outcome as a top-level event ("refuter ACCEPT", "builder done: 40 tests pass"). |
+| **Commit** | Set the card's `commit`; append an event naming the hash. |
+| **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
+
+Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
+
 Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.showDone`, `board.barColor`.
 
 ## Preview
