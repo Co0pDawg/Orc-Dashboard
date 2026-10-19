@@ -78,7 +78,7 @@ function renderTiles(v, sess){
     el.setAttribute("aria-label", paneName(id));
     const body = log
       ? (skin === "leet" ? leetLog(events, sess.data.updated, !isDone(sess), sess.id, v.cards) : sleekLog(events, !isDone(sess), sess.id, v.cards))
-      : (skin === "leet" ? leetCard(c) : sleekCard(c));
+      : (skin === "leet" ? leetCard(c, sess.data.ado) : sleekCard(c, sess.data.ado));
     el.innerHTML = (editing ? editBar(id) : "") + body + (editing ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
     applySize(el);
   });

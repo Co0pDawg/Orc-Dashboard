@@ -1,7 +1,14 @@
 // Pure helpers: no DOM, no storage.
 
+/** Default Azure DevOps "org/project" when a session names none. */
+export const ADO_DEFAULT = "Cosairus/Petsoft";
+// A session's optional `ado` ("org/project", e.g. "Cosairus/Cosairus Payment Services" for Rise) picks the project
+// its ticket links open in; anything not shaped org/project falls back to the default.
 /** Work item URL in Azure DevOps; the only place a link URL is built. */
-export const adoUrl = id => "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/" + id;
+export const adoUrl = (id, project) => {
+  const p = typeof project === "string" && /^[^/]+\/[^/]+$/.test(project.trim()) ? project.trim() : ADO_DEFAULT;
+  return "https://dev.azure.com/" + p.split("/").map(encodeURIComponent).join("/") + "/_workitems/edit/" + encodeURIComponent(id);
+};
 /** HTML-escapes any value (null/undefined become ""). */
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /** Short date and 12-hour time, or "" for a missing or bad date. */
