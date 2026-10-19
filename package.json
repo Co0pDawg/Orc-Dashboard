@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node dev/check.js",
+    "serve": "node dev/serve.js"
+  }
+}

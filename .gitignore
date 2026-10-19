@@ -1,0 +1,4 @@
+# Session notes for the next Claude session; not part of the code
+handoff-prompt.md
+node_modules/
+*.log

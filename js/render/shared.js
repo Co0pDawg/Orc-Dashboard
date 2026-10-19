@@ -1,0 +1,66 @@
+// HTML helpers both skins use. Strings only: nothing here touches the DOM.
+import {esc, t12, ago} from "../util.js";
+import {QUIET_MS, cardState, progressOf, isDone, isLog} from "../model.js";
+import {state} from "../state.js";
+
+// Elapsed timers render pre-filled and tick() refreshes every [data-since] span, so no re-render (and no lost focus) is needed.
+/** A live elapsed-time span; quiet ones turn stale (amber) after QUIET_MS. */
+export function sinceHtml(iso, prefix = "", quiet = false){
+  if (!iso || isNaN(new Date(iso))) return "";
+  const stale = quiet && Date.now() - new Date(iso) > QUIET_MS;
+  return `<span class="since${stale ? " stale" : ""}" data-since="${esc(iso)}" data-prefix="${esc(prefix)}"${quiet ? " data-quiet" : ""}>${esc(prefix + ago(iso))}</span>`;
+}
+/** Title of a session, falling back to its id. */
+export const sessionTitle = sid => state.sessions.find(x => x.id === sid)?.data.title || sid;
+/** The card with this pane id in any open view, or null. */
+export const findCard = id => { for (const v of state.views.values()){ const c = v.cards.find(x => x._id === id); if (c) return c; } return null; };
+/** Accessible name of a pane. */
+export const paneName = id => isLog(id) ? (state.shown.length > 1 ? `Activity log, ${sessionTitle(id.slice(4))}` : "Activity log") : (c => c ? `#${c.task || c.ticket} ${c.title}` : id)(findCard(id));
+
+// The agent's latest milestones on a running card: the last three lines, the newest with time since it posted.
+/** Progress rows for a running card, or "". */
+export function progHtml(c){
+  const st = cardState(c), prog = progressOf(c).slice(-3);
+  if (!prog.length || (st !== "active" && st !== "rework")) return "";
+  const rows = prog.map((p, k) => {
+    const ago = k === prog.length - 1 ? sinceHtml(p.at) : "";
+    return `<li class="${ago ? "latest" : ""}"><time>${esc(t12(p.at))}</time><span>${esc(p.text)}</span>${ago ? `<em>${ago} ago</em>` : ""}</li>`;
+  }).join("");
+  return state.skin === "leet"
+    ? `<div><div class="lbl">progress</div><ol class="prog">${rows}</ol></div>`
+    : `<ol class="prog" aria-label="Agent progress">${rows}</ol>`;
+}
+// Events may carry sub-events: events[i].sub = [{at, text}], e.g. check-ins under the dispatch they belong to.
+// Each parent expands and collapses; the newest event starts open, older ones closed, and a viewer's toggles hold for this page load.
+/** Whether event i of n shows its sub-lines. */
+export const isOpen = (key, i, n) => state.subOpen.has(key) ? state.subOpen.get(key) : i === n - 1;
+/** The expand/collapse button for an event's sub-lines. */
+export function subToggle(key, count, open, leet){
+  const n = `${count} update${count > 1 ? "s" : ""}`;
+  return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
+}
+/** The customize-mode toolbar for a pane. */
+export function editBar(id){
+  const n = esc(paneName(id)), s = state.layout.size[id] || {}, cols = state.cols;
+  const w = Math.min(s.w || 1, cols), h = `${s.r || 1} row${(s.r || 1) > 1 ? "s" : ""}`;
+  return `<div class="edit" role="toolbar" aria-label="Layout for ${n}">
+    <button type="button" class="btn grip" data-act="grip" aria-label="Drag to reorder ${n}; arrow keys also move it" title="Drag to reorder">⠿</button>
+    <button type="button" class="btn" data-act="left" aria-label="Move ${n} earlier" title="Move earlier">◀</button>
+    <button type="button" class="btn" data-act="right" aria-label="Move ${n} later" title="Move later">▶</button>
+    <span class="sep"></span>
+    <span class="w-ctl"><button type="button" class="btn" data-act="w-" aria-label="Narrower" title="Narrower">↔−</button><span class="dim">${w}/${cols} col</span><button type="button" class="btn" data-act="w+" aria-label="Wider" title="Wider">↔+</button><span class="sep"></span></span>
+    <button type="button" class="btn" data-act="h-" aria-label="Shorter" title="Shorter">↕−</button><span class="dim">${h}</span><button type="button" class="btn" data-act="h+" aria-label="Taller" title="Taller">↕+</button>
+    <span class="sep"></span>
+    <button type="button" class="btn" data-act="reset" aria-label="Reset size of ${n}" title="Reset this pane's size">⟲</button>
+  </div>`;
+}
+/** The stack's empty state: no sessions yet, or all finished and hidden. */
+export function emptyHtml(){
+  const hidden = state.sessions.filter(isDone).length, skin = state.skin;
+  if (hidden && !state.showDone) return skin === "leet"
+    ? `<div class="empty"><b>$ all sessions finished_</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Turn on finished: in the status bar to see ${hidden > 1 ? "them" : "it"}.</div>`
+    : `<div class="empty"><b>All sessions are finished</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Use Show finished at the top to see ${hidden > 1 ? "them" : "it"}.</div>`;
+  return skin === "leet"
+    ? `<div class="empty"><b>$ waiting for a session_</b>Claude opens a session here when it starts orchestrating a ticket. Each ticket gets a pane that moves through its stages as agents report back.</div>`
+    : `<div class="empty"><b>No sessions yet</b>Claude adds a session here when it starts orchestrating a task, then moves each ticket card through its stages as agents report back.</div>`;
+}
