@@ -25,5 +25,6 @@ localStorage.setItem("board.layout", JSON.stringify({order:[], size:{}}));
 localStorage.setItem("board.cardFold", JSON.stringify({c1:true, c4:true}));
 localStorage.setItem("board.folded", JSON.stringify([]));
 localStorage.setItem("board.barColor","#4fc3f7"); // custom, not the #79e36a default
+{ const m = location.hash.match(/pal-([a-z]+)/); if (m) { localStorage.setItem("board.palette", m[1]); localStorage.removeItem("board.barColor"); } else localStorage.removeItem("board.palette"); }
 localStorage.setItem("board.showDone","1");
 if (location.hash.includes("prmode")) localStorage.setItem("board.doneWhen", "pr"); else localStorage.removeItem("board.doneWhen");

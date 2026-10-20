@@ -35,7 +35,11 @@
 .settings .menu{min-width:280px;max-width:min(340px,calc(100vw - 32px));padding:12px;gap:14px}
 .gear{font-size:15px;line-height:1;padding:3px 8px}
 .opt-h{font-weight:600}
-.opt.bar-color{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer}
+.opt.bar-color,.opt.pick{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.opt select{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px;min-height:28px}
+.bar-pick{display:inline-flex;align-items:center;gap:8px}
+.bar-pick .btn{font-size:12px;padding:2px 8px}
+.bar-pick .btn:disabled{opacity:.45;cursor:default}
 .bar-color input{width:32px;height:22px;padding:0;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}
 .bar-color input::-webkit-color-swatch-wrapper{padding:0}
 .bar-color input::-webkit-color-swatch{border:0;border-radius:2px}
