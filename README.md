@@ -19,6 +19,8 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
 | `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
 | `css/palettes.css`, `js/palettes.js` | GENERATED color schemes (`npm run palettes` from `dev/palettes.json`); never edit by hand |
+| `js/time/segments.js`, `entries.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, the scrum summary |
+| `js/time/render.js`, `controller.js` | Time page HTML strings (Day, Week, Month, entries, scrum dialog) and its controller (timeline subscription, date navigation, copy) |
 | `js/settings.js` | The Settings gear (theme, 1337 bar border color, when a session counts as finished) |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js` | `node:test` suite for `model.js` and `util.js` |
@@ -30,6 +32,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 - `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. `stages` is an array of `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`, in plan order (the page also reads an object `{label: state}`, but write the array); `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
 - Times are ISO with offset.
+- `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, flags:{<ticket>:{unplanned:true}}}`. `ticket` is `PET-NNNNN` or null (no ticket); events carry no prompt text. The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
 
 ## Writing protocol (Fable and its agents)
 
@@ -47,6 +50,7 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
 | **PR opened** | Set the session's `pr: {id, url, status: "draft"}` (url is the PR's Azure DevOps link). |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
+| **Timeline upload**: at the Start of every orchestrated task, and when Cooper says "sync my timeline" | For each file in `~/.claude/timeline-sync/pending/` (`timeline-<date>.json`, built every 15 minutes by the worklog's scheduled sync), `get` `timeline/<date>`, then `set` it with `file_path` = that file, pinned to `if_version` when the doc exists, and delete the file after the write succeeds. See the worklog README, "Uploading". |
 | **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not `completed` or `abandoned`, read the PR (Petsoft: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
 
 A card at Start, exactly in this shape (stages is an array in plan order, never an object):
@@ -59,7 +63,11 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
 
 Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
-Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`.
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15).
+
+## Time page
+
+`#time` (Day), `#time-week` and `#time-month`, each optionally followed by `-yyyy-MM-dd`, open the Time page; `#board` or no hash is the board. Day draws a column per ticket (Cooper's driving time solid, agent time hatched) beside the day's Work Detail entries, each field with a copy button. Week stacks what ran per day; Month is a compact calendar. Every day has a Scrum button that opens a copyable Yesterday / Today / Blockers summary. Entries never overlap and add up to driven time; Settings > Entry rounding rounds the entries only. Data arrives through the worklog sync (C:\Development\worklog, README "Timeline sync") and the upload step in the writing protocol.
 
 ## Preview
 

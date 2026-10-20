@@ -59,6 +59,8 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
 
 ### New: `timeline/<YYYY-MM-DD>`
 
+> Built as (plan refinement, 2026-10-20): the sync uploads the day's re-ticketed **events** `{at, kind, session, ticket}` rather than precomputed segments, and the page computes driving segments (`js/time/segments.js`). The scheduled sync only builds the file; Claude sessions upload it (Cooper's choice: headless runs cannot write to the board without an approval).
+
 One document per day, written only by the sync:
 
 ```
@@ -125,7 +127,7 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
 2. Merge back-to-back segments with the same ticket.
 3. Round each start and end to the nearest rounding unit. A rounded entry may not overlap its neighbors.
 4. An entry never spans an idle gap: segments separated by more than one rounding unit stay separate entries (my call).
-5. An entry that rounds to zero length merges into a touching neighbor (gap of one unit or less), preferring one with the same ticket. If it touches nothing, it is not entered. It is listed under the entries as "Not entered: N min" so no time disappears silently (my call).
+5. An entry that rounds to zero length merges into a neighbor it touches after rounding, preferring one with the same ticket. If it touches nothing, it is not entered. (Built narrower than first written: extending a neighbor across a gap of up to one unit broke rule 6's bound.) It is listed under the entries as "Not entered: N min" so no time disappears silently (my call).
 6. The rounded total plus the "Not entered" minutes must stay within one unit per entry of the exact driven total. Unit tests check this.
 7. Split any entry longer than **2 hours** (the portal's maximum) into pieces of at most 2 hours.
 8. "No ticket" entries keep an empty Ticket field and a visible "needs a ticket" flag. Cooper fills them in by hand.
