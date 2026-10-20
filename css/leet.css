@@ -11,12 +11,8 @@
 .leet .status{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;background:var(--t-bg);color:var(--t-ink);border:1px solid var(--t-bar);border-radius:var(--t-r);padding:3px 10px;font-weight:500;min-width:0}
 .leet .status .tag{font-weight:700;color:var(--t-bar)}
 .leet .status .clock{color:var(--t-dim)}
-.leet .bar-color{display:inline-flex;align-items:center;gap:6px;color:var(--t-dim);cursor:pointer;margin-left:auto}
-.leet .status .bar-color + .clock{margin-left:0}
-.leet .bar-color input{width:26px;height:18px;padding:0;border:1px solid var(--t-faint);border-radius:2px;background:none;cursor:pointer}
-.leet .bar-color input::-webkit-color-swatch-wrapper{padding:0}
-.leet .bar-color input::-webkit-color-swatch{border:0;border-radius:1px}
-.leet .bar-color input::-moz-color-swatch{border:0;border-radius:1px}
+.leet .bar-color input{border-color:var(--t-faint);border-radius:2px}
+.leet .status .gear{min-height:24px;padding:0 6px}
 .leet .chips{gap:4px 8px}
 .leet .chip{border:1px solid var(--t-faint);border-radius:2px;color:var(--t-dim)}
 .leet .chip:hover{border-color:var(--t-dim);color:var(--t-ink)}
@@ -27,7 +23,7 @@
 .leet .chip .chip-x{min-width:24px;padding:0 6px;border-left:1px solid var(--t-faint);opacity:.65}
 .leet .chip.on .chip-x{border-left-color:color-mix(in srgb,var(--t-bar) 45%,transparent)}
 .leet .chip .chip-x:hover{opacity:1}
-.leet .status button:focus-visible,.leet .bar-color input:focus-visible{outline:1px solid var(--t-bar);outline-offset:2px}
+.leet .status button:focus-visible,.leet .status summary:focus-visible{outline:1px solid var(--t-bar);outline-offset:2px}
 .leet .stack{gap:28px}
 .leet .sess{gap:10px}
 .leet .skin{font-family:var(--t-mono);font-weight:500;color:var(--t-dim)}

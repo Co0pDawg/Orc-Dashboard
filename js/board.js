@@ -150,7 +150,8 @@ export function render(){
     v.fold.setAttribute("aria-expanded", String(!f));
     v.fold.setAttribute("aria-label", `${f ? "Expand" : "Minimize"} ${t}`);
     v.mover.innerHTML = state.editing && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
-    v.fold.textContent = state.skin === "leet" ? (f ? "[+] expand" : "[-] minimize") : (f ? "▸ Expand" : "▾ Minimize");
+    v.fold.textContent = state.skin === "leet" ? (f ? "[+]" : "[-]") : (f ? "+" : "−");
+    v.fold.title = f ? "Expand" : "Minimize";
     try { v.summary.innerHTML = headHtml(sess, v.cards); }
     catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);

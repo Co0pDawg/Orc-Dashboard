@@ -10,19 +10,24 @@
 <div class="wrap">
   <div class="top" id="top">
     <div id="chooser"></div>
+    <!-- The Settings gear: renderChooser() re-attaches this one element right after the clock. -->
+    <details class="pop settings" id="settings-menu">
+      <summary class="btn gear" title="Settings" aria-label="Settings">⚙</summary>
+      <div class="menu">
+        <div class="opt">
+          <span class="opt-h">Theme</span>
+          <label class="skin" for="skin-toggle"><span id="lbl-sleek">Sleek</span><input type="checkbox" role="switch" id="skin-toggle" aria-label="Terminal (1337) look"><span id="lbl-leet">1337</span></label>
+        </div>
+        <label class="opt bar-color" for="bar-color"><span class="opt-h">1337 bar border</span><input type="color" id="bar-color" value="#79e36a"></label>
+        <fieldset class="opt">
+          <legend>A session counts as finished when</legend>
+          <label><input type="radio" name="done-when" id="done-when-fable" value="fable"> Fable marks it Done</label>
+          <label><input type="radio" name="done-when" id="done-when-pr" value="pr"> Its pull request is completed</label>
+          <small>Until then it stays on the chips and expanded, with its PR status in the header. Sessions without a recorded PR finish when Fable marks them Done.</small>
+        </fieldset>
+      </div>
+    </details>
     <div class="controls" id="controls">
-  <details class="pop settings" id="settings-menu">
-    <summary class="btn">Settings ▾</summary>
-    <div class="menu">
-      <fieldset class="opt">
-        <legend>A session counts as finished when</legend>
-        <label><input type="radio" name="done-when" id="done-when-fable" value="fable"> Fable marks it Done</label>
-        <label><input type="radio" name="done-when" id="done-when-pr" value="pr"> Its pull request is completed</label>
-        <small>Until then it stays on the chips and expanded, with its PR status in the header. Sessions without a recorded PR finish when Fable marks them Done.</small>
-      </fieldset>
-    </div>
-  </details>
-  <label class="skin" for="skin-toggle"><span id="lbl-sleek">Sleek</span><input type="checkbox" role="switch" id="skin-toggle" aria-label="Terminal (1337) look"><span id="lbl-leet">1337</span></label>
   <div class="layout-bar" id="layout-bar" hidden>
     <details class="pop reset" id="reset-menu" hidden>
       <summary class="btn">Reset layout ▾</summary>

@@ -1,7 +1,7 @@
 // The session chooser: plain click shows one session, Shift/Ctrl/Cmd-click or +/× stacks; plus Show finished and the 1337 bar color.
 import {esc} from "./util.js";
 import {state} from "./state.js";
-import {saveShown, saveShowDone, saveBarColor} from "./prefs.js";
+import {saveShown, saveShowDone} from "./prefs.js";
 import {sessionTitle} from "./render/shared.js";
 import {$, chooser, say, visible, liveNow, render, tick, doneNow} from "./board.js";
 
@@ -18,19 +18,21 @@ function chipsHtml(){
     return `<span class="chip${on ? " on" : ""}${mark ? " done" : ""}"><button type="button" class="chip-main" data-id="${esc(x.id)}" aria-pressed="${on}" title="${esc(t)}${mark ? " (finished)" : ""}${multi ? " · Shift- or Ctrl-click to stack" : ""}">${label}</button>${tog}</span>`;
   }).join("")}${doneBtn}</div>`;
 }
-function setBar(c){
-  state.barColor = c;
-  document.documentElement.style.setProperty("--t-bar", c);
-}
 // The bar shell is built once per skin and only the chips re-render, so live data never closes an open color picker.
 /** Renders the chooser bar and its chips, restoring chip focus. */
 export function renderChooser(){
   const skin = state.skin;
   if (chooser.dataset.skin !== skin){
+    // The gear is one permanent element (its open state, radios and color picker must survive a skin switch made
+    // from inside it), so take it out before the shell is rebuilt, put it back after the clock, and restore focus.
+    const gear = $("settings-menu"), focused = gear.contains(document.activeElement) ? document.activeElement : null;
+    gear.remove();
     chooser.dataset.skin = skin;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span><div class="chip-slot" id="chip-slot"></div><label class="bar-color" for="bar-color" title="Status bar border color">border<input type="color" id="bar-color" value="${esc(state.barColor)}"></label><span class="clock" id="clock"></span></nav>`
+      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span><div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span></nav>`
       : `<span class="brand">Orchestration Board</span><div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>`;
+    $("clock").after(gear);
+    focused?.focus();
   }
   $("chip-slot").innerHTML = chipsHtml();
   if (state.chipFocus){
@@ -49,11 +51,8 @@ function toggleShown(sid){
   else if (live.length > 1){ setShown(live.filter(x => x !== sid)); say(`Hid ${sessionTitle(sid)}.`); }
 }
 
-/** Applies the saved bar color and binds the chooser's input, change and click handlers. */
+/** Binds the chooser's click handler (chips, stacking, Show finished). */
 export function initChooser(){
-  chooser.addEventListener("input", e => { if (e.target.id === "bar-color") setBar(e.target.value); });
-  chooser.addEventListener("change", e => { if (e.target.id === "bar-color") saveBarColor(state.barColor); });
-  setBar(state.barColor);
   chooser.addEventListener("click", e => {
     if (e.target.closest("[data-show-done]")){
       state.showDone = !state.showDone; saveShowDone(state.showDone);

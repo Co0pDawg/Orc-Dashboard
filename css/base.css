@@ -32,7 +32,15 @@
 .pop .menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:grid;gap:2px;padding:6px;min-width:190px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .reset .menu button{flex-direction:column;align-items:flex-start;gap:0;text-align:left;border-color:transparent;font-weight:600;padding:6px 10px}
 .reset .menu small{display:block;color:var(--muted);font-weight:400}
-.settings .menu{min-width:280px;max-width:min(340px,calc(100vw - 32px));padding:12px}
+.settings .menu{min-width:280px;max-width:min(340px,calc(100vw - 32px));padding:12px;gap:14px}
+.gear{font-size:15px;line-height:1;padding:3px 8px}
+.opt-h{font-weight:600}
+.opt.bar-color{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer}
+.bar-color input{width:32px;height:22px;padding:0;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}
+.bar-color input::-webkit-color-swatch-wrapper{padding:0}
+.bar-color input::-webkit-color-swatch{border:0;border-radius:2px}
+.bar-color input::-moz-color-swatch{border:0;border-radius:2px}
+.sess .fold{min-width:32px;font-size:15px}
 .opt{border:0;margin:0;padding:0;display:grid;gap:8px;font-size:13px}
 .opt legend{font-weight:600;padding:0;margin-bottom:6px}
 .opt label{display:flex;gap:8px;align-items:center;cursor:pointer;min-height:24px}
