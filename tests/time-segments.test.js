@@ -98,24 +98,35 @@ test("a day shaped like 2026-10-19: parallel sessions, other tickets, an unknown
 
 const sess = (id, events, ticket = "17983") => ({id, data: {ticket, events}});
 
-test("agentSpans: a dispatch followed by a report for the same card is one span on the card's ticket", () => {
-  const sessions = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "c2"}, {at: at("10:40"), text: "builder report", card: "c2"}, {at: at("10:05"), text: "other"}])];
-  const cards = [{_id: "c2", ticket: "17980", progress: []}];
+test("agentSpans: a dispatch followed by a report for the same card is one span on the card's task (not its ticket)", () => {
+  const sessions = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "c2"}, {at: at("10:40"), text: "builder done: 12 tests", card: "c2"}, {at: at("10:05"), text: "other"}])];
+  const cards = [{_id: "c2", task: "17981", ticket: "17980", progress: []}];
   const spans = agentSpans(sessions, cards, day.dayStart, day.dayEnd);
   assert.equal(spans.length, 1);
-  assert.deepEqual([spans[0].ticket, spans[0].card, spans[0].agent, hm(spans[0].start), hm(spans[0].end)], ["PET-17980", "c2", "builder dispatched", "10:00", "10:40"]);
+  assert.deepEqual([spans[0].ticket, spans[0].card, spans[0].agent, hm(spans[0].start), hm(spans[0].end)], ["PET-17981", "c2", "builder dispatched", "10:00", "10:40"]);
 });
 
-test("agentSpans: an unanswered dispatch ends at the card's last progress line; no progress gives no span", () => {
-  const sessions = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "c2"}])];
-  const cards = [{_id: "c2", ticket: "17980", progress: [{at: at("10:10"), text: "a"}, {at: at("10:30"), text: "b"}]}];
-  const s = agentSpans(sessions, cards, day.dayStart, day.dayEnd);
-  assert.equal(hm(s[0].end), "10:30");
-  assert.deepEqual(agentSpans(sessions, [{_id: "c2", ticket: "17980"}], day.dayStart, day.dayEnd), []);
+test("agentSpans: an unanswered dispatch ends at the card's last progress line after it, else the session's updated", () => {
+  const sessions = [{id: "s1", data: {ticket: "17983", updated: at("10:50"), events: [{at: at("10:00"), text: "builder dispatched", card: "c2"}]}}];
+  const cards = [{_id: "c2", ticket: "17980", progress: [{at: at("09:00"), text: "old"}, {at: at("10:10"), text: "a"}, {at: at("10:30"), text: "b"}]}];
+  assert.equal(hm(agentSpans(sessions, cards, day.dayStart, day.dayEnd)[0].end), "10:30");
+  const none = agentSpans(sessions, [{_id: "c2", ticket: "17980"}], day.dayStart, day.dayEnd);
+  assert.deepEqual([none.length, hm(none[0].end)], [1, "10:50"]);
+});
+
+test("agentSpans: card 18027 sequence gives exactly the builder and refuter runs", () => {
+  const sessions = [sess("s1", [
+    {at: at("16:11"), text: "builder dispatched on #18028", card: "c1"},
+    {at: at("17:26"), text: "builder done: 40 tests pass", card: "c1"},
+    {at: at("17:27"), text: "f37f9377c: keep the avatar ahead of the tag", card: "c1"},
+    {at: at("17:29"), text: "refuter dispatched on #18028", card: "c1"},
+    {at: at("17:42"), text: "refuter ACCEPT", card: "c1"}])];
+  const s = agentSpans(sessions, [{_id: "c1", task: "18028", ticket: "18027"}], day.dayStart, day.dayEnd);
+  assert.deepEqual(s.map(x => `${x.ticket} ${hm(x.start)}-${hm(x.end)}`), ["PET-18028 16:11-17:26", "PET-18028 17:29-17:42"]);
 });
 
 test("agentSpans: falls back to the session ticket and is clipped to the day", () => {
-  const sessions = [sess("s1", [{at: at("23:00"), text: "x", card: "c9"}, {at: at("23:00", "2026-10-20"), text: "y", card: "c9"}])];
+  const sessions = [sess("s1", [{at: at("23:00"), text: "builder dispatched", card: "c9"}, {at: at("23:00", "2026-10-20"), text: "builder done", card: "c9"}])];
   const s = agentSpans(sessions, [], day.dayStart, day.dayEnd);
   assert.equal(s[0].ticket, "PET-17983");
   assert.equal(Date.parse(s[0].end), Date.parse(day.dayEnd));

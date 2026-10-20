@@ -44,9 +44,32 @@ test("today: an unfinished session gives its now line, first pending stage and a
   assert.ok(!r.today.some(l => l.startsWith("Fee rework")), "a session finished before the day ended is not listed");
 });
 
-test("today: a final PR status is not shown, and a session idle that day is not listed", () => {
-  const s = [{id: "a", data: {title: "A", now: "x", pr: {id: 1, status: "completed"}, events: [{at: at("09:00"), text: "e"}]}}, {id: "b", data: {title: "B", now: "y", events: [{at: at("09:00", "2026-10-10"), text: "old"}]}}];
-  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: s, cards: []}).today, ["A: x"]);
+test("today: a final PR status is not shown; every open session started by day end is listed, active or not", () => {
+  const s = [{id: "a", data: {title: "A", now: "x", pr: {id: 1, status: "completed"}, events: [{at: at("09:00"), text: "e"}]}},
+    {id: "b", data: {title: "B", now: "y", started: at("09:00", "2026-10-10"), events: []}},
+    {id: "c", data: {title: "C", now: "z", started: at("09:00", "2026-10-21"), events: []}},
+    {id: "d", data: {title: "D", now: "w", completed: at("09:00", "2026-10-20"), status: "Done", started: at("08:00"), events: []}}];
+  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: s, cards: []}).today, ["A: x", "B: y", "D: w"]);
+});
+
+test("today: the next pending stage follows card order", () => {
+  const cs = [{_id: "z", session: "s", order: 2, stages: stg(["Docs", "pending"])}, {_id: "y", session: "s", order: 1, stages: stg(["Build", "done"], ["Review", "pending"])}];
+  const r = scrumSummary({date: D, segments: [], sessions: [{id: "s", data: {title: "T", events: []}}], cards: cs});
+  assert.deepEqual(r.today, ["T; next: Review"]);
+});
+
+test("yesterday: durations round total minutes first; abandoned and uncommitted are not outcomes", () => {
+  const sg = [{session: "s1", ticket: "PET-1", start: new Date(at("10:00")).toISOString(), end: new Date(`${D}T11:59:40`).toISOString()}];
+  const ss = [{id: "s1", data: {ticket: "1", events: [{at: at("10:30"), text: "abandoned the spike"}, {at: at("10:40"), text: "uncommitted changes remain"}, {at: at("11:00"), text: "PR opened"}]}}];
+  assert.deepEqual(scrumSummary({date: D, segments: sg, sessions: ss, cards: []}).yesterday, ["PET-1, 2h: PR opened"]);
+});
+
+test("blockers: with no REWORK event on the card, another card's reason is never used", () => {
+  const ss = [{id: "s", data: {ticket: "9", events: [{at: at("10:00"), text: "REWORK: card a reason", card: "a"}]}}];
+  const cs = [{_id: "b", session: "s", ticket: "9", title: "B", stages: stg(["Review", "rework"])}];
+  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: ss, cards: cs}).blockers, ["PET-9 B: in rework"]);
+  ss[0].data.events.push({at: at("10:30"), text: "REWORK: session level"});
+  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: ss, cards: cs}).blockers, ["PET-9 B: REWORK: session level"]);
 });
 
 test("blockers: a card still in rework gives the text of the last REWORK event", () => {
