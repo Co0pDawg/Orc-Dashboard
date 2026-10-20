@@ -2,6 +2,7 @@
 // js/time outputs are UTC ISO, so every date and time shown here comes from local Date getters, never iso.slice().
 import {esc} from "../util.js";
 import {normTicket} from "./segments.js";
+import {scrumText} from "./scrum.js";
 
 const MIN = 60000, HOUR = 60 * MIN;
 const pad = n => String(n).padStart(2, "0");
@@ -66,13 +67,17 @@ function axisHtml(ax){
   return `<div class="tl-axis" aria-hidden="true"><div class="tl-colhead"></div><div class="tl-track">${marks}</div></div>`;
 }
 
+const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const md = date => { const d = new Date(date + "T00:00:00"); return `${d.getMonth() + 1}/${d.getDate()}`; };
+const scrumBtn = date => `<button type="button" class="btn scrum" data-scrum="${esc(date)}" aria-label="Scrum summary for ${esc(date)}">Scrum</button>`;
+
 /** The Day tab's timeline: totals, a Scrum button, then the hour axis and one column per ticket. */
 export function dayHtml({date, segments = [], spans = [], markers = [], entries, tickets = {}, skin}){
   const leet = skin === "leet";
   const drivenMin = minutes(segments), agentMin = minutes(spans);
-  const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span><button type="button" class="btn scrum" data-scrum="${esc(date)}">${leet ? "[scrum]" : "Scrum"}</button></div>`;
+  const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span>${scrumBtn(date)}</div>`;
   const times = [...segments.flatMap(s => [ms(s.start), ms(s.end)]), ...spans.flatMap(s => [ms(s.start), ms(s.end)]), ...markers.map(m => ms(m.at))].filter(t => !isNaN(t));
-  if (!times.length) return `${head}<div class="empty"><b>Nothing logged on ${esc(date)}</b>No prompts were recorded this day.</div>`;
+  if (!times.length) return `${head}<div class="empty"><b>${leet ? `$ nothing logged on ${esc(date)}_` : `Nothing logged on ${esc(date)}`}</b>No prompts were recorded this day.</div>`;
   const ax = axis(Math.min(...times), Math.max(...times), dayStartMs(date));
   const cols = new Map(), col = (t, at) => { if (!cols.has(t)) cols.set(t, {t, first: at, segs: [], spans: [], marks: []}); const c = cols.get(t); c.first = Math.min(c.first, at); return c; };
   segments.forEach(s => col(normTicket(s.ticket), ms(s.start)).segs.push(s));
@@ -113,4 +118,71 @@ export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
     ${rows ? `<ol class="ent-list">${rows}</ol>` : `<p class="note">No entries for this day.</p>`}
     ${notEntered ? `<p class="not-entered">Not entered: ${notEntered} min</p>` : ""}
   </section>`;
+}
+
+
+// Each moment of a week day is split into bands for what ran then: the driven ticket solid, agents fainter beside it.
+function bandsHtml(segments, spans, shift, ax){
+  const items = [...segments.map(s => ({kind: "drv", t: normTicket(s.ticket), a: ms(s.start), b: ms(s.end)})),
+    ...spans.map(s => ({kind: "agt", t: normTicket(s.ticket), a: ms(s.start), b: ms(s.end)}))].filter(x => x.b > x.a);
+  const cuts = [...new Set(items.flatMap(x => [x.a, x.b]))].sort((x, y) => x - y);
+  const runs = [];
+  for (let i = 0; i < cuts.length - 1; i++){
+    const on = items.filter(x => x.a < cuts[i + 1] && x.b > cuts[i]).sort((x, y) => (x.kind < y.kind) - (x.kind > y.kind));
+    if (!on.length) continue;
+    const sig = on.map(x => x.kind + x.t).join(), last = runs[runs.length - 1];
+    if (last && last.sig === sig && last.b === cuts[i]) last.b = cuts[i + 1]; else runs.push({sig, on, a: cuts[i], b: cuts[i + 1]});
+  }
+  return runs.map(r => {
+    const what = r.on.map(x => `${label(x.t)} ${x.kind === "drv" ? "driving" : "agent"}`).join(", ");
+    return `<div class="band" style="top:${pct(r.a + shift, ax)}%;height:${((r.b - r.a) / (ax.b - ax.a) * 100).toFixed(3)}%" role="img" aria-label="${esc(what)}" title="${esc(what)}">${r.on.map(x => `<i class="${x.kind} ${tkClass(x.t)}"></i>`).join("")}</div>`;
+  }).join("");
+}
+
+/** The Week tab: seven day columns, Monday first, on one time-of-day axis; each column opens its day. */
+export function weekHtml(days){
+  const ref = dayStartMs(days[0].date);
+  // Every day is laid on the first day's clock, so 9 AM lines up across the week.
+  const shiftOf = d => ref - dayStartMs(d.date);
+  const times = days.flatMap(d => [...d.segments, ...d.spans].flatMap(x => [ms(x.start), ms(x.end)]).map(t => t + shiftOf(d)));
+  const ax = times.length ? axis(Math.min(...times), Math.max(...times), ref) : axis(ref + 9 * HOUR, ref + 17 * HOUR, ref);
+  const total = days.reduce((n, d) => n + minutes(d.segments), 0);
+  const cols = days.map((d, i) => `<div class="wk-col tl-col${d.missing ? " missing" : ""}" data-day="${esc(d.date)}">
+    <div class="tl-colhead wk-head"><button type="button" class="wk-date" aria-label="Open ${esc(d.date)}">${DOW[i]} ${md(d.date)}</button><span class="tl-tot">${d.missing ? "not synced" : dur(minutes(d.segments))}</span>${scrumBtn(d.date)}</div>
+    <div class="tl-track">${bandsHtml(d.segments, d.spans, shiftOf(d), ax)}</div></div>`).join("");
+  return `<div class="wk-sum">Week total <b>${dur(total)} driven</b></div><div class="tl wk" style="--hours:${ax.hours}">${axisHtml(ax)}${cols}</div>`;
+}
+
+/** The Month tab: Monday-first weeks of day cells (total, ticket bar, agent mark, Scrum), week totals at row ends. */
+export function monthHtml(month, days){
+  const by = new Map((days || []).filter(d => d.segments.length || d.spans.length).map(d => [d.date, d]));
+  const [y, m] = month.split("-").map(Number), last = ymd(new Date(y, m, 0));
+  let rows = "", total = 0;
+  for (let cur = mondayOf(month + "-01"); cur <= last; cur = addDays(cur, 7)){
+    let wk = 0;
+    for (let i = 0; i < 7; i++){
+      const date = addDays(cur, i), x = by.get(date);
+      if (!date.startsWith(month)){ rows += `<div class="mo-cell blank"></div>`; continue; }
+      const num = Number(date.slice(8)), top = mark => `<div class="mo-top"><button type="button" class="mo-date" aria-label="Open ${esc(date)}"><span class="mo-dow-s">${DOW[i]} </span>${num}</button>${mark}</div>`;
+      if (!x){ rows += `<div class="mo-cell" data-day="${esc(date)}">${top("")}</div>`; continue; }
+      const min = minutes(x.segments), per = new Map();
+      wk += min;
+      x.segments.forEach(s => { const t = normTicket(s.ticket); per.set(t, (per.get(t) || 0) + (ms(s.end) - ms(s.start)) / MIN); });
+      // Widths in hundredths, the last one taking the remainder so the bar always adds up to exactly 100%.
+      const parts = [...per].sort((a, b) => b[1] - a[1]);
+      let used = 0;
+      const bar = parts.map(([t, n], k) => { const w = k === parts.length - 1 ? +(100 - used).toFixed(2) : +(n / min * 100).toFixed(2); used += w; return `<i class="${tkClass(t)}" style="width:${w}%" title="${esc(label(t))} ${dur(n)}"></i>`; }).join("");
+      const agents = x.spans.length ? `<span class="mo-agent" role="img" aria-label="Agents ran" title="Agents ran">◆</span>` : "";
+      rows += `<div class="mo-cell has" data-day="${esc(date)}">${top(agents)}<span class="mo-tot">${dur(min)}</span>${min ? `<span class="mo-bar">${bar}</span>` : ""}${scrumBtn(date)}</div>`;
+    }
+    total += wk;
+    rows += `<div class="mo-week">${wk ? dur(wk) : ""}</div>`;
+  }
+  return `<div class="mo-head">Month total <b>${dur(total)} driven</b></div><div class="mo-grid">${DOW.map(d => `<div class="mo-dow">${d}</div>`).join("")}<div class="mo-dow">Week</div>${rows}</div>`;
+}
+
+/** The scrum dialog body: the plain-text summary in a selectable block and one Copy button for all of it. */
+export function scrumHtml(summary, date){
+  const text = scrumText(summary, date);
+  return `<pre class="scrum-text">${esc(text)}</pre><button type="button" class="btn" data-copy="${esc(text)}" title="Copy the summary">Copy</button>`;
 }

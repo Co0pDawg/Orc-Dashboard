@@ -120,7 +120,7 @@
 .leet .day-head .facts b{color:var(--t-ink);font-weight:500}
 .leet .tl-colhead b{color:var(--tk)}
 .leet .tl-title,.leet .tl-tot,.leet .tl-axis span{color:var(--t-dim)}
-.leet .tl-track .drv,.leet .tl-track .agt{border-radius:1px}
+.leet .tl-track > .drv,.leet .tl-track > .agt{border-radius:1px}
 .leet .entries h2{font-size:13.5px}
 .leet .entries h2::before{content:"## ";color:var(--t-dim)}
 .leet .ent-tot,.leet .ent-top span,.leet .fld .k,.leet .sugg{color:var(--t-dim)}
@@ -132,3 +132,19 @@
 .leet .needs,.leet .not-entered{color:var(--t-amber)}
 .leet .sugg .on{color:var(--t-green)}
 .leet .time-body code{font-family:var(--t-mono);color:var(--t-green)}
+.leet .wk-sum,.leet .mo-head,.leet .mo-dow,.leet .mo-tot{color:var(--t-dim)}
+.leet .wk-sum b,.leet .mo-head b{color:var(--t-ink);font-weight:500}
+.leet .wk-col:hover .tl-track,.leet .mo-cell.has:hover{background-color:var(--t-pane)}
+.leet .wk-date:focus-visible,.leet .mo-date:focus-visible{outline:1px solid var(--t-lime)}
+.leet .band .agt{background:repeating-linear-gradient(135deg,var(--tk) 0 1px,transparent 1px 4px)}
+.leet .mo-cell{border-color:var(--t-faint);border-radius:var(--t-r);background:var(--t-pane)}
+.leet .mo-cell.blank{background:none;border-color:transparent}
+.leet .mo-bar{border-radius:0;background:var(--t-faint)}
+.leet .mo-agent{color:var(--t-amber);font-size:11px}
+.leet .mo-week{color:var(--t-green);font-weight:500}
+.leet .dlg{background:var(--t-pane);color:var(--t-ink);border-color:var(--t-green);border-radius:var(--t-r);font-family:var(--t-mono);font-size:13px;box-shadow:none}
+.leet .dlg-head h2{font-size:14px}
+.leet .dlg-head h2::before{content:"$ ";color:var(--t-dim)}
+.leet .scrum-text{font-family:var(--t-mono);background:var(--t-bg);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
+.leet .scrum::before{content:"["}
+.leet .scrum::after{content:"]"}

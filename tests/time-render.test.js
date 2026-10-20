@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {dayHtml, entriesHtml, emptyHtml, withReview} from "../js/time/render.js";
+import {dayHtml, entriesHtml, emptyHtml, withReview, weekHtml, monthHtml, scrumHtml} from "../js/time/render.js";
+import {scrumText} from "../js/time/scrum.js";
 
 const D = "2026-10-19", L = hm => new Date(`${D}T${hm}:00`).toISOString();
 const count = (s, re) => (s.match(re) || []).length;
@@ -76,4 +77,57 @@ test("the day draws a column per ticket: driving solid, agents hatched, markers 
   assert.match(h, /data-scrum="2026-10-19"/);
   assert.match(h, />8 AM</);
   assert.match(h, />10 AM</);
+});
+
+const Ld = (d, hm) => new Date(`${d}T${hm}:00`).toISOString();
+const sg = (d, ticket, a, b) => ({session: "s1", ticket, start: Ld(d, a), end: Ld(d, b)});
+
+test("week: seven day columns, Monday first, each with its driven total and a Scrum button", () => {
+  const dates = ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"];
+  const days = dates.map(date => ({date, segments: [], spans: []}));
+  days[0].segments = [sg(dates[0], "PET-17983", "09:00", "10:30")];
+  days[2].segments = [sg(dates[2], "PET-17979", "13:00", "13:45")];
+  days[2].spans = [{ticket: "PET-18004", card: "c7", agent: "builder dispatched", start: Ld(dates[2], "13:10"), end: Ld(dates[2], "14:00")}];
+  const h = weekHtml(days);
+  assert.equal(count(h, /class="wk-col /g), 7);
+  assert.deepEqual([...h.matchAll(/data-scrum="([^"]+)"/g)].map(m => m[1]), dates);
+  assert.match(h.split('class="wk-col ')[1], /data-day="2026-10-12"[\s\S]*1h 30m/);
+  assert.match(h.split('class="wk-col ')[3], /45m/);
+  assert.match(h, /2h 15m driven/);
+  assert.match(h, /class="band"/);
+  assert.match(h, /<i class="agt tk-/);
+});
+
+test("month: Monday-first rows with leading blanks, totals, ticket bars, agent marks and week totals", () => {
+  const days = [
+    {date: "2026-10-01", segments: [sg("2026-10-01", "PET-17983", "09:00", "10:00"), sg("2026-10-01", "UNKNOWN", "10:00", "10:30"), sg("2026-10-01", "PET-17979", "11:00", "11:20")], spans: []},
+    {date: "2026-10-06", segments: [sg("2026-10-06", "PET-17979", "09:00", "11:00")], spans: [{ticket: "PET-17979", card: "c1", agent: "x", start: Ld("2026-10-06", "09:00"), end: Ld("2026-10-06", "10:00")}]},
+    {date: "2026-10-07", segments: [], spans: []}];
+  const h = monthHtml("2026-10", days);
+  // Oct 1 2026 is a Thursday: Mon-Wed of that row are blank.
+  assert.equal(count(h.split('data-day="2026-10-01"')[0], /class="mo-cell blank"/g), 3);
+  assert.equal(count(h, /class="mo-week"/g), 5);
+  assert.match(h, /1h 50m/);
+  const cell1 = h.split('data-day="2026-10-01"')[1].split("mo-cell")[0];
+  const widths = [...cell1.matchAll(/width:([\d.]+)%/g)].map(m => Number(m[1]));
+  assert.equal(widths.length, 3);
+  assert.ok(Math.abs(widths.reduce((a, b) => a + b, 0) - 100) < 0.01, String(widths));
+  assert.doesNotMatch(cell1, /mo-agent/);
+  assert.match(h.split('data-day="2026-10-06"')[1].split("mo-cell")[0], /mo-agent/);
+  assert.match(h, /data-scrum="2026-10-01"/);
+  assert.doesNotMatch(h, /data-scrum="2026-10-07"/);
+  assert.doesNotMatch(h, /data-scrum="2026-10-03"/);
+  assert.match(h, /3h 50m driven/);
+  assert.match(h, /1h 50m<\/div>/);
+});
+
+test("scrum: the three sections as preformatted text and one Copy button for all of it", () => {
+  const summary = {yesterday: ["PET-17983 Search <cards>, 1h 45m: committed"], today: ["Search bar: refuter reviewing"], blockers: ["None"]};
+  const h = scrumHtml(summary, "2026-10-19");
+  const text = scrumText(summary, "2026-10-19");
+  assert.match(h, /<pre[^>]*>[\s\S]*Yesterday[\s\S]*Today[\s\S]*Blockers[\s\S]*<\/pre>/);
+  assert.match(h, /Search &lt;cards&gt;/);
+  assert.equal(count(h, /<button/g), 1);
+  assert.equal(count(h, /data-copy=/g), 1);
+  assert.ok(h.includes(`data-copy="${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"`));
 });
