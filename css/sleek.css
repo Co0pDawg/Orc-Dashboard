@@ -88,3 +88,12 @@
 .sleek .sugg{color:var(--muted)}
 .sleek .sugg .on{color:var(--ok-text);font-weight:600}
 .sleek .not-entered{color:var(--run-text)}
+.sleek .wk-sum,.sleek .mo-head{color:var(--muted);font-size:13px}
+.sleek .wk-sum b,.sleek .mo-head b{color:var(--ink);font-weight:600}
+.sleek .wk-col:hover .tl-track,.sleek .mo-cell.has:hover{background-color:var(--accent-soft)}
+.sleek .mo-dow,.sleek .mo-tot{color:var(--muted)}
+.sleek .mo-cell{background:var(--bg)}
+.sleek .mo-cell.blank{background:none}
+.sleek .mo-bar{background:var(--line)}
+.sleek .mo-agent{color:var(--accent);font-size:11px}
+.sleek .dlg-head h2{font-family:var(--f-display);font-weight:700}

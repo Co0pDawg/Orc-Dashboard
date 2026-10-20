@@ -132,10 +132,10 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .tl-axis span{position:absolute;right:4px;transform:translateY(-1px);font-size:11px;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
 .tk-1{--tk:var(--tk-1)} .tk-2{--tk:var(--tk-2)} .tk-3{--tk:var(--tk-3)} .tk-4{--tk:var(--tk-4)} .tk-5{--tk:var(--tk-5)} .tk-6{--tk:var(--tk-6)} .tk-none{--tk:var(--tk-none)}
 /* driving is solid on the left; agent spans are hatched beside it; agent dispatch markers are dots between them */
-.tl-track .drv,.tl-track .agt{position:absolute;min-height:2px;border-radius:3px;box-sizing:border-box}
-.tl-track .drv{left:0;width:56%;background:var(--tk)}
-.tl-track .agt{right:0;width:38%;border:1px solid var(--tk);background:repeating-linear-gradient(135deg,var(--tk) 0 2px,transparent 2px 6px)}
-.tl-track .mk{position:absolute;left:59%;width:9px;height:9px;margin:-5px 0 0 -4px;border-radius:50%;background:var(--tk);box-shadow:0 0 0 2px var(--tl-bg,var(--surface))}
+.tl-track > .drv,.tl-track > .agt{position:absolute;min-height:2px;border-radius:3px;box-sizing:border-box}
+.tl-track > .drv{left:0;width:56%;background:var(--tk)}
+.tl-track > .agt{right:0;width:38%;border:1px solid var(--tk);background:repeating-linear-gradient(135deg,var(--tk) 0 2px,transparent 2px 6px)}
+.tl-track > .mk{position:absolute;left:59%;width:9px;height:9px;margin:-5px 0 0 -4px;border-radius:50%;background:var(--tk);box-shadow:0 0 0 2px var(--tl-bg,var(--surface))}
 /* Entries: one card per Work Detail entry, a copy button per field */
 .entries{display:grid;gap:10px;min-width:0}
 .ent-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
@@ -155,3 +155,43 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .needs{font-style:normal;font-weight:600}
 .sugg{margin:2px 0 0;display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12.5px}
 .not-entered{margin:0;font-weight:600}
+/* Week: day columns on the Day axis; each moment split into bands, the driven ticket solid and agents faint */
+.wk-sum{margin-bottom:10px}
+.wk-col{cursor:pointer}
+.wk-head{display:flex;flex-wrap:wrap;align-content:start;align-items:center;gap:2px 8px}
+.wk-date,.mo-date{font:inherit;font-weight:600;color:inherit;background:none;border:0;padding:0 2px;min-height:24px;min-width:24px;cursor:pointer;text-align:left}
+.wk-date:focus-visible,.mo-date:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.wk-col.missing .tl-tot{font-style:italic}
+.scrum{font-size:11.5px;min-height:24px;padding:1px 8px}
+.band{position:absolute;left:0;right:0;display:flex;gap:1px;min-height:2px}
+.band i{flex:1 1 0;min-width:0}
+.band .drv{flex-grow:2;background:var(--tk)}
+.band .agt{background:color-mix(in srgb,var(--tk) 45%,transparent)}
+/* Month: Monday-first weeks, week totals at the row ends; a list of days at phone width */
+.mo-head{margin-bottom:10px}
+.mo-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(56px,auto);gap:4px}
+.mo-dow{font-size:12px;text-align:center;padding:2px 0}
+.mo-cell{min-height:96px;min-width:0;display:grid;align-content:start;gap:4px;padding:6px;border:1px solid var(--line);border-radius:8px;box-sizing:border-box}
+.mo-cell.blank{border-color:transparent}
+.mo-cell[data-day]{cursor:pointer}
+.mo-top{display:flex;justify-content:space-between;align-items:center;gap:4px}
+.mo-dow-s{display:none}
+.mo-tot{font-size:12.5px;font-variant-numeric:tabular-nums}
+.mo-bar{display:flex;height:6px;border-radius:99px;overflow:hidden}
+.mo-bar i{display:block;height:100%;background:var(--tk)}
+.mo-cell .scrum{justify-self:start}
+.mo-week{align-self:center;justify-self:end;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+@media (max-width:640px){
+  .mo-grid{grid-template-columns:minmax(0,1fr)}
+  .mo-dow,.mo-cell.blank,.mo-cell:not(.has),.mo-week:empty{display:none}
+  .mo-cell{min-height:0;grid-template-columns:auto 6ch minmax(40px,1fr) auto;align-items:center;gap:4px 10px}
+  .mo-dow-s{display:inline}
+  .mo-week{padding:0 6px 8px}
+  .mo-week::before{content:"Week "}
+}
+/* Scrum dialog */
+.dlg{width:min(640px,calc(100vw - 32px));max-height:calc(100vh - 32px);box-sizing:border-box;padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.dlg::backdrop{background:rgba(0,0,0,.45)}
+.dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.dlg-head h2{margin:0;font-size:16px}
+.scrum-text{margin:0 0 12px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto;font-family:var(--f-mono);font-size:12.5px;line-height:1.5;border:1px solid var(--line);border-radius:8px;background:var(--bg);user-select:text}
