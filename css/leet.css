@@ -105,3 +105,30 @@
 @media (prefers-reduced-motion:reduce){.leet ol.plan li.active .s::after,.leet .feed li.cursor span::after{animation:none}}
 .leet .empty{border-left:2px solid var(--t-green);background:var(--t-pane);padding:16px;color:var(--t-dim);display:grid;gap:4px;border-radius:var(--t-r)}
 .leet .empty b{color:var(--t-ink)}
+/* Time page */
+.leet .views{gap:4px}
+.leet .views .btn{min-height:24px;padding:0 8px;border-radius:2px;color:var(--t-dim)}
+.leet .views .btn::before{content:"["}
+.leet .views .btn::after{content:"]"}
+.leet .views .btn[aria-current="page"]{border-color:var(--t-bar);color:var(--t-bar);background:color-mix(in srgb,var(--t-bar) 14%,transparent)}
+.leet .time-view{--tl-grid:var(--t-faint);--tl-bg:var(--t-bg);border:1px solid var(--t-faint);padding:8px 12px 12px;border-radius:var(--t-r)}
+.leet .tabs .btn[aria-selected="true"]{background:var(--t-green);border-color:var(--t-green);color:var(--t-on-green)}
+.leet .tnav input{font-family:var(--t-mono);background:var(--t-pane);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r);color-scheme:dark}
+.leet .time-label{font-size:15px;font-weight:700;color:var(--t-ink)}
+.leet .time-label::before{content:"$ time ";color:var(--t-dim);font-weight:400}
+.leet .day-head .facts{color:var(--t-dim)}
+.leet .day-head .facts b{color:var(--t-ink);font-weight:500}
+.leet .tl-colhead b{color:var(--tk)}
+.leet .tl-title,.leet .tl-tot,.leet .tl-axis span{color:var(--t-dim)}
+.leet .tl-track .drv,.leet .tl-track .agt{border-radius:1px}
+.leet .entries h2{font-size:13.5px}
+.leet .entries h2::before{content:"## ";color:var(--t-dim)}
+.leet .ent-tot,.leet .ent-top span,.leet .fld .k,.leet .sugg{color:var(--t-dim)}
+.leet .entry{background:var(--t-pane);border:1px solid var(--t-faint);border-left:2px solid var(--tk);border-radius:var(--t-r)}
+.leet .ent-top b{color:var(--tk)}
+.leet .fld textarea{font-family:var(--t-mono);background:var(--t-bg);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
+.leet .fld textarea:focus-visible{outline:1px solid var(--t-lime)}
+.leet .cp.copied{border-color:var(--t-green);color:var(--t-green)}
+.leet .needs,.leet .not-entered{color:var(--t-amber)}
+.leet .sugg .on{color:var(--t-green)}
+.leet .time-body code{font-family:var(--t-mono);color:var(--t-green)}

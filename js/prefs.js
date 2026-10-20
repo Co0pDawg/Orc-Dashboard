@@ -61,3 +61,9 @@ export const saveBarColor = c => c ? store.set("board.barColor", c) : store.del(
 export const loadPalette = () => store.get("board.palette") || "";
 /** Saves the color scheme id. */
 export const savePalette = id => id ? store.set("board.palette", id) : store.del("board.palette");
+
+// Entry rounding in minutes (1 = Exact); it changes the Time page's entries only, never the drawn times.
+/** The entry rounding unit: 1, 5, 10, 15 or 30 minutes (default 15). */
+export const loadRounding = () => { const n = Number(store.get("board.rounding")); return [1, 5, 10, 15, 30].includes(n) ? n : 15; };
+/** Saves the entry rounding unit. */
+export const saveRounding = n => store.set("board.rounding", String(n));
