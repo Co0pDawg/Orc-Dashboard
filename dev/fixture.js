@@ -18,8 +18,9 @@ const S = {
 const q = name => ({ w:null, orderBy(){return this;}, where(f,o,v){this.w=[f,v];return this;},
   onSnapshot(cb){ let r=S[name]; if(this.w) r=r.filter(x=>x[this.w[0]]===this.w[1]); setTimeout(()=>cb({docs:r.map(x=>({id:x.id,data:()=>x}))}),50); return ()=>{}; }});
 window.claude = {use: async n => n==="db" ? {collection: q} : null};
-localStorage.removeItem("board.shown");
-localStorage.setItem("board.skin", location.hash==="#leet" ? "leet" : "sleek");
+// Hash flags (dev only): "leet" picks the 1337 skin, "stack" shows both sessions, "edit" opens Customize layout.
+if (location.hash.includes("stack")) localStorage.setItem("board.shown", JSON.stringify(S.sessions.map(s => s.id))); else localStorage.removeItem("board.shown");
+localStorage.setItem("board.skin", location.hash.includes("leet") ? "leet" : "sleek");
 localStorage.setItem("board.layout", JSON.stringify({order:[], size:{}}));
 localStorage.setItem("board.cardFold", JSON.stringify({c1:true, c4:true}));
 localStorage.setItem("board.folded", JSON.stringify([]));

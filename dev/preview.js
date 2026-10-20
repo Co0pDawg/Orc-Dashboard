@@ -16,3 +16,4 @@ for (const s of scripts){
   document.body.append(n);
   await done;
 }
+if (location.hash.includes("edit")) setTimeout(() => document.getElementById("customize")?.click(), 400);
