@@ -1,15 +1,15 @@
 // Sleek skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
 import {LABEL, cardState, stageLabel, stageSince, subsOf, lastAt, progress} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle} from "./shared.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn} from "./shared.js";
 
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
-export function sleekCard(c, ado){
+export function sleekCard(c, ado, min){
   const s = cardState(c);
   const steps = (c.stages || []).map(x => `<li class="${esc(x.state)}" title="${esc(x.label)}: ${esc(LABEL[x.state] || x.state)}"><i></i><span>${esc(x.label)}</span></li>`).join("");
   const meta = [["Agent", c.agent && esc(c.agent)], ["Commit", c.commit && `<span class="mono">${esc(c.commit)}</span>`], ["Tokens", c.tokens && esc(c.tokens)], ["Task", c.task && `<a class="tid" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>`]]
     .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  return `<div class="chead">${c.ticket ? `<a class="tid" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a>` : ""}<span class="kind">${esc(c.kind)}</span><span class="pill ${s}">${esc(stageLabel(c))}${stageSince(c) ? " · " + sinceHtml(stageSince(c)) : ""}</span></div>
+  return `<div class="chead">${c.ticket ? `<a class="tid" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a>` : ""}<span class="kind">${esc(c.kind)}</span><span class="pill ${s}">${esc(stageLabel(c))}${stageSince(c) ? " · " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, false)}</div>
     <h3>${esc(c.title)}</h3>
     <ol class="steps" aria-label="Stages">${steps}</ol>
     ${progHtml(c)}

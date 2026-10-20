@@ -55,7 +55,8 @@ export function setOrder(visible){
 function applySize(el){
   const s = state.layout.size[el.dataset.id] || {};
   el.style.gridColumn = `span ${Math.min(s.w || 1, state.cols)}`;
-  el.style.gridRow = `span ${s.r || 1}`;
+  // A minimized card spans one row whatever its saved height, so a row of minimized cards slims.
+  el.style.gridRow = `span ${el.classList.contains("min") ? 1 : s.r || 1}`;
 }
 const gridCols = () => `repeat(${state.cols}, minmax(0, 1fr))`;
 // Moves a node only when it is out of place, so focus and inner scroll survive a live update.
@@ -73,12 +74,12 @@ function renderTiles(v, sess){
     if (!el){ el = document.createElement("section"); el.dataset.id = id; }
     place(tiles, el, i);
     const log = isLog(id), c = log ? null : v.cards.find(x => x._id === id);
-    const st = c ? cardState(c) : "";
-    el.className = "slot" + (log ? " log" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
+    const st = c ? cardState(c) : "", min = !log && !!state.cardFold[id];
+    el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
     el.setAttribute("aria-label", paneName(id));
     const body = log
       ? (skin === "leet" ? leetLog(events, sess.data.updated, !isDone(sess), sess.id, v.cards) : sleekLog(events, !isDone(sess), sess.id, v.cards))
-      : (skin === "leet" ? leetCard(c, sess.data.ado) : sleekCard(c, sess.data.ado));
+      : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
     el.innerHTML = (editing ? editBar(id) : "") + body + (editing ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
     applySize(el);
   });

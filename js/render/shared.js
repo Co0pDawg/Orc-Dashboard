@@ -39,6 +39,10 @@ export function subToggle(key, count, open, leet){
   const n = `${count} update${count > 1 ? "s" : ""}`;
   return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
 }
+/** The minimize/expand button on a ticket pane. */
+export function cardFoldBtn(id, name, min, leet){
+  return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"}">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
+}
 /** The customize-mode toolbar for a pane. */
 export function editBar(id){
   const n = esc(paneName(id)), s = state.layout.size[id] || {}, cols = state.cols;

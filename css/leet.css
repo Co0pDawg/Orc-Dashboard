@@ -97,6 +97,9 @@
 .leet .feed li.sub span{opacity:.9}
 .leet .more{color:var(--t-dim);padding:0 2px;min-height:20px}
 .leet .more:hover{color:var(--t-bar)}
+.leet .cfold{min-height:24px}
+/* the toggle leads the header line, so a long status never pushes it onto its own row */
+.leet .ph .cfold{order:-1;padding-left:0}
 .leet .more:focus-visible{outline:1px solid var(--t-lime);outline-offset:1px}
 .leet .feed li.cursor span::after{content:"▍";color:var(--t-green);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}

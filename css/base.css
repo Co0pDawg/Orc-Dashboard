@@ -71,3 +71,11 @@
 .more{font:inherit;cursor:pointer;background:none;border:0;padding:0;justify-self:start}
 .more:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip-slot{display:contents}
+
+/* The activity log fills its pane and scrolls inside, contributing almost nothing to the row height, so the
+   other panes set the row and a row of minimized cards slims. One column (phones) keeps its natural height. */
+.stack:not([data-cols="1"]) .slot.log{display:flex;flex-direction:column;min-height:120px}
+.stack:not([data-cols="1"]) .slot.log > ol{flex:1 1 0;min-height:0;max-height:none;overflow-y:auto;align-content:start}
+/* A minimized card keeps its header line and title and stops stretching to the row. */
+.slot.min{align-self:start}
+.slot.min > :not(.chead):not(.ph):not(h3):not(.edit):not(.corner){display:none}
