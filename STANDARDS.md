@@ -6,7 +6,7 @@ Rules for every change to the Orchestration Board. A change that breaks one eith
 
 - ES modules only. The page has no inline script; `js/main.js` is the only entry. No globals except the platform's `window.claude` and `window.Sortable`.
 - Dependency direction, with no cycles:
-  `util.js`, `model.js` (pure) ← `render/*` (strings) ← `board.js` ← `chooser.js`, `layout-edit.js` ← `main.js`.
+  `util.js`, `model.js` (pure) ← `render/*` (strings) ← `board.js` ← `chooser.js`, `layout-edit.js` ← `settings.js` ← `main.js`.
   `state.js` and `prefs.js` sit beside the pure layer and may be read from anywhere above it. Render modules never import a DOM controller.
 - `util.js` and `model.js` touch neither the DOM nor storage, so `node --test` can load them directly.
 - Render modules return HTML strings and never touch the DOM.

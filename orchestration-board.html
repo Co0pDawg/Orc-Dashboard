@@ -11,9 +11,20 @@
   <div class="top" id="top">
     <div id="chooser"></div>
     <div class="controls" id="controls">
+  <details class="pop settings" id="settings-menu">
+    <summary class="btn">Settings ▾</summary>
+    <div class="menu">
+      <fieldset class="opt">
+        <legend>A session counts as finished when</legend>
+        <label><input type="radio" name="done-when" id="done-when-fable" value="fable"> Fable marks it Done</label>
+        <label><input type="radio" name="done-when" id="done-when-pr" value="pr"> Its pull request is completed</label>
+        <small>Until then it stays on the chips and expanded, with its PR status in the header. Sessions without a recorded PR finish when Fable marks them Done.</small>
+      </fieldset>
+    </div>
+  </details>
   <label class="skin" for="skin-toggle"><span id="lbl-sleek">Sleek</span><input type="checkbox" role="switch" id="skin-toggle" aria-label="Terminal (1337) look"><span id="lbl-leet">1337</span></label>
   <div class="layout-bar" id="layout-bar" hidden>
-    <details class="reset" id="reset-menu" hidden>
+    <details class="pop reset" id="reset-menu" hidden>
       <summary class="btn">Reset layout ▾</summary>
       <div class="menu">
         <button type="button" class="btn" data-reset="order">Order<small>Activity log first, tickets in plan order</small></button>

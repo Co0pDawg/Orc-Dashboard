@@ -38,8 +38,10 @@
 .leet .btn{font-family:var(--t-mono);font-weight:500;border-radius:var(--t-r);background:var(--t-pane);color:var(--t-ink);border-color:var(--t-faint)}
 .leet .btn:hover{border-color:var(--t-green);color:var(--t-green)}
 .leet .btn[aria-pressed="true"]{background:var(--t-green);border-color:var(--t-green);color:var(--t-on-green)}
-.leet .reset .menu{background:var(--t-pane);border-color:var(--t-green);border-radius:var(--t-r);box-shadow:none}
-.leet .reset .menu small,.leet .edit .dim{color:var(--t-dim)}
+.leet .pop .menu{background:var(--t-pane);border-color:var(--t-green);border-radius:var(--t-r);box-shadow:none}
+.leet .reset .menu small,.leet .edit .dim,.leet .opt small{color:var(--t-dim)}
+.leet .opt input{accent-color:var(--t-green)}
+.leet .pr.open b{color:var(--t-amber)}
 .leet .edit{border-bottom-color:var(--t-faint)}
 .leet .edit .sep{background:var(--t-faint)}
 .leet .corner{background:linear-gradient(135deg,transparent 50%,var(--t-lime) 50%) no-repeat}

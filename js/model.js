@@ -50,10 +50,14 @@ export function progress(cards){
   const all = cards.flatMap(stagesOf);
   return {all: all.length, done: all.filter(x => x.state === "done" || x.state === "skipped").length, tickets: cards.length, ticketsDone: cards.filter(c => cardState(c) === "done").length};
 }
-// A session is finished once Fable writes `completed` (or status Done); finished sessions start minimized
-// and stay off the chips until "Show finished" is on.
-/** True when a session is finished. */
-export const isDone = s => !!s.data.completed || /^(done|complete|completed|finished)$/i.test(s.data.status || "");
+// Fable finishes a session by writing `completed` (or status Done). With the "pr" setting a finished session whose
+// pull request is still open (draft or active) is not done yet; a session that never recorded a PR finishes as before.
+/** True when Fable has marked the session finished. */
+export const fableDone = s => !!s.data.completed || /^(done|complete|completed|finished)$/i.test(s.data.status || "");
+/** True when a PR status is final (completed or abandoned). */
+export const prFinal = status => /^(completed|merged|abandoned)$/i.test(String(status || ""));
+/** True when a session is finished under the viewer's setting: "fable" (default) or "pr". */
+export const isDone = (s, mode = "fable") => fableDone(s) && (mode !== "pr" || !s.data.pr || !s.data.pr.id || prFinal(s.data.pr.status));
 /** A card's agent-posted progress lines, or []. */
 export const progressOf = c => Array.isArray(c.progress) ? c.progress : [];
 // A dispatch event that names its `card` also nests that card's agent-posted progress from its time until the next
@@ -70,7 +74,7 @@ export function subsOf(events, i, cards){
 export const lastAt = (events, cards = []) => events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]).concat(cards.flatMap(c => progressOf(c).map(x => x.at))).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
 // Sessions on the chips: unfinished first (newest update first), finished after them when shown.
 /** Sessions offered on the chips. */
-export const visibleSessions = (sessions, showDone) => sessions.filter(s => !isDone(s)).concat(showDone ? sessions.filter(isDone) : []);
+export const visibleSessions = (sessions, showDone, mode) => sessions.filter(s => !isDone(s, mode)).concat(showDone ? sessions.filter(s => isDone(s, mode)) : []);
 // What the stack shows: the saved list minus hidden finished sessions, else the newest unfinished session.
 /** Session ids the stack shows. */
 export function liveIds(shown, vis){

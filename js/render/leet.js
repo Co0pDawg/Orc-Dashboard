@@ -1,7 +1,7 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
 import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn} from "./shared.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, prHtml} from "./shared.js";
 
 /** The activity log pane's body, oldest first with a cursor on the last line. */
 export function leetLog(events, updated, live, sid, cards){
@@ -44,6 +44,7 @@ export function leetHead(sess, cards){
         ${s.started ? `<span>started <b>${esc(fmt(s.started))}</b></span>` : ""}
         ${s.status ? `<span>status <b>${esc(s.status)}</b></span>` : ""}
         ${s.completed ? `<span>finished <b>${esc(fmt(s.completed))}</b></span>` : ""}
+        ${prHtml(s.pr, true)}
       </div>
       <div class="meter" role="progressbar" aria-valuenow="${p.done}" aria-valuemin="0" aria-valuemax="${p.all}">[<b>${"#".repeat(fill)}</b>${".".repeat(width - fill)}] ${p.done}/${p.all} stages · ${p.ticketsDone}/${p.tickets} tickets</div>
       ${s.now ? `<div class="now">${esc(s.now)}</div>` : ""}

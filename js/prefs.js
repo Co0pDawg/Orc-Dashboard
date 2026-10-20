@@ -43,6 +43,12 @@ export const loadCardFold = () => { try { const f = JSON.parse(store.get("board.
 /** Saves the per-card minimize choices. */
 export const saveCardFold = fold => store.set("board.cardFold", JSON.stringify(fold));
 
+// When a session counts as finished: "fable" (Fable marks it Done) or "pr" (its pull request is completed).
+/** The finished-session rule. */
+export const loadDoneWhen = () => store.get("board.doneWhen") === "pr" ? "pr" : "fable";
+/** Saves the finished-session rule. */
+export const saveDoneWhen = v => store.set("board.doneWhen", v);
+
 // 1337 status bar border color, picked by the viewer; it also outlines and tints the active tab.
 /** The saved status bar color, or the default green. */
 export const loadBarColor = () => /^#[0-9a-f]{6}$/i.test(store.get("board.barColor") || "") ? store.get("board.barColor") : "#79e36a";
