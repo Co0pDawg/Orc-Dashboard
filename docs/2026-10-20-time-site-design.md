@@ -10,9 +10,10 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
 
 ## Goals
 
-1. A **Time** page beside the existing **Board** page, with two tabs:
+1. A **Time** page beside the existing **Board** page, with three tabs:
    - **Day:** a column per ticket (mockup B in the brainstorm).
    - **Week:** one column per day with parallel work stacked as bands (mockup C).
+   - **Month:** a compact calendar of days.
 2. The views show **actual session time to the minute**: when Cooper was driving a session, and when agents ran unattended.
 3. Each day yields **suggested entries** shaped like the Work Detail form: Ticket (`PET-NNNNN`), Start Date, Start Time, End Time, Note, and the Unplanned Time and Review Time toggles.
    - Every field has its own copy button.
@@ -35,7 +36,7 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
 
 ## Decisions Cooper made
 
-- Two pages: Board and Time. Day and Week are tabs under Time.
+- Two pages: Board and Time. Day, Week and Month are tabs under Time.
 - The Day view is a column per ticket; the Week view is one column per day with stacked bands.
 - When tickets overlap, the time goes to the session Cooper was **actively driving**.
 - Views show actual time. Rounding is a setting that applies to the entries only.
@@ -135,6 +136,20 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
   - **Unplanned** when the ticket is a Support Item.
 - **Rounding** is a Settings choice, saved per viewer like the other settings.
 
+### Month tab (Cooper's addition)
+
+A calendar grid, one cell per day, Monday-first, with weeks as rows. The tab is reached as `#time-month`.
+
+- Each cell, compact:
+  - the date and the day's driven total;
+  - a thin horizontal bar split by ticket in proportion to driven time, with colors matching the Day and Week views;
+  - a small mark when agents also ran unattended that day.
+- The header shows the month total and each row ends with its week total.
+- Clicking a cell opens that day in the Day tab. Each cell also carries a small Scrum button.
+- Days with no data stay blank.
+- Month navigation: previous, next, and this month.
+- At phone width the grid collapses to a list of days (my call).
+
 ### Scrum summary (Cooper's addition)
 
 A summary of one day to bring to the morning meeting.
@@ -142,6 +157,7 @@ A summary of one day to bring to the morning meeting.
 - **Entry point:** a **Scrum** button on every day.
   - The Day tab has one, in its header.
   - The Week tab has one in each day column's header.
+  - The Month tab has one in each cell.
 - **Output:** a modal that shows the summary as a plain list Cooper can read and copy from. It has one Copy button for the whole list, and the text is selectable. There is no editing and no separate tab.
 - **Content**, generated from the data with no model call (my call):
   - **Yesterday:** one line per ticket worked that day, most driven time first: `PET-NNNNN <title>, <driven time>: <outcomes>`.
