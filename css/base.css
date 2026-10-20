@@ -119,6 +119,7 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 @media (max-width:900px){.day{grid-template-columns:minmax(0,1fr)}}
 .day-main{display:grid;gap:10px;min-width:0}
 .day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
+.time-body > .day-head{margin-bottom:10px}
 .day-head .facts{display:flex;flex-wrap:wrap;gap:4px 16px}
 /* The columns scroll sideways inside their box, never the page; the hour axis stays pinned on the left */
 .tl{--hour-h:44px;display:flex;gap:8px;overflow-x:auto;min-width:0;padding-bottom:4px}
