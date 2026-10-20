@@ -45,6 +45,14 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
 
+A card at Start, exactly in this shape (stages is an array in plan order, never an object):
+
+```json
+{"session": "2026-10-20-petsoft-18018-tab-strips", "order": 1, "ticket": "18018", "task": "18019", "kind": "Task",
+ "title": "Tab restyle + Admin groups", "updated": "2026-10-20T12:02:46-04:00",
+ "stages": [{"label": "Build", "state": "pending"}, {"label": "Refute", "state": "pending"}, {"label": "Commit", "state": "pending"}]}
+```
+
 Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
 Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.barColor`.
