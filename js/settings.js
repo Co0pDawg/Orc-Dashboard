@@ -1,10 +1,11 @@
 // The Settings menu: per-viewer options that change how the board reads the data. Each lives in prefs.js.
 import {state} from "./state.js";
-import {saveDoneWhen, saveBarColor, savePalette} from "./prefs.js";
+import {saveDoneWhen, saveBarColor, savePalette, saveRounding} from "./prefs.js";
 import {PALETTES} from "./palettes.js";
 import {esc} from "./util.js";
 import {$, say, render} from "./board.js";
 import {renderChooser} from "./chooser.js";
+import {renderTime} from "./time/controller.js";
 
 // 1337 status bar border color; it also outlines and tints the active tab. null follows the color scheme's green.
 function setBar(c){
@@ -21,7 +22,7 @@ function applyPalette(){
   setBar(state.barColor);
 }
 
-/** Binds the Settings menu: color scheme, 1337 border color, the finished-session rule, and closing on an outside click. */
+/** Binds the Settings menu: color scheme, entry rounding, 1337 border color, the finished-session rule, and closing on an outside click. */
 export function initSettings(){
   const menu = $("settings-menu"), color = $("bar-color"), pick = $("palette");
   pick.insertAdjacentHTML("beforeend", PALETTES.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join(""));
@@ -29,6 +30,13 @@ export function initSettings(){
   pick.addEventListener("change", () => {
     state.palette = pick.value; savePalette(state.palette); applyPalette();
     say(`Colors: ${pick.options[pick.selectedIndex].text}.`);
+  });
+  const rounding = $("rounding");
+  rounding.value = String(state.rounding);
+  rounding.addEventListener("change", () => {
+    state.rounding = Number(rounding.value); saveRounding(state.rounding);
+    say(`Entry rounding: ${rounding.options[rounding.selectedIndex].text}.`);
+    renderTime();
   });
   color.addEventListener("input", () => setBar(color.value));
   color.addEventListener("change", () => saveBarColor(state.barColor));

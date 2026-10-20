@@ -11,6 +11,9 @@
   --t-bg:#070908; --t-pane:#0d100f; --t-ink:#dfe4dc; --t-dim:#7f8a82; --t-faint:#2a302d;
   --t-r:3px; --t-bar:#79e36a; --t-edge:#f2f5f0; --t-green:#79e36a; --t-on-green:#071006; --t-lime:#d4e157; --t-amber:#f5b94a; --t-red:#ff5d62; --t-red-bg:#3b1013;
   --t-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  /* Time page ticket colors, built from the tokens above so every scheme and mode recolors them; tk-none is No ticket */
+  --tk-1:var(--accent); --tk-2:var(--ok); --tk-3:var(--run); --tk-4:color-mix(in srgb,var(--accent) 50%,var(--bad));
+  --tk-5:color-mix(in srgb,var(--ok) 50%,var(--accent)); --tk-6:var(--bad); --tk-none:var(--muted);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#12141b; --surface:#1b1e28; --ink:#e7e9f0; --muted:#9aa1b3; --line:#2c3040;
@@ -22,3 +25,5 @@
   --ok:#5cc98f; --ok-soft:#173326; --run:#f0b45a; --run-soft:#3a2b12; --bad:#ff7a82; --bad-soft:#3d1c20; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
 body.leet{background:var(--t-bg);color:var(--t-ink);font-family:var(--t-mono);font-size:13px;color-scheme:dark;-webkit-font-smoothing:antialiased}
+body.leet{--tk-1:var(--t-green); --tk-2:var(--t-amber); --tk-3:var(--t-lime); --tk-4:color-mix(in srgb,var(--t-green) 50%,var(--t-ink));
+  --tk-5:color-mix(in srgb,var(--t-amber) 50%,var(--t-red)); --tk-6:var(--t-red); --tk-none:var(--t-dim)}

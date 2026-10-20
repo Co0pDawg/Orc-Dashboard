@@ -70,3 +70,21 @@
 .sleek .log time{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .sleek .empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:28px;color:var(--muted);text-align:center}
 .sleek .empty b{display:block;color:var(--ink);font-family:var(--f-display);font-size:18px;margin-bottom:4px}
+/* Time page */
+.sleek .views .btn{border-radius:99px;padding:3px 14px;color:var(--muted)}
+.sleek .views .btn[aria-current="page"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.sleek .time-view{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.sleek .time-label{font-family:var(--f-display);font-weight:700;font-size:clamp(18px,2.4vw,24px);line-height:1.2}
+.sleek .day-head .facts{color:var(--muted);font-size:13px}
+.sleek .day-head .facts b{color:var(--ink);font-weight:600}
+.sleek .tl-colhead b{font-family:var(--f-mono);font-size:12.5px;color:var(--ink)}
+.sleek .tl-title,.sleek .tl-tot,.sleek .tl-axis span{color:var(--muted)}
+.sleek .entries h2{font-family:var(--f-display);font-weight:600}
+.sleek .ent-tot,.sleek .ent-top span{color:var(--muted);font-size:12.5px}
+.sleek .entry{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--tk);border-radius:10px}
+.sleek .ent-top b{font-family:var(--f-mono);font-size:13px}
+.sleek .fld .k{color:var(--muted);font-size:12.5px}
+.sleek .needs{color:var(--run-text)}
+.sleek .sugg{color:var(--muted)}
+.sleek .sugg .on{color:var(--ok-text);font-weight:600}
+.sleek .not-entered{color:var(--run-text)}

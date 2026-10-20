@@ -5,6 +5,7 @@ import {$, toggle, render, fitCols, startBoard} from "./board.js";
 import {renderChooser, initChooser} from "./chooser.js";
 import {initLayoutEdit} from "./layout-edit.js";
 import {initSettings} from "./settings.js";
+import {initTime, showTime, renderTime} from "./time/controller.js";
 
 function applySkin(){
   const skin = state.skin;
@@ -13,7 +14,16 @@ function applySkin(){
   toggle.checked = skin === "leet";
   $("lbl-sleek").classList.toggle("on", skin !== "leet");
   $("lbl-leet").classList.toggle("on", skin === "leet");
-  renderChooser(); render();
+  renderChooser(); render(); renderTime();
+}
+
+// Board is "#board" or no hash; Time is "#time", "#time-week" or "#time-month", optionally followed by "-yyyy-MM-dd".
+// Dev preview flags (leet, pal-<id>, stack, ...) may share the hash, so tokens are found anywhere in it.
+function route(){
+  const h = location.hash, m = /\btime(?:-(week|month))?/.exec(h), time = !!m;
+  document.body.dataset.view = time ? "time" : "board";
+  document.querySelectorAll("[data-go]").forEach(b => { if ((b.dataset.go === "time") === time) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  if (time) showTime(m[1] || "day", /\d{4}-\d{2}-\d{2}/.exec(h)?.[0]);
 }
 
 // window.claude.use("db") resolves after first paint, so the empty state renders before any data arrives.
@@ -25,8 +35,9 @@ async function boot(){
     if (!state.sessions.length) return;
     const keep = state.shown.filter(id => state.sessions.some(x => x.id === id));
     if (keep.length !== state.shown.length){ state.shown = keep; saveShown(state.shown); }
-    renderChooser(); render();
+    renderChooser(); render(); renderTime();
   }, () => {});
+  route();
 }
 
 initChooser();
@@ -34,6 +45,14 @@ startBoard();
 toggle.addEventListener("change", () => { state.skin = toggle.checked ? "leet" : "sleek"; saveSkin(state.skin); applySkin(); });
 initLayoutEdit();
 initSettings();
+initTime();
+document.querySelector(".views").addEventListener("click", e => {
+  const b = e.target.closest("[data-go]"); if (!b) return;
+  try { location.hash = b.dataset.go; } catch {}
+  route();
+});
+addEventListener("hashchange", route);
+route();
 applySkin();
 fitCols();
 boot();
