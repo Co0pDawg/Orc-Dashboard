@@ -2,3 +2,4 @@
 handoff-prompt.md
 node_modules/
 *.log
+.superpowers/
