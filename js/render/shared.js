@@ -39,6 +39,15 @@ export function subToggle(key, count, open, leet){
   const n = `${count} update${count > 1 ? "s" : ""}`;
   return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
 }
+/** Customize-mode controls that reorder a stacked session block. */
+export function sessMover(sid, title, i, count){
+  const t = esc(title), s = esc(sid);
+  return `<span class="sess-move" role="group" aria-label="Reorder ${t}">
+    <button type="button" class="btn sgrip" data-sact="grip" data-sid="${s}" aria-label="Drag to reorder ${t}; arrow keys also move it" title="Drag to reorder this session">⠿</button>
+    <button type="button" class="btn" data-sact="up" data-sid="${s}" aria-label="Move ${t} up"${i === 0 ? " disabled" : ""} title="Move up">▲</button>
+    <button type="button" class="btn" data-sact="down" data-sid="${s}" aria-label="Move ${t} down"${i === count - 1 ? " disabled" : ""} title="Move down">▼</button>
+  </span>`;
+}
 /** The minimize/expand button on a ticket pane. */
 export function cardFoldBtn(id, name, min, leet){
   return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"} · Shift-click for the whole row">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;

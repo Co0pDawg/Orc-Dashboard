@@ -3,7 +3,7 @@ import {cardState, isDone, visibleSessions, liveIds, logId, isLog, QUIET_MS} fro
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold} from "./prefs.js";
-import {paneName, sessionTitle, editBar, emptyHtml} from "./render/shared.js";
+import {paneName, sessionTitle, editBar, emptyHtml, sessMover} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
 
@@ -102,8 +102,9 @@ function openView(sid){
   el.dataset.sid = sid; tiles.id = "tiles-" + (++state.viewSeq);
   fold.type = "button"; fold.setAttribute("aria-controls", tiles.id);
   fold.addEventListener("click", () => toggleFold(sid));
-  ctl.append(fold); shead.append(summary, ctl); el.append(shead, tiles);
-  const v = {el, summary, ctl, fold, tiles, cards: [], stop: null, sortable: null};
+  const mover = mk("span", "mover");
+  ctl.append(mover, fold); shead.append(summary, ctl); el.append(shead, tiles);
+  const v = {el, summary, ctl, mover, fold, tiles, cards: [], stop: null, sortable: null};
   v.stop = state.db.collection("cards").where("session", "==", sid).onSnapshot(snap => {
     v.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     render();
@@ -146,12 +147,17 @@ export function render(){
     v.el.classList.toggle("folded", f);
     v.fold.setAttribute("aria-expanded", String(!f));
     v.fold.setAttribute("aria-label", `${f ? "Expand" : "Minimize"} ${t}`);
+    v.mover.innerHTML = state.editing && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
     v.fold.textContent = state.skin === "leet" ? (f ? "[+] expand" : "[-] minimize") : (f ? "▸ Expand" : "▾ Minimize");
     try { v.summary.innerHTML = headHtml(sess, v.cards); }
     catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);
   });
   if (state.refocus){ slotEl(state.refocus.id)?.querySelector(`[data-act="${state.refocus.act}"]`)?.focus(); state.refocus = null; }
+  if (state.sessFocus){
+    const s = stack.querySelector(`[data-sact="${state.sessFocus.act}"][data-sid="${CSS.escape(state.sessFocus.sid)}"]`);
+    (s && !s.disabled ? s : stack.querySelector(`[data-sact="grip"][data-sid="${CSS.escape(state.sessFocus.sid)}"]`))?.focus(); state.sessFocus = null;
+  }
 }
 
 /* ---------- columns follow the container width ---------- */
