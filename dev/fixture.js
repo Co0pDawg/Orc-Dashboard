@@ -20,7 +20,8 @@ const q = name => ({ w:null, orderBy(){return this;}, where(f,o,v){this.w=[f,v];
 window.claude = {use: async n => n==="db" ? {collection: q} : null};
 localStorage.removeItem("board.shown");
 localStorage.setItem("board.skin", location.hash==="#leet" ? "leet" : "sleek");
-localStorage.setItem("board.layout", JSON.stringify({order:[], size:{c2:{r:2}}}));
+localStorage.setItem("board.layout", JSON.stringify({order:[], size:{}}));
+localStorage.setItem("board.cardFold", JSON.stringify({c1:true, c4:true}));
 localStorage.setItem("board.folded", JSON.stringify([]));
 localStorage.setItem("board.barColor","#4fc3f7"); // custom, not the #79e36a default
 localStorage.setItem("board.showDone","1");

@@ -37,6 +37,12 @@ export const loadFold = () => {
 /** Saves the fold choices. */
 export const saveFold = fold => store.set("board.fold", JSON.stringify(fold));
 
+// Minimized ticket cards {card id: true}; a card with no entry is expanded.
+/** Per-card minimize choices. */
+export const loadCardFold = () => { try { const f = JSON.parse(store.get("board.cardFold")); if (f && typeof f === "object" && !Array.isArray(f)) return f; } catch {} return {}; };
+/** Saves the per-card minimize choices. */
+export const saveCardFold = fold => store.set("board.cardFold", JSON.stringify(fold));
+
 // 1337 status bar border color, picked by the viewer; it also outlines and tints the active tab.
 /** The saved status bar color, or the default green. */
 export const loadBarColor = () => /^#[0-9a-f]{6}$/i.test(store.get("board.barColor") || "") ? store.get("board.barColor") : "#79e36a";
