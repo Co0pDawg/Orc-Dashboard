@@ -17,14 +17,15 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/render/shared.js`, `sleek.js`, `leet.js` | HTML strings for panes, logs and headers |
 | `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
 | `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
-| `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast |
+| `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
+| `js/settings.js` | The Settings menu (per-viewer options, e.g. when a session counts as finished) |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js` | `node:test` suite for `model.js` and `util.js` |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
 
 ## Data contract (what the page reads)
 
-- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, ado?, events[]`. `ado` is the Azure DevOps `"org/project"` that the session's ticket and task links open in. It defaults to `Cosairus/Petsoft`; set `"Cosairus/Cosairus Payment Services"` for Rise. Petsoft and CosairusAccountingModule use the default. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
+- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, ado?, pr?, events[]`. `pr` is `{id, url, status}` with `status` one of `draft|active|completed|abandoned`; with the viewer's Settings rule "Its pull request is completed", a finished session whose PR is still draft or active stays unfinished on the board. `ado` is the Azure DevOps `"org/project"` that the session's ticket and task links open in. It defaults to `Cosairus/Petsoft`; set `"Cosairus/Cosairus Payment Services"` for Rise. Petsoft and CosairusAccountingModule use the default. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
 - `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. `stages` is an array of `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`, in plan order (the page also reads an object `{label: state}`, but write the array); `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
 - Times are ISO with offset.
@@ -43,7 +44,9 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 | **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |
 | **Report** | The stage turns `done` or `rework` (a rework stage gets a fresh `started`). Set `tokens` and `note`. Append the outcome as a top-level event ("refuter ACCEPT", "builder done: 40 tests pass"). |
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
+| **PR opened** | Set the session's `pr: {id, url, status: "draft"}` (url is the PR's Azure DevOps link). |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
+| **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not `completed` or `abandoned`, read the PR (Petsoft: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
 
 A card at Start, exactly in this shape (stages is an array in plan order, never an object):
 
@@ -55,7 +58,7 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
 
 Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
-Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.barColor`.
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`.
 
 ## Preview
 

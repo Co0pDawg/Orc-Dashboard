@@ -1,5 +1,5 @@
 // The board's shared mutable runtime state. DOM modules read and write it; render modules only read it.
-import {loadSkin, loadLayout, loadShown, loadShowDone, loadFold, loadCardFold, loadBarColor} from "./prefs.js";
+import {loadSkin, loadLayout, loadShown, loadShowDone, loadFold, loadCardFold, loadBarColor, loadDoneWhen} from "./prefs.js";
 
 /** Shared runtime state; per-viewer values start from prefs. */
 export const state = {
@@ -13,6 +13,7 @@ export const state = {
   layout: loadLayout(),
   shown: loadShown(),
   showDone: loadShowDone(),
+  doneWhen: loadDoneWhen(),
   fold: loadFold(),
   cardFold: loadCardFold(),
   barColor: loadBarColor()

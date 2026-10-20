@@ -4,6 +4,7 @@ import {saveSkin, saveShown} from "./prefs.js";
 import {$, toggle, render, fitCols, startBoard} from "./board.js";
 import {renderChooser, initChooser} from "./chooser.js";
 import {initLayoutEdit} from "./layout-edit.js";
+import {initSettings} from "./settings.js";
 
 function applySkin(){
   const skin = state.skin;
@@ -32,6 +33,7 @@ initChooser();
 startBoard();
 toggle.addEventListener("change", () => { state.skin = toggle.checked ? "leet" : "sleek"; saveSkin(state.skin); applySkin(); });
 initLayoutEdit();
+initSettings();
 applySkin();
 fitCols();
 boot();

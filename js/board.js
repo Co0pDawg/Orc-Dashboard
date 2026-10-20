@@ -15,11 +15,13 @@ const topEl = $("top"), controls = $("controls"), bar = $("layout-bar");
 /** Announces msg through the sr live region. */
 export function say(msg){ const sr = $("sr"); sr.textContent = ""; setTimeout(() => { sr.textContent = msg; }, 30); }
 /** Sessions offered on the chips right now. */
-export const visible = () => visibleSessions(state.sessions, state.showDone);
+export const visible = () => visibleSessions(state.sessions, state.showDone, state.doneWhen);
+/** Whether a session is finished under the viewer's setting. */
+export const doneNow = s => isDone(s, state.doneWhen);
 /** Session ids the stack shows right now. */
 export const liveNow = () => liveIds(state.shown, visible());
 /** Whether a session is minimized: the viewer's choice, else folded when finished. */
-const isFolded = s => state.fold[s.id] ?? isDone(s);
+const isFolded = s => state.fold[s.id] ?? doneNow(s);
 /** Flips a session between minimized and expanded. */
 function toggleFold(sid){
   const s = state.sessions.find(x => x.id === sid); if (!s) return;
@@ -82,7 +84,7 @@ function renderTiles(v, sess){
     let body;
     try {
       body = log
-        ? (skin === "leet" ? leetLog(events, sess.data.updated, !isDone(sess), sess.id, v.cards) : sleekLog(events, !isDone(sess), sess.id, v.cards))
+        ? (skin === "leet" ? leetLog(events, sess.data.updated, !doneNow(sess), sess.id, v.cards) : sleekLog(events, !doneNow(sess), sess.id, v.cards))
         : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
     } catch (err){
       console.error("Orchestration Board: pane", id, err);

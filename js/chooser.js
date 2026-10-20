@@ -1,18 +1,17 @@
 // The session chooser: plain click shows one session, Shift/Ctrl/Cmd-click or +/× stacks; plus Show finished and the 1337 bar color.
 import {esc} from "./util.js";
-import {isDone} from "./model.js";
 import {state} from "./state.js";
 import {saveShown, saveShowDone, saveBarColor} from "./prefs.js";
 import {sessionTitle} from "./render/shared.js";
-import {$, chooser, say, visible, liveNow, render, tick} from "./board.js";
+import {$, chooser, say, visible, liveNow, render, tick, doneNow} from "./board.js";
 
 function chipsHtml(){
   const skin = state.skin, showDone = state.showDone;
-  const vis = visible(), live = liveNow(), multi = vis.length > 1, done = state.sessions.filter(isDone).length;
+  const vis = visible(), live = liveNow(), multi = vis.length > 1, done = state.sessions.filter(doneNow).length;
   const doneBtn = done ? `<span class="chip show-done${showDone ? " on" : ""}"><button type="button" class="chip-main" data-show-done aria-pressed="${showDone}" title="${showDone ? "Hide" : "Show"} finished sessions">${skin === "leet" ? `finished:${done}` : `Show finished (${done})`}</button></span>` : "";
   if (!multi && skin !== "leet") return doneBtn && `<div class="chips" role="group" aria-label="Sessions">${doneBtn}</div>`;
   return `<div class="chips" role="group" aria-label="Sessions">${vis.map((x, i) => {
-    const on = live.includes(x.id), t = x.data.title || x.id, mark = isDone(x) ? "✓ " : "";
+    const on = live.includes(x.id), t = x.data.title || x.id, mark = doneNow(x) ? "✓ " : "";
     const label = skin === "leet" ? `<span class="n">${i}</span> ${mark}${esc(t)}` : mark + esc(t);
     const tog = !multi || (on && live.length === 1) ? ""
       : `<button type="button" class="chip-x" data-toggle="${esc(x.id)}" aria-label="${on ? "Hide" : "Stack"} ${esc(t)}" title="${on ? "Hide this session" : "Stack below the others"}">${on ? "×" : "+"}</button>`;

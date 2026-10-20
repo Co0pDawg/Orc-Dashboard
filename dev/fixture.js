@@ -5,7 +5,7 @@ const S = {
  sessions: [
   {id:"2026-10-19-petsoft-search", title:"Header search card results", ticket:"17983", branch:"feature/17983-rework-the-top-search-bar-card-results", status:"building", started:iso(90), updated:iso(2), now:"Builder on Task 18001: employee and class results",
    events:[{at:iso(80),text:"Spec written for 3 tasks"},{at:iso(60),text:"Builder dispatched on Task 18000",sub:[{at:iso(55),text:"Spec read, 6 files in scope"},{at:iso(48),text:"Build green"},{at:iso(40),text:"Filtered tests 18/22 pass"},{at:iso(35),text:"All 22 filtered tests pass"}]},{at:iso(30),text:"Refuter ACCEPT on Task 18000"},{at:iso(50),text:"Committed 581a23a31"},{at:iso(72),text:"Builder dispatched on Task 18001",card:"c2"}]},
-  {id:"2026-10-19-petsoft-dashboard", title:"Dashboard times", ticket:"17979", branch:"feature/17979-dashboard-times", status:"Done", completed:iso(15), started:iso(300), updated:iso(20), now:"Pre-PR review, light tier",
+  {id:"2026-10-19-petsoft-dashboard", title:"Dashboard times", ticket:"17979", branch:"feature/17979-dashboard-times", status:"Done", completed:iso(15), pr:{id:6238, url:"https://dev.azure.com/Cosairus/Petsoft/_git/Petsoft/pullrequest/6238", status:"draft"}, started:iso(300), updated:iso(20), now:"Pre-PR review, light tier",
    events:[{at:iso(200),text:"Refuter REWORK: missing AM/PM on tooltip"},{at:iso(100),text:"Builder pushed fix"}]}
  ],
  cards: [
@@ -26,3 +26,4 @@ localStorage.setItem("board.cardFold", JSON.stringify({c1:true, c4:true}));
 localStorage.setItem("board.folded", JSON.stringify([]));
 localStorage.setItem("board.barColor","#4fc3f7"); // custom, not the #79e36a default
 localStorage.setItem("board.showDone","1");
+if (location.hash.includes("prmode")) localStorage.setItem("board.doneWhen", "pr"); else localStorage.removeItem("board.doneWhen");

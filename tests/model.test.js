@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress} from "../js/model.js";
+import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal} from "../js/model.js";
 import {ago, esc, adoUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
@@ -100,4 +100,20 @@ test("stagesOf: reads the array contract and the object shape writers have used"
   const card = {stages: {build: "done", refute: "active", review: "pending", commit: "pending"}};
   assert.equal(cardState(card), "active");
   assert.deepEqual(progress([card]), {all: 4, done: 1, tickets: 1, ticketsDone: 0});
+});
+
+test("isDone with the pr setting: a finished session waits for a final PR status", () => {
+  const sess = (data) => ({id: "s", data});
+  const done = {completed: "2026-10-20T12:00:00-04:00"};
+  assert.equal(isDone(sess({...done, pr: {id: 6240, status: "active"}})), true, "default mode ignores the PR");
+  assert.equal(isDone(sess({...done, pr: {id: 6240, status: "draft"}}), "pr"), false);
+  assert.equal(isDone(sess({...done, pr: {id: 6240, status: "active"}}), "pr"), false);
+  assert.equal(isDone(sess({...done, pr: {id: 6240, status: "completed"}}), "pr"), true);
+  assert.equal(isDone(sess({...done, pr: {id: 6240, status: "Abandoned"}}), "pr"), true);
+  assert.equal(isDone(sess({...done}), "pr"), true, "no recorded PR finishes as before");
+  assert.equal(isDone(sess({status: "Building", pr: {id: 1, status: "completed"}}), "pr"), false, "Fable still owns finishing");
+  assert.equal(prFinal("merged"), true);
+  const list = [sess({...done, pr: {id: 1, status: "active"}})];
+  assert.equal(visibleSessions(list, false, "pr").length, 1, "an awaiting session stays on the chips");
+  assert.equal(visibleSessions(list, false, "fable").length, 0);
 });

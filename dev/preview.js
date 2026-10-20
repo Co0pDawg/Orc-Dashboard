@@ -17,3 +17,4 @@ for (const s of scripts){
   await done;
 }
 if (location.hash.includes("edit")) setTimeout(() => document.getElementById("customize")?.click(), 400);
+if (location.hash.includes("settings")) setTimeout(() => { const m = document.getElementById("settings-menu"); if (m) m.open = true; }, 400);
