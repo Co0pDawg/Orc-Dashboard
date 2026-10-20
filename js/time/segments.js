@@ -51,8 +51,9 @@ export function drivingSegments(events, opts = {}){
 }
 
 /**
- * Unattended agent time: a board event naming a card starts a span, the next event naming the same card
- * ends it (events pair up in order). An unanswered dispatch ends at the card's last progress line.
+ * Unattended agent time: a "dispatched" event naming a card starts a span, the next event naming the same card
+ * (report, commit, inline) ends it. An unanswered dispatch ends at the card's last progress line after it, else
+ * the session's `updated`. The ticket is the card's task, else its ticket, else the session's.
  */
 export function agentSpans(sessions, cards, dayStart, dayEnd){
   const lo = ms(dayStart), hi = ms(dayEnd), out = [];
@@ -62,13 +63,15 @@ export function agentSpans(sessions, cards, dayStart, dayEnd){
     for (const [id, list] of Object.entries(byCard)){
       list.sort((a, b) => ms(a.at) - ms(b.at));
       const card = (cards || []).find(c => c._id === id);
-      const ticket = normTicket(card && card.ticket != null && card.ticket !== "" ? card.ticket : s.data.ticket);
-      const last = ((card && card.progress) || []).map(p => ms(p.at)).filter(t => !isNaN(t)).reduce((m, t) => Math.max(m, t), -Infinity);
-      for (let i = 0; i < list.length; i += 2){
-        const a = ms(list[i].at), b = list[i + 1] ? ms(list[i + 1].at) : Math.max(a, last);
+      const ticket = normTicket(card && card.task || card && card.ticket || s.data.ticket);
+      const progress = ((card && card.progress) || []).map(p => ms(p.at)).filter(t => !isNaN(t));
+      list.forEach((e, i) => {
+        if (!/\bdispatched\b/i.test(e.text || "")) return;
+        const a = ms(e.at), later = progress.filter(t => t >= a), upd = ms(s.data.updated);
+        const b = list[i + 1] ? ms(list[i + 1].at) : later.length ? Math.max(...later) : upd;
         const start = Math.max(a, lo), end = Math.min(b, hi);
-        if (end > start) out.push({ticket, card: id, agent: list[i].text, start: iso(start), end: iso(end)});
-      }
+        if (end > start) out.push({ticket, card: id, agent: e.text, start: iso(start), end: iso(end)});
+      });
     }
   }
   return out.sort((a, b) => ms(a.start) - ms(b.start));
