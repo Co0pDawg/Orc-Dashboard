@@ -41,7 +41,7 @@ export function subToggle(key, count, open, leet){
 }
 /** The minimize/expand button on a ticket pane. */
 export function cardFoldBtn(id, name, min, leet){
-  return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"}">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
+  return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"} · Shift-click for the whole row">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
 }
 /** The customize-mode toolbar for a pane. */
 export function editBar(id){

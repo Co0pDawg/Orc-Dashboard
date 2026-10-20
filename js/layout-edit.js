@@ -37,6 +37,15 @@ function resize(id, dw, dh){
   state.layout.size[id] = s; saveLayout(state.layout);
 }
 
+// Cards share a grid row when their tops line up; the activity log is never minimized, so it is left out.
+// A tall card that started in an earlier row is not counted in this one.
+function rowCardIds(slot){
+  const top = slot.getBoundingClientRect().top;
+  return [...slot.parentElement.children]
+    .filter(el => !el.classList.contains("log") && Math.abs(el.getBoundingClientRect().top - top) < 2)
+    .map(el => el.dataset.id);
+}
+
 /** Binds the customize, undo, reset-menu, document and stack (click, keydown, pointerdown) handlers. */
 export function initLayoutEdit(){
   customize.addEventListener("click", () => setEditing(!state.editing));
@@ -61,9 +70,10 @@ export function initLayoutEdit(){
     const f = e.target.closest("[data-cardfold]");
     if (f){
       const id = f.dataset.cardfold, on = !state.cardFold[id];
-      if (on) state.cardFold[id] = true; else delete state.cardFold[id];
+      const ids = e.shiftKey || e.altKey ? rowCardIds(f.closest(".slot")) : [id];
+      for (const x of ids){ if (on) state.cardFold[x] = true; else delete state.cardFold[x]; }
       saveCardFold(state.cardFold);
-      say(`${paneName(id)} ${on ? "minimized" : "expanded"}.`); render();
+      say(ids.length > 1 ? `${ids.length} cards in this row ${on ? "minimized" : "expanded"}.` : `${paneName(id)} ${on ? "minimized" : "expanded"}.`); render();
       stack.querySelector(`[data-cardfold="${CSS.escape(id)}"]`)?.focus();
       return;
     }
