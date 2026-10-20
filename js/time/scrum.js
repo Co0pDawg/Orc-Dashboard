@@ -6,8 +6,8 @@ const pad = n => String(n).padStart(2, "0");
 const localDate = iso => { const d = new Date(iso); return isNaN(d) ? "" : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const t = e => Date.parse(e.at);
 /** "2h 45m", "2h" or "45m". */
-const dur = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`; };
-const OUTCOME = /commit|\bPR\b|accept|rework|done/i;
+const dur = total => { const min = Math.round(total), h = Math.floor(min / 60), m = min % 60; return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`; };
+const OUTCOME = /\b(commit|PR\b|accept|rework|done)/i;
 
 /**
  * {yesterday, today, blockers}, each a list of plain lines. `date` is the day being summarized (YYYY-MM-DD, local).
@@ -34,11 +34,10 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
     return `${tk || "No ticket"}${title ? " " + title : ""}, ${dur(min)}${outcomes ? ": " + outcomes : ""}`;
   });
 
-  const activeIds = new Set(segments.map(g => g.session));
   const finished = s => fableDone(s) && (!s.data.completed || Date.parse(s.data.completed) < dayEnd);
-  const open = sessions.filter(s => !finished(s));
-  const today = open.filter(s => activeIds.has(s.id) || todays.find(x => x.s === s).evs.length).map(s => {
-    const nextStage = cards.filter(c => c.session === s.id).flatMap(stagesOf).find(x => x.state === "pending");
+  const open = sessions.filter(s => !finished(s) && (!s.data.started || Date.parse(s.data.started) < dayEnd));
+  const today = open.map(s => {
+    const nextStage = cards.filter(c => c.session === s.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap(stagesOf).find(x => x.state === "pending");
     const pr = s.data.pr && s.data.pr.id && /^(draft|active)$/i.test(s.data.pr.status || "") ? `PR #${s.data.pr.id} (${s.data.pr.status.toLowerCase()})` : "";
     const head = (s.data.title || sessionTicket(s) || s.id) + (s.data.now ? ": " + s.data.now : "");
     return [head, nextStage ? "next: " + nextStage.label : "", pr].filter(Boolean).join("; ");
@@ -48,7 +47,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
     const s = sessions.find(x => x.id === c.session);
     if (s && finished(s)) return [];
     const evs = (s ? eventsOf(s) : []).filter(e => /rework/i.test(e.text || ""));
-    const last = (evs.filter(e => e.card === c._id).length ? evs.filter(e => e.card === c._id) : evs).sort((a, b) => t(a) - t(b)).pop();
+    const own = evs.filter(e => e.card === c._id), last = (own.length ? own : evs.filter(e => !e.card)).sort((a, b) => t(a) - t(b)).pop();
     const tk = normTicket(c.ticket != null && c.ticket !== "" ? c.ticket : s && s.data.ticket);
     return [`${[tk, c.title].filter(Boolean).join(" ")}: ${last ? last.text : "in rework"}`];
   });
