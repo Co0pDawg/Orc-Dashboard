@@ -1,6 +1,6 @@
 // HTML helpers both skins use. Strings only: nothing here touches the DOM.
 import {esc, t12, ago} from "../util.js";
-import {QUIET_MS, cardState, progressOf, isDone, isLog} from "../model.js";
+import {QUIET_MS, cardState, progressOf, isDone, isLog, prFinal} from "../model.js";
 import {state} from "../state.js";
 
 // Elapsed timers render pre-filled and tick() refreshes every [data-since] span, so no re-render (and no lost focus) is needed.
@@ -39,6 +39,16 @@ export function subToggle(key, count, open, leet){
   const n = `${count} update${count > 1 ? "s" : ""}`;
   return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
 }
+// The session's PR, written by Fable when it opens the PR and refreshed at the start of later orchestrated tasks.
+// Only an Azure DevOps link is used as a link; anything else shows as plain text.
+/** The header fact for a session's pull request, or "". */
+export function prHtml(pr, leet){
+  if (!pr || !pr.id) return "";
+  const url = typeof pr.url === "string" && /^https:\/\/dev\.azure\.com\//.test(pr.url) ? pr.url : "";
+  const st = String(pr.status || "open"), id = `#${esc(pr.id)}`;
+  const num = url ? `<a${leet ? "" : ' class="tid"'} href="${esc(url)}" target="_blank" rel="noopener">${leet ? `<b>${id}</b>` : id}</a>` : (leet ? `<b>${id}</b>` : id);
+  return `<span class="pr${prFinal(st) ? "" : " open"}">${leet ? "pr" : "PR"} ${num} <b>${esc(st)}</b></span>`;
+}
 /** Customize-mode controls that reorder a stacked session block. */
 export function sessMover(sid, title, i, count){
   const t = esc(title), s = esc(sid);
@@ -69,7 +79,7 @@ export function editBar(id){
 }
 /** The stack's empty state: no sessions yet, or all finished and hidden. */
 export function emptyHtml(){
-  const hidden = state.sessions.filter(isDone).length, skin = state.skin;
+  const hidden = state.sessions.filter(s => isDone(s, state.doneWhen)).length, skin = state.skin;
   if (hidden && !state.showDone) return skin === "leet"
     ? `<div class="empty"><b>$ all sessions finished_</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Turn on finished: in the status bar to see ${hidden > 1 ? "them" : "it"}.</div>`
     : `<div class="empty"><b>All sessions are finished</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Use Show finished at the top to see ${hidden > 1 ? "them" : "it"}.</div>`;
