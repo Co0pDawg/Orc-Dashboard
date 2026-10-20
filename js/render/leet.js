@@ -1,7 +1,7 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
 import {WORD, cardState, stageSince, subsOf, lastAt, tone, progress} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle} from "./shared.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn} from "./shared.js";
 
 /** The activity log pane's body, oldest first with a cursor on the last line. */
 export function leetLog(events, updated, live, sid, cards){
@@ -15,7 +15,7 @@ export function leetLog(events, updated, live, sid, cards){
     ${rows.length ? `<ol class="feed">${rows.map((r, i) => `<li class="${r.cls}${i === rows.length - 1 ? " cursor" : ""}">${r.html}</li>`).join("")}</ol>` : `<p class="lbl">nothing logged yet</p>`}`;
 }
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
-export function leetCard(c, ado){
+export function leetCard(c, ado, min){
   const s = cardState(c);
   const plan = (c.stages || []).map((x, i) => `<li class="${esc(x.state)}"><span class="n">${i + 1}.</span><span class="k">${esc(x.label)}</span><span class="s">${esc(WORD[x.state] || x.state)}${x.state === "active" || x.state === "rework" ? " " + sinceHtml(x.started || c.updated) : ""}</span></li>`).join("");
   const kv = [["agent", c.agent], ["tokens", c.tokens], ["commit", c.commit]].filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
@@ -23,7 +23,7 @@ export function leetCard(c, ado){
       ${c.updated ? `<time>${esc(t12(c.updated))}</time>` : ""}
       ${c.task ? `<a class="id" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
       ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
-      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>
+      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, true)}
     </div>
     <h3>${esc(c.title)}</h3>
     <div><div class="lbl">plan</div><ol class="plan">${plan}</ol></div>

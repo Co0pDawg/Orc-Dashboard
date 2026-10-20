@@ -1,7 +1,7 @@
 // Customize mode: per-pane move/resize buttons, grip arrow keys, corner drag, the reset menu and its undo toast.
 import {clamp} from "./util.js";
 import {state} from "./state.js";
-import {saveLayout} from "./prefs.js";
+import {saveLayout, saveCardFold} from "./prefs.js";
 import {paneName} from "./render/shared.js";
 import {$, stack, resetMenu, customize, say, render, slotEl, setOrder} from "./board.js";
 
@@ -58,6 +58,15 @@ export function initLayoutEdit(){
   document.addEventListener("click", e => { if (resetMenu.open && !resetMenu.contains(e.target)) resetMenu.open = false; });
 
   stack.addEventListener("click", e => {
+    const f = e.target.closest("[data-cardfold]");
+    if (f){
+      const id = f.dataset.cardfold, on = !state.cardFold[id];
+      if (on) state.cardFold[id] = true; else delete state.cardFold[id];
+      saveCardFold(state.cardFold);
+      say(`${paneName(id)} ${on ? "minimized" : "expanded"}.`); render();
+      stack.querySelector(`[data-cardfold="${CSS.escape(id)}"]`)?.focus();
+      return;
+    }
     const m = e.target.closest("[data-subs]");
     if (m){
       const key = m.dataset.subs, open = m.getAttribute("aria-expanded") !== "true";
