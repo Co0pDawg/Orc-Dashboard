@@ -8,7 +8,7 @@ import {scrumSummary} from "./scrum.js";
 import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, ticketTitles, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
-const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: ""};
+const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false};
 const monthOf = date => date.slice(0, 7);
 const lastOfMonth = date => { const [y, m] = date.split("-").map(Number); return ymd(new Date(y, m, 0)); };
 /** The first and last date the current view shows. */
@@ -26,7 +26,8 @@ function subscribe(){
   }
   const [from, to] = span(), key = from + "|" + to;
   if (key === T.key) return;
-  T.stop?.(); T.key = key; T.docs = new Map();
+  // The old range's docs stay until the new snapshot lands, so Month -> Day never flashes "No time synced".
+  T.stop?.(); T.key = key;
   T.stop = state.db.collection("timeline").where("date", ">=", from).where("date", "<=", to).onSnapshot(snap => {
     T.docs = new Map(snap.docs.map(d => { const x = d.data(); return [x.date || d.id, x]; }));
     renderTime();
@@ -43,7 +44,7 @@ function dayInfo(date){
 
 function dayView(){
   const d = dayInfo(T.date);
-  if (!d.doc) return emptyHtml(T.date);
+  if (!d.doc) return emptyHtml(T.date, true);
   const result = buildEntries(d.segments, {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards), skin: state.skin})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
@@ -137,6 +138,8 @@ function copy(btn){
 /** Binds the Time page: tabs, date navigation, the date picker, day clicks, copy buttons, note edits and the scrum dialog. */
 export function initTime(){
   view.addEventListener("click", e => {
+    // A render deferred by a note edit runs after this click, so the button clicked is never replaced under it.
+    if (T.pending) setTimeout(renderTime, 0);
     const tv = e.target.closest("[data-tview]");
     if (tv){ go(tv.dataset.tview, T.date); return; }
     const nav = e.target.closest("[data-tnav]");
@@ -160,5 +163,8 @@ export function initTime(){
   });
   dateIn.addEventListener("change", () => { if (dateIn.value) go(T.view, dateIn.value); });
   body.addEventListener("input", e => { if (e.target.dataset.note != null) T.notes.set(e.target.dataset.note, e.target.value); });
-  body.addEventListener("focusout", () => { if (T.pending) setTimeout(renderTime, 0); });
+  // Leaving a note for a control in the Time body (a press or Tab onto Copy) waits for that click; elsewhere renders now.
+  body.addEventListener("pointerdown", () => { T.down = true; });
+  document.addEventListener("pointerup", () => { if (!T.down) return; T.down = false; if (T.pending) setTimeout(renderTime, 50); });
+  body.addEventListener("focusout", e => { if (T.pending && !T.down && !body.contains(e.relatedTarget)) setTimeout(renderTime, 0); });
 }

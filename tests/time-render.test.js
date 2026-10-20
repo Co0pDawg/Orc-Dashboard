@@ -32,6 +32,20 @@ test("a needsTicket entry copies an empty Ticket and says it needs a ticket", ()
   assert.match(h, /needs a ticket/);
 });
 
+test("the needsTicket Ticket copy button is empty and disabled", () => {
+  const h = entriesHtml({entries: [entry(null, "13:00", "13:15", 15)], notEntered: 0, drivenMin: 15}, {date: D});
+  const btn = /<button[^>]*title="Copy Ticket"[^>]*>/.exec(h)[0];
+  assert.match(btn, /data-copy=""/);
+  assert.match(btn, / disabled/);
+  assert.doesNotMatch(/<button[^>]*title="Copy Start Date"[^>]*>/.exec(h)[0], / disabled/);
+});
+
+test("the Day tab's empty state keeps its Scrum button; Week and Month empty states have none", () => {
+  assert.match(emptyHtml(D, true), /data-scrum="2026-10-19"/);
+  assert.match(emptyHtml(D, true), /No time synced for 2026-10-19 yet/);
+  assert.doesNotMatch(emptyHtml(D), /data-scrum/);
+});
+
 test("Not entered shows only when non-zero, next to the day's totals", () => {
   const h = entriesHtml(result, {date: D});
   assert.match(h, /Not entered: 4 min/);
@@ -113,6 +127,11 @@ test("month: Monday-first rows with leading blanks, totals, ticket bars, agent m
   assert.equal(widths.length, 3);
   assert.ok(Math.abs(widths.reduce((a, b) => a + b, 0) - 100) < 0.01, String(widths));
   assert.doesNotMatch(cell1, /mo-agent/);
+  // Three equal thirds round to 33.33 each; the last part takes the remainder so the bar is exactly 100%.
+  const thirds = monthHtml("2026-10", [{date: "2026-10-09", segments: [sg("2026-10-09", "PET-1", "09:00", "09:20"), sg("2026-10-09", "PET-2", "09:20", "09:40"), sg("2026-10-09", "PET-3", "09:40", "10:00")], spans: []}]);
+  const tw = [...thirds.split('data-day="2026-10-09"')[1].split("mo-cell")[0].matchAll(/width:([\d.]+)%/g)].map(m => Number(m[1]));
+  assert.equal(tw.length, 3);
+  assert.equal(Math.round(tw.reduce((a, b) => a + b, 0) * 100), 10000, String(tw));
   assert.match(h.split('data-day="2026-10-06"')[1].split("mo-cell")[0], /mo-agent/);
   assert.match(h, /data-scrum="2026-10-01"/);
   assert.doesNotMatch(h, /data-scrum="2026-10-07"/);
