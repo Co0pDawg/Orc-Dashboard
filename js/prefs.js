@@ -2,7 +2,8 @@
 // empty (private windows, blocked site data), so every access is wrapped and the board works without it.
 const store = {
   get(k){ try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v){ try { localStorage.setItem(k, v); } catch {} }
+  set(k, v){ try { localStorage.setItem(k, v); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} }
 };
 
 /** "leet" or "sleek". */
@@ -50,7 +51,13 @@ export const loadDoneWhen = () => store.get("board.doneWhen") === "pr" ? "pr" : 
 export const saveDoneWhen = v => store.set("board.doneWhen", v);
 
 // 1337 status bar border color, picked by the viewer; it also outlines and tints the active tab.
-/** The saved status bar color, or the default green. */
-export const loadBarColor = () => /^#[0-9a-f]{6}$/i.test(store.get("board.barColor") || "") ? store.get("board.barColor") : "#79e36a";
-/** Saves the status bar color. */
-export const saveBarColor = c => store.set("board.barColor", c);
+/** The viewer's own status bar color, or null to follow the color scheme. */
+export const loadBarColor = () => /^#[0-9a-f]{6}$/i.test(store.get("board.barColor") || "") ? store.get("board.barColor") : null;
+/** Saves the status bar color; null goes back to following the color scheme. */
+export const saveBarColor = c => c ? store.set("board.barColor", c) : store.del("board.barColor");
+
+// The color scheme (an id from js/palettes.js), or "" for the board's own colors.
+/** The saved color scheme id. */
+export const loadPalette = () => store.get("board.palette") || "";
+/** Saves the color scheme id. */
+export const savePalette = id => id ? store.set("board.palette", id) : store.del("board.palette");

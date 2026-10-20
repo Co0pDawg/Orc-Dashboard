@@ -14,7 +14,7 @@
 .sleek .session h1{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3.2vw,30px);line-height:1.15;margin:0;text-wrap:balance}
 .sleek .facts{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:13px}
 .sleek .facts b{color:var(--ink);font-weight:600}
-.sleek .facts .pr.open b{color:var(--run)}
+.sleek .facts .pr.open b{color:var(--run-text)}
 .sleek .mono{font-family:var(--f-mono);font-size:12.5px;overflow-wrap:anywhere}
 .sleek .rail{display:grid;gap:6px}
 .sleek .bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
@@ -30,9 +30,9 @@
 .sleek .tid:hover{text-decoration:underline}
 .sleek .kind{font-size:12px;color:var(--muted)}
 .sleek .pill{margin-left:auto;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--line);color:var(--muted)}
-.sleek .pill.done{background:var(--ok-soft);color:var(--ok)}
-.sleek .pill.active{background:var(--run-soft);color:var(--run)}
-.sleek .pill.rework{background:var(--bad-soft);color:var(--bad)}
+.sleek .pill.done{background:var(--ok-soft);color:var(--ok-text)}
+.sleek .pill.active{background:var(--run-soft);color:var(--run-text)}
+.sleek .pill.rework{background:var(--bad-soft);color:var(--bad-text)}
 .sleek .slot h3{font-family:var(--f-display);font-weight:600;font-size:16.5px;line-height:1.25;margin:0;text-wrap:balance;overflow-wrap:anywhere}
 .sleek .steps{list-style:none;margin:0;padding:0;display:flex;gap:4px}
 .sleek .steps li{flex:1;min-width:0;display:grid;gap:5px}
@@ -40,16 +40,16 @@
 .sleek .steps li span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sleek .steps li.done i{background:var(--ok)}
 .sleek .steps li.active i{background:var(--run);animation:pulse 1.6s ease-in-out infinite}
-.sleek .steps li.active span{color:var(--run);font-weight:600}
+.sleek .steps li.active span{color:var(--run-text);font-weight:600}
 .sleek .steps li.rework i{background:var(--bad)}
-.sleek .steps li.rework span{color:var(--bad);font-weight:600}
+.sleek .steps li.rework span{color:var(--bad-text);font-weight:600}
 .sleek .steps li.skipped i{background:repeating-linear-gradient(90deg,var(--line) 0 4px,transparent 4px 7px)}
 @keyframes pulse{50%{opacity:.45}}
 @media (prefers-reduced-motion:reduce){.sleek .steps li.active i{animation:none}.sleek .bar i{transition:none}}
 .sleek .prog{padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
 .sleek .prog time,.sleek .prog em{font-size:11.5px}
 .sleek .prog li.latest{color:var(--ink);font-weight:500}
-.sleek .prog li.latest em{color:var(--run);font-weight:600}
+.sleek .prog li.latest em{color:var(--run-text);font-weight:600}
 .sleek .meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;margin:0;font-size:12.5px}
 .sleek .meta dt{color:var(--muted)}
 .sleek .meta dd{margin:0;overflow-wrap:anywhere}
@@ -58,7 +58,7 @@
 .sleek .log h2{font-family:var(--f-display);font-weight:600;font-size:15px;margin:0}
 .sleek .lhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .sleek .lhead .since{font-size:12px;color:var(--muted)}
-.sleek .lhead .since.stale{color:var(--run);font-weight:600}
+.sleek .lhead .since.stale{color:var(--run-text);font-weight:600}
 .sleek .log ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .sleek .log ol.subs{gap:6px;margin:4px 0 2px 2px;padding-left:12px;border-left:2px solid var(--line)}
 .sleek .log ol.subs li{font-size:12.5px;color:var(--muted)}
