@@ -18,6 +18,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
 | `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
 | `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
+| `css/palettes.css`, `js/palettes.js` | GENERATED color schemes (`npm run palettes` from `dev/palettes.json`); never edit by hand |
 | `js/settings.js` | The Settings gear (theme, 1337 bar border color, when a session counts as finished) |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js` | `node:test` suite for `model.js` and `util.js` |
@@ -92,3 +93,19 @@ No dependencies; Node 22 or later.
 The page is `orchestration-board.html`; the Artifact skeleton wraps it, so it has no doctype and its `<title>` stays in the first 8 KB. The supporting files go up through the Artifact `files` map with paths relative to this folder (`css/tokens.css`, `css/base.css`, `css/sleek.css`, `css/leet.css`, `js/**/*.js`), which is why every URL in the page is a plain relative path. `dev/`, `tests/`, `package.json` and the docs are not published. Data changes never need a republish.
 
 The Artifact tool reads `files` sources only from a session working directory, not from this folder. So copy `orchestration-board.html`, `css/` and `js/` into a working-dir folder first, publish with that folder as `root` and `url` set to the board, then confirm the 16 published paths with `action: list, scope: files`. The page is served as `index.html`.
+
+## Color schemes
+
+Settings > Colors switches the board to one of the schemes in `dev/palettes.json`; each has a light and a dark Sleek variant (following the viewer's light or dark mode) and a 1337 variant. `npm run palettes` turns that file into `css/palettes.css` and `js/palettes.js`. Any text color under 4.5:1 is moved toward white (dark) or black (light) just far enough to pass, which keeps its hue; the script prints each change, and `tests/palettes.test.js` fails if a generated text color reads under 4.5:1. Status colors keep their original hue for fills and borders; their `--ok-text`, `--run-text` and `--bad-text` twins are used for text. The 1337 bar border follows the scheme's green until the viewer picks a color ("Match colors" goes back).
+
+To add a scheme, add its official colors to `dev/palettes.json` (tinted-theming/base16 maps as base00 bg, base01 surface, base02 line, base04 muted, base05 ink, base08 red, base0A yellow, base0B green, base0D blue), run `npm run palettes` and `npm test`.
+
+Credits (colors taken from each scheme's official palette file):
+- Catppuccin, MIT: https://github.com/catppuccin/palette
+- Gruvbox, MIT: https://github.com/morhetz/gruvbox (done uses its aqua; its green sits next to its yellow)
+- Solarized, MIT: https://github.com/altercation/solarized (done uses its cyan, for the same reason)
+- Tokyo Night, Apache-2.0: https://github.com/folke/tokyonight.nvim
+- Everforest, MIT: https://github.com/sainnhe/everforest
+- Dracula and Alucard, MIT: https://github.com/dracula/dracula-theme
+- Nord, MIT: https://github.com/nordtheme/nord (the light Snow Storm variant is ours, not official)
+- Rosé Pine, MIT: https://github.com/rose-pine/rose-pine-palette (no green in the palette, so done is teal)
