@@ -47,9 +47,9 @@ export function ticketTitles(sessions = [], cards = []){
   return out;
 }
 
-/** The empty state when the sync has not written this day yet. */
-export function emptyHtml(date){
-  return `<div class="empty"><b>No time synced for ${esc(date)} yet</b>Run <code>sync-timeline.ps1 -Date ${esc(date)}</code> from the worklog repo; this page fills in as soon as it uploads.</div>`;
+/** The empty state when the sync has not written this day yet; the Day tab passes scrum so every day keeps its Scrum button. */
+export function emptyHtml(date, scrum = false){
+  return `${scrum ? `<div class="day-head"><span class="facts"></span>${scrumBtn(date)}</div>` : ""}<div class="empty"><b>No time synced for ${esc(date)} yet</b>Run <code>sync-timeline.ps1 -Date ${esc(date)}</code> from the worklog repo; this page fills in as soon as it uploads.</div>`;
 }
 
 // The axis runs from the first activity to the last, padded out to whole hours.
