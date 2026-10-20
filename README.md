@@ -18,7 +18,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
 | `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
 | `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
-| `js/settings.js` | The Settings menu (per-viewer options, e.g. when a session counts as finished) |
+| `js/settings.js` | The Settings gear (theme, 1337 bar border color, when a session counts as finished) |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js` | `node:test` suite for `model.js` and `util.js` |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
