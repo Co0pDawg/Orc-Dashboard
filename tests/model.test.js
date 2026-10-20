@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {cardState, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions} from "../js/model.js";
+import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress} from "../js/model.js";
 import {ago, esc, adoUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
@@ -87,4 +87,17 @@ test("adoUrl: Petsoft by default, the session's org/project when given, default 
   assert.equal(adoUrl(1, "no-slash"), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1");
   assert.equal(adoUrl(1, "a/b/c"), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1");
   assert.equal(adoUrl(`1" onmouseover="x`), "https://dev.azure.com/Cosairus/Petsoft/_workitems/edit/1%22%20onmouseover%3D%22x");
+});
+
+test("stagesOf: reads the array contract and the object shape writers have used", () => {
+  const arr = [{label: "Build", state: "done"}, null, {label: "Refute", state: "active"}];
+  assert.deepEqual(stagesOf({stages: arr}).map(s => s.label), ["Build", "Refute"]);
+  assert.deepEqual(stagesOf({stages: {build: "done", refute: "active", commit: "pending"}}),
+    [{label: "Build", state: "done"}, {label: "Refute", state: "active"}, {label: "Commit", state: "pending"}]);
+  assert.deepEqual(stagesOf({stages: {build: {state: "active", started: "2026-10-20T12:05:00-04:00"}}}),
+    [{label: "Build", state: "active", started: "2026-10-20T12:05:00-04:00"}]);
+  assert.deepEqual(stagesOf({}), []);
+  const card = {stages: {build: "done", refute: "active", review: "pending", commit: "pending"}};
+  assert.equal(cardState(card), "active");
+  assert.deepEqual(progress([card]), {all: 4, done: 1, tickets: 1, ticketsDone: 0});
 });

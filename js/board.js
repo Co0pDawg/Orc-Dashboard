@@ -1,6 +1,6 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
 import {cardState, isDone, visibleSessions, liveIds, logId, isLog, QUIET_MS} from "./model.js";
-import {ago} from "./util.js";
+import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold} from "./prefs.js";
 import {paneName, sessionTitle, editBar, emptyHtml} from "./render/shared.js";
@@ -67,6 +67,7 @@ function renderTiles(v, sess){
   const skin = state.skin, editing = state.editing;
   const tiles = v.tiles, want = orderedIds([logId(sess.id), ...v.cards.map(c => c._id)]);
   tiles.style.gridTemplateColumns = gridCols();
+  tiles.classList.toggle("log-only", !v.cards.length);
   for (const el of [...tiles.children]) if (!want.includes(el.dataset.id)) el.remove();
   const events = sess.data.events || [];
   want.forEach((id, i) => {
@@ -77,9 +78,16 @@ function renderTiles(v, sess){
     const st = c ? cardState(c) : "", min = !log && !!state.cardFold[id];
     el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
     el.setAttribute("aria-label", paneName(id));
-    const body = log
-      ? (skin === "leet" ? leetLog(events, sess.data.updated, !isDone(sess), sess.id, v.cards) : sleekLog(events, !isDone(sess), sess.id, v.cards))
-      : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
+    // One unreadable doc must not stop the rest of the board, so a pane that throws shows why and logs the error.
+    let body;
+    try {
+      body = log
+        ? (skin === "leet" ? leetLog(events, sess.data.updated, !isDone(sess), sess.id, v.cards) : sleekLog(events, !isDone(sess), sess.id, v.cards))
+        : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
+    } catch (err){
+      console.error("Orchestration Board: pane", id, err);
+      body = `<p class="note">This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
+    }
     el.innerHTML = (editing ? editBar(id) : "") + body + (editing ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
     applySize(el);
   });
@@ -139,7 +147,8 @@ export function render(){
     v.fold.setAttribute("aria-expanded", String(!f));
     v.fold.setAttribute("aria-label", `${f ? "Expand" : "Minimize"} ${t}`);
     v.fold.textContent = state.skin === "leet" ? (f ? "[+] expand" : "[-] minimize") : (f ? "▸ Expand" : "▾ Minimize");
-    v.summary.innerHTML = headHtml(sess, v.cards);
+    try { v.summary.innerHTML = headHtml(sess, v.cards); }
+    catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);
   });
   if (state.refocus){ slotEl(state.refocus.id)?.querySelector(`[data-act="${state.refocus.act}"]`)?.focus(); state.refocus = null; }

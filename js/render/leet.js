@@ -1,6 +1,6 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
-import {WORD, cardState, stageSince, subsOf, lastAt, tone, progress} from "../model.js";
+import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress} from "../model.js";
 import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn} from "./shared.js";
 
 /** The activity log pane's body, oldest first with a cursor on the last line. */
@@ -17,7 +17,7 @@ export function leetLog(events, updated, live, sid, cards){
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
 export function leetCard(c, ado, min){
   const s = cardState(c);
-  const plan = (c.stages || []).map((x, i) => `<li class="${esc(x.state)}"><span class="n">${i + 1}.</span><span class="k">${esc(x.label)}</span><span class="s">${esc(WORD[x.state] || x.state)}${x.state === "active" || x.state === "rework" ? " " + sinceHtml(x.started || c.updated) : ""}</span></li>`).join("");
+  const plan = stagesOf(c).map((x, i) => `<li class="${esc(x.state)}"><span class="n">${i + 1}.</span><span class="k">${esc(x.label)}</span><span class="s">${esc(WORD[x.state] || x.state)}${x.state === "active" || x.state === "rework" ? " " + sinceHtml(x.started || c.updated) : ""}</span></li>`).join("");
   const kv = [["agent", c.agent], ["tokens", c.tokens], ["commit", c.commit]].filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
   return `<div class="ph">
       ${c.updated ? `<time>${esc(t12(c.updated))}</time>` : ""}

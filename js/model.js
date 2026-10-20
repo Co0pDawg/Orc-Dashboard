@@ -7,9 +7,18 @@ export const WORD = {done:"✓ done", active:"● running", rework:"✗ rework",
 /** The activity log turns amber after this long without an event. */
 export const QUIET_MS = 45 * 60000;
 
+// The contract stores stages as [{label, state, started?}], but writers have also stored an object
+// ({build: "done"} or {build: {state, started}}), so every reader goes through this.
+/** A card's stages as [{label, state, started?}], whatever shape was stored. */
+export function stagesOf(c){
+  const st = c && c.stages, cap = k => k.charAt(0).toUpperCase() + k.slice(1);
+  if (Array.isArray(st)) return st.filter(x => x && typeof x === "object");
+  if (st && typeof st === "object") return Object.entries(st).map(([k, v]) => v && typeof v === "object" ? {label: cap(k), ...v} : {label: cap(k), state: String(v)});
+  return [];
+}
 /** A card's overall state: rework beats active beats done (skipped counts as done); otherwise pending. */
 export function cardState(c){
-  const st = c.stages || [];
+  const st = stagesOf(c);
   if (st.some(s => s.state === "rework")) return "rework";
   if (st.some(s => s.state === "active")) return "active";
   if (st.length && st.every(s => s.state === "done" || s.state === "skipped")) return "done";
@@ -17,7 +26,7 @@ export function cardState(c){
 }
 /** Sleek pill text for a card. */
 export function stageLabel(c){
-  const st = c.stages || [], s = cardState(c);
+  const st = stagesOf(c), s = cardState(c);
   if (s === "done") return "Done";
   const cur = st.find(x => x.state === "rework") || st.find(x => x.state === "active");
   if (cur) return (s === "rework" ? "Rework: " : "") + cur.label;
@@ -27,7 +36,7 @@ export function stageLabel(c){
 // The stage a card is waiting on (rework first), timed from its `started`, else the card's last update.
 /** Start time of the stage a card is waiting on, or null. */
 export function stageSince(c){
-  const st = c.stages || [], cur = st.find(x => x.state === "rework") || st.find(x => x.state === "active");
+  const st = stagesOf(c), cur = st.find(x => x.state === "rework") || st.find(x => x.state === "active");
   return cur ? (cur.started || c.updated) : null;
 }
 /** "bad", "good" or "" for an event line, by its wording. */
@@ -38,7 +47,7 @@ export function tone(text){
 }
 /** Stage and ticket counts across a session's cards. */
 export function progress(cards){
-  const all = cards.flatMap(c => c.stages || []);
+  const all = cards.flatMap(stagesOf);
   return {all: all.length, done: all.filter(x => x.state === "done" || x.state === "skipped").length, tickets: cards.length, ticketsDone: cards.filter(c => cardState(c) === "done").length};
 }
 // A session is finished once Fable writes `completed` (or status Done); finished sessions start minimized

@@ -13,7 +13,7 @@ const S = {
   {id:"c2", session:"2026-10-19-petsoft-search", order:2, ticket:"17983", task:"18001", kind:"Task", title:"Reservations, invoices, employees and classes", agent:"builder (opus)", stages:st(["Spec","done"],["Build","active",72],["Refute","pending"],["Commit","pending"]), note:"Running filtered tests", updated:iso(2), progress:[{at:iso(70),text:"spec read, 7 files in scope"},{at:iso(41),text:"build green"},{at:iso(22),text:"filtered tests 31/40 pass"},{at:iso(6),text:"mutation check: InvoiceSearch tenant guard caught"}]},
   {id:"c3", session:"2026-10-19-petsoft-dashboard", order:1, ticket:"17979", task:"17980", kind:"Task", title:"Show dashboard times in facility time zone", stages:st(["Spec","done"],["Build","done"],["Refute","rework"],["Commit","pending"]), note:"REWORK: tooltip shows 24-hour time", updated:iso(20)}
   ,{id:"c4", session:"2026-10-19-petsoft-search", order:3, ticket:"17983", task:"18002", kind:"Task", title:"Docs map update", stages:st(["Spec","done"],["Build","pending"]), updated:iso(5)}
-  ,{id:"c5", session:"2026-10-19-petsoft-search", order:4, ticket:"17983", task:"18003", kind:"Bug", title:"Phone search misses extensions", stages:st(["Spec","pending"]), updated:iso(4)}
+  ,{id:"c5", session:"2026-10-19-petsoft-search", order:4, ticket:"17983", task:"18003", kind:"Bug", title:"Phone search misses extensions", stages:{spec:"done", build:"active", refute:"pending"}, updated:iso(4)}
  ]};
 const q = name => ({ w:null, orderBy(){return this;}, where(f,o,v){this.w=[f,v];return this;},
   onSnapshot(cb){ let r=S[name]; if(this.w) r=r.filter(x=>x[this.w[0]]===this.w[1]); setTimeout(()=>cb({docs:r.map(x=>({id:x.id,data:()=>x}))}),50); return ()=>{}; }});
