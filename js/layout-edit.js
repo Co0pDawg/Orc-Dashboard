@@ -1,9 +1,9 @@
 // Customize mode: per-pane move/resize buttons, grip arrow keys, corner drag, the reset menu and its undo toast.
 import {clamp} from "./util.js";
 import {state} from "./state.js";
-import {saveLayout, saveCardFold} from "./prefs.js";
-import {paneName} from "./render/shared.js";
-import {$, stack, resetMenu, customize, say, render, slotEl, setOrder} from "./board.js";
+import {saveLayout, saveCardFold, saveShown} from "./prefs.js";
+import {paneName, sessionTitle} from "./render/shared.js";
+import {$, stack, resetMenu, customize, say, render, slotEl, setOrder, liveNow} from "./board.js";
 
 const RMAX = 6; // tallest pane, in grid rows
 
@@ -14,6 +14,7 @@ function setEditing(on){
   resetMenu.hidden = !on; resetMenu.open = false;
   document.body.classList.toggle("editing", on);
   for (const v of state.views.values()) v.sortable?.option("disabled", !on);
+  state.stackSortable?.option("disabled", !on);
   say(on ? "Customizing layout. Use the buttons on each pane, or drag the grip and the corner." : "Layout saved.");
   render();
 }
@@ -46,9 +47,34 @@ function rowCardIds(slot){
     .map(el => el.dataset.id);
 }
 
+// The stack follows state.shown, so reordering sessions rewrites it: the shown sessions in their new order,
+// then any saved ids not on screen now (hidden finished sessions keep their place for when they come back).
+function setSessionOrder(ids){
+  state.shown = ids.concat(state.shown.filter(id => !ids.includes(id)));
+  saveShown(state.shown);
+}
+function moveSession(sid, delta){
+  const live = liveNow(), i = live.indexOf(sid), j = clamp(i + delta, 0, live.length - 1);
+  if (i < 0 || i === j) return;
+  live.splice(j, 0, live.splice(i, 1)[0]);
+  setSessionOrder(live);
+  say(`${sessionTitle(sid)}, session ${j + 1} of ${live.length}`);
+}
+
 /** Binds the customize, undo, reset-menu, document and stack (click, keydown, pointerdown) handlers. */
 export function initLayoutEdit(){
   customize.addEventListener("click", () => setEditing(!state.editing));
+  // Session blocks drag by their own grip; pane grips belong to each session's tiles Sortable, so the two never mix.
+  if (window.Sortable) state.stackSortable = Sortable.create(stack, {
+    handle: ".sgrip", draggable: ".sess", group: "sessions", animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: "ghost", disabled: true,
+    onStart(){ state.busy = true; },
+    onEnd(evt){
+      state.busy = false;
+      setSessionOrder([...stack.children].filter(x => x.classList.contains("sess")).map(x => x.dataset.sid));
+      say(`${sessionTitle(evt.item.dataset.sid)}, session ${evt.newDraggableIndex + 1} of ${state.views.size}`);
+      render();
+    }
+  });
   $("undo").addEventListener("click", () => {
     if (!state.undoLayout) return;
     state.layout = JSON.parse(state.undoLayout); state.undoLayout = null; saveLayout(state.layout);
@@ -67,6 +93,13 @@ export function initLayoutEdit(){
   document.addEventListener("click", e => { if (resetMenu.open && !resetMenu.contains(e.target)) resetMenu.open = false; });
 
   stack.addEventListener("click", e => {
+    const sb = e.target.closest("[data-sact]");
+    if (sb){
+      if (!state.editing || sb.dataset.sact === "grip") return;
+      moveSession(sb.dataset.sid, sb.dataset.sact === "up" ? -1 : 1);
+      state.sessFocus = {sid: sb.dataset.sid, act: sb.dataset.sact}; render();
+      return;
+    }
     const f = e.target.closest("[data-cardfold]");
     if (f){
       const id = f.dataset.cardfold, on = !state.cardFold[id];
@@ -98,6 +131,13 @@ export function initLayoutEdit(){
     render();
   });
   stack.addEventListener("keydown", e => {
+    const sg = e.target.closest(".sgrip");
+    if (sg && state.editing){
+      const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
+      e.preventDefault();
+      moveSession(sg.dataset.sid, d); state.sessFocus = {sid: sg.dataset.sid, act: "grip"}; render();
+      return;
+    }
     const g = e.target.closest(".grip"); if (!g || !state.editing) return;
     const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
     e.preventDefault();
