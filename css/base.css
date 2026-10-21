@@ -127,6 +127,11 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .tl{position:relative}
 .tl-now{position:absolute;left:0;height:2px;margin-top:-1px;z-index:1;pointer-events:none;background:var(--ink);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .tl-now[hidden]{display:none}
+.day-acts{display:flex;gap:6px;align-items:center}
+/* A tooltip on hover or keyboard focus, from data-tip; anchored right so it never runs off the panel. */
+.tip{position:relative}
+.tip::after{content:attr(data-tip);position:absolute;right:0;top:calc(100% + 6px);z-index:5;width:max-content;max-width:240px;padding:6px 9px;border-radius:6px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:400;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;transition:opacity .12s}
+.tip:hover::after,.tip:focus-visible::after{opacity:1}
 .day-main{display:grid;gap:10px;min-width:0}
 .day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
 .time-body > .day-head{margin-bottom:10px}

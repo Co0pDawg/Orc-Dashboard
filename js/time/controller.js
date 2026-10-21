@@ -1,6 +1,7 @@
 // The Time page: subscribes to timeline/<date> docs and the cards collection, computes each day with the pure
 // js/time modules, renders Day, Week or Month into #time-body, and opens the scrum dialog. Read-only: nothing here writes the db.
 import {state} from "../state.js";
+import {saveEntryLine} from "../prefs.js";
 import {$, say} from "../board.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket} from "./segments.js";
 import {buildEntries} from "./entries.js";
@@ -47,7 +48,7 @@ function dayView(){
   if (!d.doc) return emptyHtml(T.date, true);
   const result = buildEntries(d.segments, {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
-  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
+  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
 }
 
 function weekView(){
@@ -172,6 +173,10 @@ export function initTime(){
   view.addEventListener("click", e => {
     // A render deferred by a note edit runs after this click, so the button clicked is never replaced under it.
     if (T.pending) setTimeout(renderTime, 0);
+    if (e.target.closest("[data-marker]")){
+      state.entryLine = !state.entryLine; saveEntryLine(state.entryLine);
+      say(`Entry marker ${state.entryLine ? "on" : "off"}.`); renderTime(); return;
+    }
     const tv = e.target.closest("[data-tview]");
     if (tv){ go(tv.dataset.tview, T.date); return; }
     const nav = e.target.closest("[data-tnav]");
