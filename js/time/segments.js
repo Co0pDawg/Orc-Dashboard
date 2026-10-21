@@ -50,11 +50,11 @@ export function drivingSegments(events, opts = {}){
   return out.map(o => ({...o, start: iso(o.start), end: iso(o.end)}));
 }
 
-/** The ticket a card's work counts toward: whichever of its task and ticket is driven that day, else its task, else its ticket, else the session's. */
+/** The ticket a card's work counts toward: the first driven of its task, its ticket and the session's ticket, else the first present. */
 export function cardTicket(card, sessionTicket, drivenTickets = new Set()){
   // The worklog bills parent stories, so a driven match is the only way a card joins its column.
-  const own = [normTicket(card && card.task), normTicket(card && card.ticket)];
-  return own.find(t => t && drivenTickets.has(t)) ?? own.find(Boolean) ?? normTicket(sessionTicket);
+  const all = [normTicket(card && card.task), normTicket(card && card.ticket), normTicket(sessionTicket)];
+  return all.find(t => t && drivenTickets.has(t)) ?? all.find(Boolean) ?? null;
 }
 
 const DISPATCH = /\b(dispatched|re-?dispatch\w*|sent to the same builder|fix round)\b/i;
@@ -64,6 +64,7 @@ const REPORT = /\b(done|accept\w*|rework|partial|blocked|report\w*)\b/i;
  * Unattended agent time: a dispatch event naming a card starts a span, the next event naming the same card
  * (report, commit, inline) ends it. An unanswered dispatch ends at the session's next report event that names
  * no card, else the card's last progress line after it, else the session's `updated` but at most 2 h on.
+ * Every span is capped at 2 h or its last progress line + 15 min, whichever is later.
  * The ticket is cardTicket(card, session ticket, drivenTickets).
  */
 export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = new Set()){
@@ -81,7 +82,10 @@ export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = ne
         const a = ms(e.at), later = progress.filter(t => t >= a), upd = ms(s.data.updated);
         // Report events carry no card, so the session's next one is the best end a legacy dispatch has.
         const report = events.filter(x => !x.card && ms(x.at) > a && REPORT.test(x.text || "")).map(x => ms(x.at));
-        const b = list[i + 1] ? ms(list[i + 1].at) : report.length ? Math.min(...report) : later.length ? Math.max(...later) : Math.min(isNaN(upd) ? Infinity : upd, a + 120 * MIN);
+        let b = list[i + 1] ? ms(list[i + 1].at) : report.length ? Math.min(...report) : later.length ? Math.max(...later) : Math.min(isNaN(upd) ? Infinity : upd, a + 120 * MIN);
+        // A paused or silent agent is not working: past 2 h a span lasts only to its last progress line + 15 min.
+        const inside = later.filter(t => t <= b);
+        b = Math.min(b, Math.max(a + 120 * MIN, (inside.length ? Math.max(...inside) : -Infinity) + 15 * MIN));
         const start = Math.max(a, lo), end = Math.min(b, hi);
         if (end > start) out.push({ticket, card: id, agent: e.text, start: iso(start), end: iso(end)});
       });
