@@ -1,11 +1,11 @@
 // The Settings menu: per-viewer options that change how the board reads the data. Each lives in prefs.js.
 import {state} from "./state.js";
-import {saveDoneWhen, saveBarColor, savePalette, saveRounding} from "./prefs.js";
+import {saveDoneWhen, saveBarColor, savePalette, saveRounding, saveEntryLine} from "./prefs.js";
 import {PALETTES} from "./palettes.js";
 import {esc} from "./util.js";
 import {$, say, render} from "./board.js";
 import {renderChooser} from "./chooser.js";
-import {renderTime} from "./time/controller.js";
+import {renderTime, syncMarker} from "./time/controller.js";
 
 // 1337 status bar border color; it also outlines and tints the active tab. null follows the color scheme's green.
 function setBar(c){
@@ -37,6 +37,13 @@ export function initSettings(){
     state.rounding = Number(rounding.value); saveRounding(state.rounding);
     say(`Entry rounding: ${rounding.options[rounding.selectedIndex].text}.`);
     renderTime();
+  });
+  const line = $("entry-line");
+  line.checked = state.entryLine;
+  line.addEventListener("change", () => {
+    state.entryLine = line.checked; saveEntryLine(line.checked);
+    say(`Entry marker ${line.checked ? "on" : "off"}.`);
+    syncMarker(false);
   });
   color.addEventListener("input", () => setBar(color.value));
   color.addEventListener("change", () => saveBarColor(state.barColor));
