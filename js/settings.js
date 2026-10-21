@@ -1,6 +1,6 @@
 // The Settings menu: per-viewer options that change how the board reads the data. Each lives in prefs.js.
 import {state} from "./state.js";
-import {saveDoneWhen, saveBarColor, savePalette, saveRounding} from "./prefs.js";
+import {saveDoneWhen, saveBarColor, savePalette, saveRounding, saveLogFull} from "./prefs.js";
 import {PALETTES} from "./palettes.js";
 import {esc} from "./util.js";
 import {$, say, render} from "./board.js";
@@ -37,6 +37,13 @@ export function initSettings(){
     state.rounding = Number(rounding.value); saveRounding(state.rounding);
     say(`Entry rounding: ${rounding.options[rounding.selectedIndex].text}.`);
     renderTime();
+  });
+  const logFull = $("log-full");
+  logFull.checked = state.logFull;
+  logFull.addEventListener("change", () => {
+    state.logFull = logFull.checked; saveLogFull(logFull.checked);
+    say(`The activity log ${logFull.checked ? "now fills its column" : "keeps its own height"}.`);
+    render();
   });
   color.addEventListener("input", () => setBar(color.value));
   color.addEventListener("change", () => saveBarColor(state.barColor));
