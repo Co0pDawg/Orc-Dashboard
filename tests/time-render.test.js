@@ -14,9 +14,14 @@ test("a missing timeline doc names the date and the sync command", () => {
   assert.match(h, /sync-timeline\.ps1 -Date 2026-10-19/);
 });
 
-test("every entry has a copy button per Work Detail field, with portal-shaped values", () => {
+test("every Work Detail value is its own click-to-copy button, with portal-shaped values", () => {
   const h = entriesHtml(result, {date: D, notes: {}, flags: {}});
-  assert.equal(count(h, /data-copy=/g), 15);
+  // Four values on each ticketed entry, three on the needs-a-ticket one, plus one Note copy per entry.
+  assert.equal(count(h, /class="v cv"/g), 11);
+  assert.equal(count(h, /data-copy=/g), 14);
+  assert.equal(count(h, /⧉/g), 3);
+  assert.match(h, /<button type="button" class="v cv" data-copy="PET-17983" title="Click to copy" aria-label="Copy Ticket PET-17983">PET-17983<\/button>/);
+  assert.match(h, /aria-label="Copy Start Time 11:30 AM">11:30 AM</);
   assert.match(h, /data-copy="PET-17983"/);
   assert.match(h, /data-copy="10\/19\/2026"/);
   assert.match(h, /data-copy="11:30 AM"/);
@@ -26,18 +31,11 @@ test("every entry has a copy button per Work Detail field, with portal-shaped va
   assert.match(h, /data-copy="9:15 PM"/);
 });
 
-test("a needsTicket entry copies an empty Ticket and says it needs a ticket", () => {
+test("a needsTicket entry says it needs a ticket in the Ticket field, not as a button", () => {
   const h = entriesHtml({entries: [entry(null, "13:00", "13:15", 15)], notEntered: 0, drivenMin: 15}, {date: D});
-  assert.match(h, /data-copy=""/);
-  assert.match(h, /needs a ticket/);
-});
-
-test("the needsTicket Ticket copy button is empty and disabled", () => {
-  const h = entriesHtml({entries: [entry(null, "13:00", "13:15", 15)], notEntered: 0, drivenMin: 15}, {date: D});
-  const btn = /<button[^>]*title="Copy Ticket"[^>]*>/.exec(h)[0];
-  assert.match(btn, /data-copy=""/);
-  assert.match(btn, / disabled/);
-  assert.doesNotMatch(/<button[^>]*title="Copy Start Date"[^>]*>/.exec(h)[0], / disabled/);
+  assert.match(h, /<span class="k">Ticket<\/span><span class="v"><em class="needs">needs a ticket<\/em><\/span>/);
+  assert.doesNotMatch(h, /Copy Ticket/);
+  assert.match(h, /aria-label="Copy Start Date 10\/19\/2026"/);
 });
 
 test("the Day tab's empty state keeps its Scrum button; Week and Month empty states have none", () => {
@@ -93,6 +91,20 @@ test("the day draws a column per ticket: driving solid, agents hatched, markers 
   assert.match(h, />10 AM</);
 });
 
+test("the day axis is the whole day at half-hour labels, even when activity runs 10 AM to 7 PM", () => {
+  const h = dayHtml({date: D, segments: [{session: "s1", ticket: "PET-17983", start: L("10:00"), end: L("19:00")}], entries: {entries: [], notEntered: 0, drivenMin: 540}, skin: "sleek"});
+  assert.match(h, /--hours:24"/);
+  const labels = [...h.split('class="tl-axis"')[1].split('class="tl-col ')[0].matchAll(/<span style="top:([\d.]+)%">([^<]+)<\/span>/g)].map(m => [Number(m[1]), m[2]]);
+  // 49 labels: every hour and half hour from 12 AM to the closing 12 AM.
+  assert.equal(labels.length, 49);
+  assert.deepEqual(labels.slice(0, 4).map(x => x[1]), ["12 AM", "12:30", "1 AM", "1:30"]);
+  assert.deepEqual(labels.slice(28, 30).map(x => x[1]), ["2 PM", "2:30"]);
+  assert.deepEqual(labels[48], [100, "12 AM"]);
+  // The driving block sits at its real time of day, and the first scroll lands half an hour above it (9:30 AM).
+  assert.match(h, /class="drv" style="top:41\.667%;height:37\.500%"/);
+  assert.match(h, /data-first="0\.3958"/);
+});
+
 const Ld = (d, hm) => new Date(`${d}T${hm}:00`).toISOString();
 const sg = (d, ticket, a, b) => ({session: "s1", ticket, start: Ld(d, a), end: Ld(d, b)});
 
@@ -110,6 +122,10 @@ test("week: seven day columns, Monday first, each with its driven total and a Sc
   assert.match(h, /2h 15m driven/);
   assert.match(h, /class="band"/);
   assert.match(h, /<i class="agt tk-/);
+  // The week axis is the whole day too; it first scrolls half an hour above the week's earliest activity (9 AM Monday).
+  assert.match(h, /class="tl wk" style="--hours:24" data-first="0\.3542"/);
+  // A synced week with nothing driven opens at 8 AM.
+  assert.match(weekHtml(dates.map(date => ({date, segments: [], spans: []}))), /data-first="0\.3333"/);
 });
 
 test("month: Monday-first rows with leading blanks, totals, ticket bars, agent marks and week totals", () => {
