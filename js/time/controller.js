@@ -81,12 +81,12 @@ export function renderTime(){
   const html = T.view === "week" ? weekView() : T.view === "month" ? monthView() : dayView();
   // Card progress arrives often and rarely changes this view: skip identical output, else keep focus and scroll.
   if (html === T.html) return;
-  const ctl = () => [...body.querySelectorAll("button,textarea")], f = ctl().indexOf(document.activeElement), old = body.querySelector(".tl"), sx = old?.scrollLeft, sy = old?.scrollTop;
+  const ctl = () => [...body.querySelectorAll("button,textarea")], f = ctl().indexOf(document.activeElement), old = body.querySelector(".tl"), sx = old?.scrollLeft, sy = old?.scrollTop, ey = body.querySelector(".ent-list")?.scrollTop;
   T.html = html; body.innerHTML = html;
   if (f >= 0) ctl()[f]?.focus({preventScroll: true});
   // A live re-render keeps the calendar's scroll; a newly shown date or view opens at its data-first point.
   const tl = body.querySelector(".tl"), k = T.view + "|" + T.date;
-  if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; }
+  if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; const el = body.querySelector(".ent-list"); if (el) el.scrollTop = ey || 0; }
   else if (tl){ T.tlKey = k; tl.scrollTop = Number(tl.dataset.first) * tl.querySelector(".tl-track").offsetHeight; }
   // Note edits are never saved, but they survive a re-render on this page load.
   body.querySelectorAll("textarea[data-note]").forEach(ta => { if (T.notes.has(ta.dataset.note)) ta.value = T.notes.get(ta.dataset.note); });
