@@ -174,7 +174,8 @@ export function initTime(){
   body.addEventListener("scroll", e => { if (e.target.classList?.contains("ent-list") && !T.restoring && !raf) raf = requestAnimationFrame(() => { raf = 0; syncMarker(true); }); }, true);
   window.addEventListener("resize", () => syncMarker(false));
   // WCAG 1.4.13: Esc hides the Marker tip until the pointer leaves the button or focus moves off it.
-  document.addEventListener("keydown", e => { if (e.key === "Escape") body.querySelector(".tip")?.classList.add("tip-off"); });
+  // Only while the tip shows: a stray Esc (closing the Scrum dialog) must not leave it hidden for the next hover or focus.
+  document.addEventListener("keydown", e => { const t = body.querySelector(".tip"); if (e.key === "Escape" && t?.matches(":hover, :focus-visible")) t.classList.add("tip-off"); });
   body.addEventListener("pointerout", e => { const t = e.target.closest?.(".tip"); if (t && !t.contains(e.relatedTarget)) t.classList.remove("tip-off"); });
   body.addEventListener("focusout", e => e.target.closest?.(".tip")?.classList.remove("tip-off"));
   view.addEventListener("click", e => {
