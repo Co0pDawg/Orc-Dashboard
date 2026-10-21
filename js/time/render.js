@@ -49,7 +49,8 @@ function axis(date){
   return {a, b, hours: Math.round((b - a) / HOUR)};
 }
 const pct = (t, ax) => ((t - ax.a) / (ax.b - ax.a) * 100).toFixed(3);
-const box = (x, ax) => `top:${pct(ms(x.start), ax)}%;height:${(((ms(x.end) - ms(x.start)) / (ax.b - ax.a)) * 100).toFixed(3)}%`;
+// Clamped to the axis, so a run past midnight stops at the bottom edge instead of stretching the scroll box.
+const box = (x, ax) => { const a = Math.max(ms(x.start), ax.a), b = Math.min(ms(x.end), ax.b); return `top:${pct(a, ax)}%;height:${((b - a) / (ax.b - ax.a) * 100).toFixed(3)}%`; };
 // Where the controller first scrolls a date to, as a fraction of the axis: the half-hour line at least 30 minutes above
 // the first activity, so a whole label tops the view; 8 AM with no activity.
 const firstAt = (ax, first) => { const t = first == null ? 8 * HOUR : Math.max(0, Math.floor((first - 30 * MIN - ax.a) / (30 * MIN)) * 30 * MIN); return (t / (ax.b - ax.a)).toFixed(4); };
