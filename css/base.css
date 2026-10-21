@@ -83,7 +83,7 @@
 .ghost{opacity:.35}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;gap:12px;align-items:center;padding:8px 10px 8px 14px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
 .toast .btn{background:transparent;color:var(--bg);border-color:var(--muted)}
-@media (prefers-reduced-motion:reduce){.skin input,.skin input::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.skin input,.skin input::before,.tip-t{transition:none}}
 
 /* shared by both skins; each skin file styles these further */
 .prog{list-style:none;margin:0;padding:0;display:grid;gap:2px}
@@ -125,13 +125,20 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 }
 /* The entry marker (js syncMarker): under the sticky heads and axis, over the blocks. */
 .tl{position:relative}
-.tl-now{position:absolute;left:0;height:2px;margin-top:-1px;z-index:1;pointer-events:none;background:var(--ink);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+/* The ring in the track's own background keeps the line apart from a driving block of a similar color. */
+.tl-now{position:absolute;left:0;height:2px;margin-top:-1px;z-index:1;pointer-events:none;background:var(--ink);box-shadow:0 0 0 1px var(--tl-bg,var(--surface))}
 .tl-now[hidden]{display:none}
-.day-acts{display:flex;gap:6px;align-items:center}
-/* A tooltip (.tip-t child) on hover or keyboard focus; anchored right so it never runs off the panel. */
-.tip{position:relative}
-.tip-t{position:absolute;right:0;top:calc(100% + 6px);z-index:5;width:max-content;max-width:240px;padding:6px 9px;border-radius:6px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:400;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;transition:opacity .12s}
-.tip:hover .tip-t,.tip:focus-visible .tip-t{opacity:1}
+/* margin-left:auto keeps the buttons at the panel's right edge when they wrap onto their own line (phones). */
+.day-acts{position:relative;display:flex;gap:6px;align-items:center;margin-left:auto}
+/* A tooltip (.tip-t child) on hover or keyboard focus. It hangs from the right edge of .day-acts, which is always the
+   panel's right edge, and is never wider than the screen, so it stays on-screen at any width.
+   WCAG 1.4.13: the pointer can move onto it (::before bridges the gap), it stays while hovered or focused, and Esc
+   hides it (.tip-off, set by the Time controller). */
+.tip[hidden]{display:none}
+.tip-t{position:absolute;right:0;top:calc(100% + 6px);z-index:5;box-sizing:border-box;width:max-content;max-width:min(240px,calc(100vw - 32px));padding:6px 9px;border-radius:6px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:400;line-height:1.35;text-align:left;white-space:normal;cursor:default;visibility:hidden;opacity:0;transition:opacity .12s,visibility .12s}
+.tip-t::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:6px}
+.tip:hover .tip-t,.tip:focus-visible .tip-t{visibility:visible;opacity:1}
+.tip.tip-off .tip-t{visibility:hidden;opacity:0}
 .day-main{display:grid;gap:10px;min-width:0}
 .day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
 .time-body > .day-head{margin-bottom:10px}

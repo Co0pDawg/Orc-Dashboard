@@ -66,7 +66,9 @@ function axisHtml(ax){
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const md = date => { const d = new Date(date + "T00:00:00"); return `${d.getMonth() + 1}/${d.getDate()}`; };
 // The entry marker toggle; .tip-t is its hover/focus tooltip, a child so the 1337 bracket pseudo-elements stay free.
-const markerBtn = on => `<button type="button" class="btn scrum tip" data-marker aria-pressed="${on}" aria-label="Entry marker">Marker<span class="tip-t" aria-hidden="true">${on ? "Hide" : "Show"} the line marking the time of the entry centered in the Entries list</span></button>`;
+// aria-label names the button, so the tip is read once, as its description. One Day view per page, so the id is fixed.
+// The controller hides the button where the line cannot show.
+const markerBtn = on => `<button type="button" class="btn scrum tip" data-marker aria-pressed="${on}" aria-label="Entry marker" aria-describedby="marker-tip">Marker<span class="tip-t" id="marker-tip" role="tooltip">${on ? "Hide" : "Show"} the line marking the time of the entry the Entries list is scrolled to</span></button>`;
 const scrumBtn = date => `<button type="button" class="btn scrum" data-scrum="${esc(date)}" aria-label="Scrum summary for ${esc(date)}">Scrum</button>`;
 
 /** The Day tab's timeline: totals, a Scrum button, then the hour axis and one column per ticket. */

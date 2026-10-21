@@ -9,7 +9,7 @@ import {scrumSummary, ticketTitles} from "./scrum.js";
 import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
-const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: ""};
+const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: "", restoring: false};
 const monthOf = date => date.slice(0, 7);
 const lastOfMonth = date => { const [y, m] = date.split("-").map(Number); return ymd(new Date(y, m, 0)); };
 /** The first and last date the current view shows. */
@@ -87,7 +87,8 @@ export function renderTime(){
   if (f >= 0) ctl()[f]?.focus({preventScroll: true});
   // A live re-render keeps the calendar's scroll; a newly shown date or view opens at its data-first point.
   const tl = body.querySelector(".tl"), k = T.view + "|" + T.date;
-  if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; const el = body.querySelector(".ent-list"); if (el) el.scrollTop = ey || 0; }
+  // The restored list fires a scroll event next frame; it must not move the calendar, so it is ignored until then.
+  if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; const el = body.querySelector(".ent-list"); if (el){ T.restoring = true; requestAnimationFrame(() => { T.restoring = false; }); el.scrollTop = ey || 0; } }
   else if (tl){ T.tlKey = k; tl.scrollTop = Number(tl.dataset.first) * tl.querySelector(".tl-track").offsetHeight; }
   syncMarker(false);
   // Note edits are never saved, but they survive a re-render on this page load.
@@ -143,18 +144,20 @@ function copy(btn){
   try { navigator.clipboard.writeText(text).then(done, fallback); } catch { fallback(); }
 }
 
-/**
- * The entry marker: a line across the Day calendar at the time of the entry centered in the scrolling Entries list,
- * moving through that entry's span as the list scrolls. `follow` scrolls the calendar to keep the line in view.
- * Hidden when the setting is off, or when the list does not scroll (the narrow stacked layout, or a short day).
- */
-export function syncMarker(follow){
-  const tl = body.querySelector(".tl[data-a]"), line = tl && tl.querySelector(".tl-now"), list = body.querySelector(".ent-list");
+// The entry marker: a line across the Day calendar at the time of the entry under a probe in the Entries list,
+// moving through that entry's span as the list scrolls. The probe slides from the list's top edge (scrolled to the top)
+// to its bottom edge (scrolled to the end), so the first and last entries are reachable and the middle stays near centre.
+// `follow` scrolls the calendar to keep the line in view. The line, and the Marker button with it, hide where the line
+// cannot show: no scrolling list (the narrow stacked layout, or a short day); the toggle hides the line only.
+/** Draws the entry marker for the Entries list's scroll; follow also scrolls the calendar to it. */
+function syncMarker(follow){
+  const tl = body.querySelector(".tl[data-a]"), line = tl && tl.querySelector(".tl-now"), list = body.querySelector(".ent-list"), btn = body.querySelector("[data-marker]");
+  const lis = list ? [...list.children] : [], range = list ? list.scrollHeight - list.clientHeight : 0, can = !!line && lis.length > 0 && range > 0;
+  if (btn) btn.hidden = !can;
   if (!line) return;
-  const lis = list ? [...list.children] : [];
-  line.hidden = !state.entryLine || !lis.length || list.scrollHeight <= list.clientHeight;
+  line.hidden = !state.entryLine || !can;
   if (line.hidden) return;
-  const cy = list.scrollTop + list.clientHeight / 2, li = lis.filter(x => x.offsetTop <= cy).pop() || lis[0];
+  const cy = list.scrollTop + list.clientHeight * Math.min(1, list.scrollTop / range), li = lis.filter(x => x.offsetTop <= cy).pop() || lis[0];
   const f = Math.min(1, Math.max(0, (cy - li.offsetTop) / li.offsetHeight)), at = Number(li.dataset.at), to = Number(li.dataset.to);
   const a = Number(tl.dataset.a), b = Number(tl.dataset.b), track = tl.querySelector(".tl-col .tl-track");
   const y = track.offsetTop + (at + f * (to - at) - a) / (b - a) * track.offsetHeight;
@@ -168,11 +171,17 @@ export function syncMarker(follow){
 export function initTime(){
   // Scroll does not bubble: listen in the capture phase for the Entries list, one marker update per frame.
   let raf = 0;
-  body.addEventListener("scroll", e => { if (e.target.classList?.contains("ent-list") && !raf) raf = requestAnimationFrame(() => { raf = 0; syncMarker(true); }); }, true);
+  body.addEventListener("scroll", e => { if (e.target.classList?.contains("ent-list") && !T.restoring && !raf) raf = requestAnimationFrame(() => { raf = 0; syncMarker(true); }); }, true);
   window.addEventListener("resize", () => syncMarker(false));
+  // WCAG 1.4.13: Esc hides the Marker tip until the pointer leaves the button or focus moves off it.
+  document.addEventListener("keydown", e => { if (e.key === "Escape") body.querySelector(".tip")?.classList.add("tip-off"); });
+  body.addEventListener("pointerout", e => { const t = e.target.closest?.(".tip"); if (t && !t.contains(e.relatedTarget)) t.classList.remove("tip-off"); });
+  body.addEventListener("focusout", e => e.target.closest?.(".tip")?.classList.remove("tip-off"));
   view.addEventListener("click", e => {
     // A render deferred by a note edit runs after this click, so the button clicked is never replaced under it.
     if (T.pending) setTimeout(renderTime, 0);
+    // The tip sits inside the Marker button so the pointer can rest on it (WCAG 1.4.13); a click on the tip is not a press.
+    if (e.target.closest(".tip-t")) return;
     if (e.target.closest("[data-marker]")){
       state.entryLine = !state.entryLine; saveEntryLine(state.entryLine);
       say(`Entry marker ${state.entryLine ? "on" : "off"}.`); renderTime(); return;

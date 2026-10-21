@@ -180,7 +180,12 @@ test("the entry marker has what it needs: the day axis bounds, a hidden line, an
 test("the Marker button sits beside Scrum when the day has entries, pressed when the marker is on", () => {
   const seg = [{session: "s1", ticket: "PET-17983", start: L("10:00"), end: L("11:00")}];
   const on = dayHtml({date: D, segments: seg, entries: result, skin: "sleek"});
-  assert.match(on, /<span class="day-acts"><button type="button" class="btn scrum tip" data-marker aria-pressed="true" aria-label="Entry marker">Marker<span class="tip-t" aria-hidden="true">Hide [^<]+<\/span><\/button><button type="button" class="btn scrum" data-scrum=/);
-  assert.match(dayHtml({date: D, segments: seg, entries: result, skin: "sleek", marker: false}), /data-marker aria-pressed="false"[^>]*>Marker<span class="tip-t" aria-hidden="true">Show /);
+  assert.match(on, /<span class="day-acts"><button type="button" class="btn scrum tip" data-marker aria-pressed="true" aria-label="Entry marker" aria-describedby="marker-tip">Marker<span class="tip-t" id="marker-tip" role="tooltip">Hide [^<]+<\/span><\/button><button type="button" class="btn scrum" data-scrum=/);
+  assert.match(dayHtml({date: D, segments: seg, entries: result, skin: "sleek", marker: false}), /data-marker aria-pressed="false"[^>]*>Marker<span class="tip-t" id="marker-tip" role="tooltip">Show /);
+  // The tip is the button's description, read once: never aria-hidden, and its id is the one aria-describedby names.
+  assert.ok(!on.includes("aria-hidden=\"true\">Hide"));
+  assert.equal(count(on, /id="marker-tip"/g), 1);
+  // The button always renders unhidden; the controller hides it where the line cannot show.
+  assert.doesNotMatch(on, /<button[^>]*data-marker[^>]*hidden/);
   assert.ok(!dayHtml({date: D, segments: seg, entries: {entries: [], notEntered: 0, drivenMin: 60}, skin: "sleek"}).includes("data-marker"));
 });
