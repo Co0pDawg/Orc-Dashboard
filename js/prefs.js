@@ -73,3 +73,15 @@ export const saveRounding = n => store.set("board.rounding", String(n));
 export const loadEntryLine = () => store.get("board.entryLine") !== "0";
 /** Saves the entry marker toggle. */
 export const saveEntryLine = on => store.set("board.entryLine", on ? "1" : "0");
+
+// The activity log stretches to every row its session's cards use (default on).
+/** Whether the activity log fills its column. */
+export const loadLogFull = () => store.get("board.logFull") !== "0";
+/** Saves the full-column log toggle. */
+export const saveLogFull = on => store.set("board.logFull", on ? "1" : "0");
+
+// Sessions whose finished cards are hidden {session id: true}.
+/** Per-session hide-finished-cards choices. */
+export const loadHideDone = () => { try { const f = JSON.parse(store.get("board.hideDone")); if (f && typeof f === "object" && !Array.isArray(f)) return f; } catch {} return {}; };
+/** Saves the per-session hide-finished-cards choices. */
+export const saveHideDone = f => store.set("board.hideDone", JSON.stringify(f));

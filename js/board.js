@@ -2,7 +2,7 @@
 import {cardState, isDone, visibleSessions, liveIds, logId, isLog, QUIET_MS} from "./model.js";
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
-import {saveLayout, saveFold} from "./prefs.js";
+import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
 import {paneName, sessionTitle, editBar, emptyHtml, sessMover} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
@@ -60,6 +60,21 @@ function applySize(el){
   // A minimized card spans one row whatever its saved height, so a row of minimized cards slims.
   el.style.gridRow = `span ${el.classList.contains("min") ? 1 : s.r || 1}`;
 }
+/**
+ * Settings > Activity log fills its column: the log spans every row the grid uses. Spanning can push cards into new
+ * rows, so it re-measures until the count holds (row count only grows, so it settles). Off for one column or no cards.
+ */
+function fillLog(tiles){
+  const log = tiles.querySelector(":scope > .slot.log");
+  if (!log || !state.logFull || state.cols < 2 || tiles.classList.contains("log-only") || !tiles.offsetParent) return;
+  let n = 1;
+  for (let i = 0; i < 8; i++){
+    log.style.gridRow = `span ${n}`;
+    const rows = getComputedStyle(tiles).gridTemplateRows.split(" ").filter(Boolean).length;
+    if (rows <= n) break;
+    n = rows;
+  }
+}
 const gridCols = () => `repeat(${state.cols}, minmax(0, 1fr))`;
 // Moves a node only when it is out of place, so focus and inner scroll survive a live update.
 function place(parent, el, i){ if (parent.children[i] !== el) parent.insertBefore(el, parent.children[i] || null); }
@@ -67,16 +82,18 @@ function place(parent, el, i){ if (parent.children[i] !== el) parent.insertBefor
 export const slotEl = id => stack.querySelector(`.slot[data-id="${CSS.escape(id)}"]`);
 function renderTiles(v, sess){
   const skin = state.skin, editing = state.editing;
-  const tiles = v.tiles, want = orderedIds([logId(sess.id), ...v.cards.map(c => c._id)]);
+  // The session's "Hide done" button drops finished cards from the grid; the log still nests their progress.
+  const cards = state.hideDone[sess.id] ? v.cards.filter(c => cardState(c) !== "done") : v.cards;
+  const tiles = v.tiles, want = orderedIds([logId(sess.id), ...cards.map(c => c._id)]);
   tiles.style.gridTemplateColumns = gridCols();
-  tiles.classList.toggle("log-only", !v.cards.length);
+  tiles.classList.toggle("log-only", !cards.length);
   for (const el of [...tiles.children]) if (!want.includes(el.dataset.id)) el.remove();
   const events = sess.data.events || [];
   want.forEach((id, i) => {
     let el = [...tiles.children].find(x => x.dataset.id === id);
     if (!el){ el = document.createElement("section"); el.dataset.id = id; }
     place(tiles, el, i);
-    const log = isLog(id), c = log ? null : v.cards.find(x => x._id === id);
+    const log = isLog(id), c = log ? null : cards.find(x => x._id === id);
     const st = c ? cardState(c) : "", min = !log && !!state.cardFold[id];
     el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
     el.setAttribute("aria-label", paneName(id));
@@ -93,6 +110,7 @@ function renderTiles(v, sess){
     el.innerHTML = (editing ? editBar(id) : "") + body + (editing ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
     applySize(el);
   });
+  fillLog(tiles);
   const feed = skin === "leet" && tiles.querySelector(".slot.log .feed");
   if (feed) feed.scrollTop = feed.scrollHeight;
 }
@@ -104,9 +122,14 @@ function openView(sid){
   el.dataset.sid = sid; tiles.id = "tiles-" + (++state.viewSeq);
   fold.type = "button"; fold.setAttribute("aria-controls", tiles.id);
   fold.addEventListener("click", () => toggleFold(sid));
-  const mover = mk("span", "mover");
-  ctl.append(mover, fold); shead.append(summary, ctl); el.append(shead, tiles);
-  const v = {el, summary, ctl, mover, fold, tiles, cards: [], stop: null, sortable: null};
+  const mover = mk("span", "mover"), hide = mk("button", "btn hide-done");
+  hide.type = "button";
+  hide.addEventListener("click", () => {
+    if (state.hideDone[sid]) delete state.hideDone[sid]; else state.hideDone[sid] = true;
+    saveHideDone(state.hideDone); say(`Finished cards ${state.hideDone[sid] ? "hidden" : "shown"}.`); render();
+  });
+  ctl.append(mover, hide, fold); shead.append(summary, ctl); el.append(shead, tiles);
+  const v = {el, summary, ctl, mover, hide, fold, tiles, cards: [], stop: null, sortable: null};
   v.stop = state.db.collection("cards").where("session", "==", sid).onSnapshot(snap => {
     v.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     render();
@@ -152,6 +175,12 @@ export function render(){
     v.mover.innerHTML = state.editing && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
     v.fold.textContent = state.skin === "leet" ? (f ? "[+]" : "[-]") : (f ? "+" : "−");
     v.fold.title = f ? "Expand" : "Minimize";
+    // Shown only while the session has finished cards and is expanded.
+    const nDone = v.cards.filter(c => cardState(c) === "done").length, hid = !!state.hideDone[sess.id];
+    v.hide.hidden = !nDone || f;
+    v.hide.setAttribute("aria-pressed", String(hid));
+    v.hide.textContent = state.skin === "leet" ? `[${hid ? "show" : "hide"} done:${nDone}]` : `${hid ? "Show" : "Hide"} done (${nDone})`;
+    v.hide.title = hid ? "Show this session's finished cards" : "Hide this session's finished cards";
     try { v.summary.innerHTML = headHtml(sess, v.cards); }
     catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);
@@ -172,7 +201,7 @@ export function fitCols(){
   state.cols = next;
   stack.dataset.cols = state.cols;
   if (state.editing) render();
-  else for (const v of state.views.values()){ v.tiles.style.gridTemplateColumns = gridCols(); [...v.tiles.children].forEach(applySize); }
+  else for (const v of state.views.values()){ v.tiles.style.gridTemplateColumns = gridCols(); [...v.tiles.children].forEach(applySize); fillLog(v.tiles); }
 }
 
 /** Starts the 30 s clock/timer tick and the column observer. */
