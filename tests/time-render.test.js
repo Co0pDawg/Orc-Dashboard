@@ -166,3 +166,13 @@ test("scrum: the three sections as preformatted text and one Copy button for all
   assert.equal(count(h, /data-copy=/g), 1);
   assert.ok(h.includes(`data-copy="${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"`));
 });
+
+test("the entry marker has what it needs: the day axis bounds, a hidden line, and each entry's span in ms", () => {
+  const h = dayHtml({date: D, segments: [{session: "s1", ticket: "PET-17983", start: L("10:00"), end: L("11:00")}], skin: "sleek"});
+  const a = new Date(`${D}T00:00:00`).getTime();
+  assert.ok(h.includes(`data-a="${a}" data-b="${a + 24 * 3600000}"><i class="tl-now" aria-hidden="true" hidden></i>`));
+  const e = entriesHtml(result, {date: D});
+  const first = result.entries[0];
+  assert.match(e, new RegExp(`data-at="${Date.parse(first.start)}" data-to="${Date.parse(first.end)}"`));
+  assert.equal(count(e, /data-at="\d+" data-to="\d+"/g), result.entries.length);
+});

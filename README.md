@@ -63,11 +63,11 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
 
 Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
-Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15).
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off).
 
 ## Time page
 
-`#time` (Day), `#time-week` and `#time-month`, each optionally followed by `-yyyy-MM-dd`, open the Time page; `#board` or no hash is the board. Day draws a column per ticket (Cooper's driving time solid, agent time hatched) beside the day's Work Detail entries, each field with a copy button. Week stacks what ran per day; Month is a compact calendar. Every day has a Scrum button that opens a copyable Yesterday / Today / Blockers summary. Entries never overlap and add up to driven time; Settings > Entry rounding rounds the entries only. Data arrives through the worklog sync (C:\Development\worklog, README "Timeline sync") and the upload step in the writing protocol.
+`#time` (Day), `#time-week` and `#time-month`, each optionally followed by `-yyyy-MM-dd`, open the Time page; `#board` or no hash is the board. Day draws a column per ticket (Cooper's driving time solid, agent time hatched) beside the day's Work Detail entries, each value copies on click. Day and Week span the full day at 30-minute rows; the Entries list scrolls beside the calendar, and a white entry marker (Settings, on by default) shows on the calendar the time of the entry centered in the list. Week stacks what ran per day; Month is a compact calendar. Every day has a Scrum button that opens a copyable Yesterday / Today / Blockers summary. Entries never overlap and add up to driven time; Settings > Entry rounding rounds the entries only. Data arrives through the worklog sync (C:\Development\worklog, README "Timeline sync") and the upload step in the writing protocol.
 
 ## Preview
 

@@ -88,6 +88,7 @@ export function renderTime(){
   const tl = body.querySelector(".tl"), k = T.view + "|" + T.date;
   if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; const el = body.querySelector(".ent-list"); if (el) el.scrollTop = ey || 0; }
   else if (tl){ T.tlKey = k; tl.scrollTop = Number(tl.dataset.first) * tl.querySelector(".tl-track").offsetHeight; }
+  syncMarker(false);
   // Note edits are never saved, but they survive a re-render on this page load.
   body.querySelectorAll("textarea[data-note]").forEach(ta => { if (T.notes.has(ta.dataset.note)) ta.value = T.notes.get(ta.dataset.note); });
 }
@@ -141,8 +142,33 @@ function copy(btn){
   try { navigator.clipboard.writeText(text).then(done, fallback); } catch { fallback(); }
 }
 
+/**
+ * The entry marker: a line across the Day calendar at the time of the entry centered in the scrolling Entries list,
+ * moving through that entry's span as the list scrolls. `follow` scrolls the calendar to keep the line in view.
+ * Hidden when the setting is off, or when the list does not scroll (the narrow stacked layout, or a short day).
+ */
+export function syncMarker(follow){
+  const tl = body.querySelector(".tl[data-a]"), line = tl && tl.querySelector(".tl-now"), list = body.querySelector(".ent-list");
+  if (!line) return;
+  const lis = list ? [...list.children] : [];
+  line.hidden = !state.entryLine || !lis.length || list.scrollHeight <= list.clientHeight;
+  if (line.hidden) return;
+  const cy = list.scrollTop + list.clientHeight / 2, li = lis.filter(x => x.offsetTop <= cy).pop() || lis[0];
+  const f = Math.min(1, Math.max(0, (cy - li.offsetTop) / li.offsetHeight)), at = Number(li.dataset.at), to = Number(li.dataset.to);
+  const a = Number(tl.dataset.a), b = Number(tl.dataset.b), track = tl.querySelector(".tl-col .tl-track");
+  const y = track.offsetTop + (at + f * (to - at) - a) / (b - a) * track.offsetHeight;
+  // From the first ticket column across, so the hour labels stay readable.
+  line.style.top = `${y}px`; line.style.left = `${track.offsetLeft}px`; line.style.width = `${tl.scrollWidth - track.offsetLeft}px`;
+  const head = track.offsetTop;
+  if (follow && (y < tl.scrollTop + head + 12 || y > tl.scrollTop + tl.clientHeight - 24)) tl.scrollTop = y - (tl.clientHeight + head) / 2;
+}
+
 /** Binds the Time page: tabs, date navigation, the date picker, day clicks, copy buttons, note edits and the scrum dialog. */
 export function initTime(){
+  // Scroll does not bubble: listen in the capture phase for the Entries list, one marker update per frame.
+  let raf = 0;
+  body.addEventListener("scroll", e => { if (e.target.classList?.contains("ent-list") && !raf) raf = requestAnimationFrame(() => { raf = 0; syncMarker(true); }); }, true);
+  window.addEventListener("resize", () => syncMarker(false));
   view.addEventListener("click", e => {
     // A render deferred by a note edit runs after this click, so the button clicked is never replaced under it.
     if (T.pending) setTimeout(renderTime, 0);
