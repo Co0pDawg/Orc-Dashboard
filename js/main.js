@@ -1,7 +1,7 @@
 // The page's only entry: binds every controller, paints the empty state, then subscribes to the db (read-only).
 import {state} from "./state.js";
 import {saveSkin, saveShown} from "./prefs.js";
-import {$, toggle, render, fitCols, startBoard} from "./board.js";
+import {$, toggle, render, fitCols, startBoard, fillLogs} from "./board.js";
 import {renderChooser, initChooser} from "./chooser.js";
 import {initLayoutEdit} from "./layout-edit.js";
 import {initSettings} from "./settings.js";
@@ -23,7 +23,8 @@ function route(){
   const h = location.hash, m = /\btime(?:-(week|month))?/.exec(h), time = !!m;
   document.body.dataset.view = time ? "time" : "board";
   document.querySelectorAll("[data-go]").forEach(b => { if ((b.dataset.go === "time") === time) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  if (time) showTime(m[1] || "day", /\d{4}-\d{2}-\d{2}/.exec(h)?.[0]);
+  // The stack renders while hidden behind Time, where its logs cannot be measured, so they fill on the way back.
+  if (time) showTime(m[1] || "day", /\d{4}-\d{2}-\d{2}/.exec(h)?.[0]); else fillLogs();
 }
 
 // window.claude.use("db") resolves after first paint, so the empty state renders before any data arrives.

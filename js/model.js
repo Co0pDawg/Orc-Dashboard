@@ -86,3 +86,10 @@ export function liveIds(shown, vis){
 export const logId = sid => "log:" + sid;
 /** True for an activity log pane id. */
 export const isLog = id => id.startsWith("log:");
+// A reorder sees only the panes on screen; ids it did not see (cards Hide done keeps out) go back after the id they followed.
+/** next with every id of prev it lacks re-inserted after the id that came before it in prev. */
+export function mergeOrder(prev, next){
+  const out = [...next];
+  prev.forEach((id, i) => { if (!out.includes(id)) out.splice(i ? out.indexOf(prev[i - 1]) + 1 : 0, 0, id); });
+  return out;
+}

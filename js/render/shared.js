@@ -62,8 +62,10 @@ export function sessMover(sid, title, i, count){
 export function cardFoldBtn(id, name, min, leet){
   return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"} · Shift-click for the whole row">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
 }
-/** The customize-mode toolbar for a pane. */
-export function editBar(id){
+/** The fixed label of a session's Hide done button; aria-pressed carries whether it is on. */
+export const hideDoneText = (n, leet) => leet ? `[hide done:${n}]` : `Hide done (${n})`;
+/** The customize-mode toolbar for a pane; fixedH drops the height controls (a log that fills its column). */
+export function editBar(id, fixedH = false){
   const n = esc(paneName(id)), s = state.layout.size[id] || {}, cols = state.cols;
   const w = Math.min(s.w || 1, cols), h = `${s.r || 1} row${(s.r || 1) > 1 ? "s" : ""}`;
   return `<div class="edit" role="toolbar" aria-label="Layout for ${n}">
@@ -72,8 +74,8 @@ export function editBar(id){
     <button type="button" class="btn" data-act="right" aria-label="Move ${n} later" title="Move later">▶</button>
     <span class="sep"></span>
     <span class="w-ctl"><button type="button" class="btn" data-act="w-" aria-label="Narrower" title="Narrower">↔−</button><span class="dim">${w}/${cols} col</span><button type="button" class="btn" data-act="w+" aria-label="Wider" title="Wider">↔+</button><span class="sep"></span></span>
-    <button type="button" class="btn" data-act="h-" aria-label="Shorter" title="Shorter">↕−</button><span class="dim">${h}</span><button type="button" class="btn" data-act="h+" aria-label="Taller" title="Taller">↕+</button>
-    <span class="sep"></span>
+    ${fixedH ? "" : `<button type="button" class="btn" data-act="h-" aria-label="Shorter" title="Shorter">↕−</button><span class="dim">${h}</span><button type="button" class="btn" data-act="h+" aria-label="Taller" title="Taller">↕+</button>
+    <span class="sep"></span>`}
     <button type="button" class="btn" data-act="reset" aria-label="Reset size of ${n}" title="Reset this pane's size">⟲</button>
   </div>`;
 }
