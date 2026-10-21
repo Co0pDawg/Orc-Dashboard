@@ -105,7 +105,7 @@ export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
   const rows = list.map((e, i) => {
     const f = (e.ticket && flags && flags[e.ticket]) || {}, note = (e.ticket && notes && notes[e.ticket]) || "", id = `note-${esc(date)}-${i}`;
     return `<li class="entry ${tkClass(e.ticket)}" data-at="${ms(e.start)}" data-to="${ms(e.end)}">
-      <div class="ent-top"><b>${esc(label(e.ticket))}</b><span>${hm12(e.start)} to ${hm12(e.end)} · ${dur(e.minutes)}</span></div>
+      <div class="ent-top"><b>${esc(label(e.ticket))}</b><span>${e.waiting ? `<em class="waiting" title="Agent time while you were not driving">waiting</em> · ` : ""}${hm12(e.start)} to ${hm12(e.end)} · ${dur(e.minutes)}</span></div>
       ${field("Ticket", e.ticket || "", `<em class="needs">needs a ticket</em>`)}
       ${field("Start Date", mdy(e.start))}
       ${field("Start Time", hm12(e.start))}
@@ -114,9 +114,9 @@ export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
       <p class="sugg"><span class="${f.review ? "on" : ""}">Review Time: ${f.review ? "on" : "off"}</span><span class="${f.unplanned ? "on" : ""}">Unplanned Time: ${f.unplanned ? "on" : "off"}</span></p>
     </li>`;
   }).join("");
-  const drivenMin = result ? result.drivenMin : 0, notEntered = result ? result.notEntered : 0;
+  const drivenMin = result ? result.drivenMin : 0, waitingMin = (result && result.waitingMin) || 0, notEntered = result ? result.notEntered : 0;
   return `<section class="entries" aria-label="Entries">
-    <div class="ent-head"><h2>Entries</h2><span class="ent-tot">${dur(entered)} entered · ${dur(drivenMin)} driven</span></div>
+    <div class="ent-head"><h2>Entries</h2><span class="ent-tot">${dur(entered)} entered · ${dur(drivenMin)} driven${waitingMin ? ` · ${dur(waitingMin)} waiting` : ""}</span></div>
     ${rows ? `<ol class="ent-list">${rows}</ol>` : `<p class="note">No entries for this day.</p>`}
     ${notEntered ? `<p class="not-entered">Not entered: ${notEntered} min</p>` : ""}
   </section>`;
