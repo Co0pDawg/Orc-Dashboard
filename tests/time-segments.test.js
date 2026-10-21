@@ -201,3 +201,10 @@ test("waitingSegments: agent time outside driving only; the last-driven ticket w
   assert.ok(waitingSegments(drive, spans).every(x => x.waiting));
   assert.deepEqual(waitingSegments(drive, []), []);
 });
+
+test("waitingSegments: the last-driven ticket beats a later-started span of another ticket", () => {
+  const S = (t, a, b) => ({ticket: t, start: at(a), end: at(b)});
+  const drive = [S("APP-1", "09:30", "10:00"), S("APP-1", "11:00", "11:15")];
+  const w = waitingSegments(drive, [S("APP-1", "10:00", "11:00"), S("APP-2", "10:20", "10:50")]).map(x => x.ticket + " " + hm(x.start) + "-" + hm(x.end));
+  assert.deepEqual(w, ["APP-1 10:00-11:00"]);
+});
