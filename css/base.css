@@ -117,6 +117,12 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 /* Day: the timeline and the Entries panel side by side; the panel drops below at narrow widths */
 .day{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:16px;align-items:start}
 @media (max-width:900px){.day{grid-template-columns:minmax(0,1fr)}}
+/* Beside the calendar, entries take its height (contain:size keeps the list from setting the row) and scroll inside. */
+@media (min-width:901px){
+  .day{align-items:stretch}
+  .day > .entries{display:flex;flex-direction:column;contain:size}
+  .day > .entries > .ent-list{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+}
 .day-main{display:grid;gap:10px;min-width:0}
 .day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
 .time-body > .day-head{margin-bottom:10px}
