@@ -88,7 +88,8 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
       + c.marks.map(m => `<b class="mk" style="top:${pct(ms(m.at), ax)}%" role="img" aria-label="Agent dispatched ${hm12(m.at)}" title="Agent dispatched ${hm12(m.at)}"></b>`).join("");
     return `<div class="tl-col ${tkClass(c.t)}"><div class="tl-colhead"><b>${esc(name)}</b>${title ? `<span class="tl-title" title="${esc(title)}">${esc(title)}</span>` : ""}<span class="tl-tot">${dur(minutes(c.segs))} driven${c.spans.length ? ` · ${dur(minutes(c.spans))} agents` : ""}</span></div><div class="tl-track">${blocks}</div></div>`;
   }).join("");
-  return `${head}<div class="tl" style="--hours:${ax.hours}" data-first="${firstAt(ax, Math.min(...times))}">${axisHtml(ax)}${colsHtml}</div>`;
+  // data-a/data-b and the hidden .tl-now let the controller draw the entry marker where the Entries list is centered.
+  return `${head}<div class="tl" style="--hours:${ax.hours}" data-first="${firstAt(ax, Math.min(...times))}" data-a="${ax.a}" data-b="${ax.b}"><i class="tl-now" aria-hidden="true" hidden></i>${axisHtml(ax)}${colsHtml}</div>`;
 }
 
 // A value is its own copy button; a missing value (a needs-a-ticket Ticket) is plain text, not clickable.
@@ -99,7 +100,7 @@ export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
   const rows = list.map((e, i) => {
     const f = (e.ticket && flags && flags[e.ticket]) || {}, note = (e.ticket && notes && notes[e.ticket]) || "", id = `note-${esc(date)}-${i}`;
-    return `<li class="entry ${tkClass(e.ticket)}">
+    return `<li class="entry ${tkClass(e.ticket)}" data-at="${ms(e.start)}" data-to="${ms(e.end)}">
       <div class="ent-top"><b>${esc(label(e.ticket))}</b><span>${hm12(e.start)} to ${hm12(e.end)} · ${dur(e.minutes)}</span></div>
       ${field("Ticket", e.ticket || "", `<em class="needs">needs a ticket</em>`)}
       ${field("Start Date", mdy(e.start))}

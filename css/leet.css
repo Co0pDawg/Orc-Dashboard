@@ -153,3 +153,4 @@
 .leet .scrum-text{font-family:var(--t-mono);background:var(--t-bg);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
 .leet .scrum::before{content:"["}
 .leet .scrum::after{content:"]"}
+.leet .tl-now{background:var(--t-edge)}

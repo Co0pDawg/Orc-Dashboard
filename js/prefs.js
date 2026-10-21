@@ -67,3 +67,9 @@ export const savePalette = id => id ? store.set("board.palette", id) : store.del
 export const loadRounding = () => { const n = Number(store.get("board.rounding")); return [1, 5, 10, 15, 30].includes(n) ? n : 15; };
 /** Saves the entry rounding unit. */
 export const saveRounding = n => store.set("board.rounding", String(n));
+
+// The entry marker: a line on the Day calendar at the entry centered in the Entries list (default on).
+/** Whether the entry marker shows. */
+export const loadEntryLine = () => store.get("board.entryLine") !== "0";
+/** Saves the entry marker toggle. */
+export const saveEntryLine = on => store.set("board.entryLine", on ? "1" : "0");
