@@ -155,3 +155,4 @@
 .leet .scrum::after{content:"]"}
 .leet .tl-now{background:var(--t-edge)}
 .leet .tip-t{background:var(--t-pane);color:var(--t-ink);border:1px solid var(--t-edge);border-radius:var(--t-r);font-family:inherit}
+.leet .ent-top .waiting{color:var(--t-dim)}

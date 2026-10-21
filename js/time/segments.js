@@ -93,3 +93,28 @@ export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = ne
   }
   return out.sort((a, b) => ms(a.start) - ms(b.start));
 }
+
+/**
+ * Agent-only time as segments: a moment an agent span covers while Cooper is not driving (viewing and waiting), but only
+ * between two of his turns no more than maxGapMin apart, so a run nobody came back to (overnight) never counts.
+ * At a moment several agents cover, the ticket he last drove wins if one of them has it, else the latest-started span.
+ * Returns [{ticket, start, end, waiting: true}] (UTC ISO), sorted, non-overlapping, never overlapping `driving`.
+ */
+export function waitingSegments(driving, spans, {maxGapMin = 120} = {}){
+  const dv = (driving || []).map(s => ({ticket: normTicket(s.ticket), a: ms(s.start), b: ms(s.end)})).sort((x, y) => x.a - y.a);
+  const sp = (spans || []).map(s => ({ticket: normTicket(s.ticket), a: ms(s.start), b: ms(s.end)})).filter(s => s.b > s.a);
+  // ponytail: O(points x spans) over one day's few dozen spans; an interval tree if a day ever holds thousands.
+  const pts = [...new Set([...sp, ...dv].flatMap(s => [s.a, s.b]))].sort((x, y) => x - y), out = [];
+  for (let i = 0; i + 1 < pts.length; i++){
+    const a = pts[i], b = pts[i + 1], mid = (a + b) / 2;
+    if (dv.some(d => d.a <= mid && mid < d.b)) continue;
+    const on = sp.filter(s => s.a <= mid && mid < s.b);
+    if (!on.length) continue;
+    const last = dv.filter(d => d.b <= a).pop(), next = dv.find(d => d.a >= b);
+    if (!last || !next || next.a - last.b > maxGapMin * MIN) continue;
+    const pick = on.find(s => last && s.ticket === last.ticket) || on.reduce((x, y) => y.a > x.a ? y : x);
+    const p = out[out.length - 1];
+    if (p && p.ticket === pick.ticket && p.b === a) p.b = b; else out.push({ticket: pick.ticket, a, b});
+  }
+  return out.map(o => ({ticket: o.ticket, start: iso(o.a), end: iso(o.b), waiting: true}));
+}

@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {buildEntries} from "../js/time/entries.js";
-import {drivingSegments} from "../js/time/segments.js";
+import {drivingSegments, waitingSegments} from "../js/time/segments.js";
 
 // Local times (no offset) so the tests hold in any time zone.
 const at = hm => `2026-10-19T${hm}:00`;
@@ -30,7 +30,7 @@ test("an idle hour keeps two entries", () => {
 });
 
 test("a 4 minute isolated segment is not entered and is counted", () => {
-  assert.deepEqual(buildEntries([seg("10:03", "10:07")]), {entries: [], notEntered: 4, drivenMin: 4});
+  assert.deepEqual(buildEntries([seg("10:03", "10:07")]), {entries: [], notEntered: 4, drivenMin: 4, waitingMin: 0});
 });
 
 test("a 4 minute segment touching a neighbor merges into it", () => {
@@ -55,12 +55,12 @@ test("a null ticket needs a ticket; every non-PET spelling is null", () => {
 });
 
 test("empty input gives the empty result", () => {
-  assert.deepEqual(buildEntries([]), {entries: [], notEntered: 0, drivenMin: 0});
+  assert.deepEqual(buildEntries([]), {entries: [], notEntered: 0, drivenMin: 0, waitingMin: 0});
 });
 
 test("only notify events: no segments, no entries", () => {
   const segs = drivingSegments([{at: at("10:00"), kind: "notify", session: "A", ticket: "PET-1"}]);
-  assert.deepEqual(buildEntries(segs), {entries: [], notEntered: 0, drivenMin: 0});
+  assert.deepEqual(buildEntries(segs), {entries: [], notEntered: 0, drivenMin: 0, waitingMin: 0});
 });
 
 test("a day built from overlapping sessions never double-counts", () => {
@@ -115,4 +115,24 @@ test("property: 200 random days, every unit: no overlap, within one unit per sou
       assert.ok(Math.abs(r.entries.reduce((n, x) => n + x.minutes, 0) + r.notEntered - r.drivenMin) <= unit * segs.length, "total " + label);
     }
   }
+});
+
+test("waiting time between two turns becomes entries: waiting-only is marked, touching its driven ticket joins unmarked", () => {
+  const drive = [seg("10:00", "10:30"), seg("11:45", "12:00", "PET-9")];
+  const S = (t, a, b) => ({ticket: t, start: seg(a, b).start, end: seg(a, b).end});
+  const spans = [S("PET-1", "10:10", "11:00"), S("PET-2", "11:00", "11:45"), S("PET-3", "13:00", "13:45")];
+  const r = buildEntries(drive.concat(waitingSegments(drive, spans)), {unit: 15});
+  // 10:30-11:00 joins the PET-1 turn; 11:00-11:45 is waiting on PET-2; 13:00-13:45 comes after the last turn, so it is out.
+  assert.deepEqual(show(r), ["PET-1 10:00-11:00 60", "PET-2 11:00-11:45 45", "PET-9 11:45-12:00 15"]);
+  assert.deepEqual(r.entries.map(x => x.waiting), [false, true, false]);
+  assert.deepEqual([r.drivenMin, r.waitingMin], [45, 75]);
+  assert.ok(overlapFree(r.entries));
+});
+
+test("agent time with no turn on both sides within 2 h is not entered (an overnight run, a day with no driving)", () => {
+  const S = (t, a, b) => ({ticket: t, start: seg(a, b).start, end: seg(a, b).end});
+  assert.deepEqual(waitingSegments([], [S("PET-3", "09:00", "10:00")]), []);
+  const drive = [seg("01:00", "01:30"), seg("09:00", "09:15")];
+  assert.deepEqual(waitingSegments(drive, [S("PET-4", "02:00", "04:00")]), []);
+  assert.equal(waitingSegments(drive, [S("PET-4", "02:00", "04:00")], {maxGapMin: 600}).length, 1);
 });

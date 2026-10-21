@@ -231,3 +231,4 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 .dlg-head h2{margin:0;font-size:16px}
 .scrum-text{margin:0 0 12px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:60vh;overflow:auto;font-family:var(--f-mono);font-size:12.5px;line-height:1.5;border:1px solid var(--line);border-radius:8px;background:var(--bg);user-select:text}
+.ent-top .waiting{font-style:normal;color:var(--muted)}
