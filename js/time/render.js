@@ -38,15 +38,6 @@ export function withReview(flags = {}, segments = [], sessions = {}){
   return out;
 }
 
-/** Column titles by ticket: the card whose task is that ticket, else a session for it, else a card for it. */
-export function ticketTitles(sessions = [], cards = []){
-  const out = {}, put = (t, title) => { if (t && title && !out[t]) out[t] = title; };
-  cards.forEach(c => put(normTicket(c.task), c.title));
-  sessions.forEach(s => put(normTicket(s.data && s.data.ticket), s.data && s.data.title));
-  cards.forEach(c => put(normTicket(c.ticket), c.title));
-  return out;
-}
-
 /** The empty state when the sync has not written this day yet; the Day tab passes scrum so every day keeps its Scrum button. */
 export function emptyHtml(date, scrum = false){
   return `${scrum ? `<div class="day-head"><span class="facts"></span>${scrumBtn(date)}</div>` : ""}<div class="empty"><b>No time synced for ${esc(date)} yet</b>Run <code>sync-timeline.ps1 -Date ${esc(date)}</code> from the worklog repo; this page fills in as soon as it uploads.</div>`;

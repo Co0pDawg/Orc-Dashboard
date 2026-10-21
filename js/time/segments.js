@@ -50,25 +50,38 @@ export function drivingSegments(events, opts = {}){
   return out.map(o => ({...o, start: iso(o.start), end: iso(o.end)}));
 }
 
+/** The ticket a card's work counts toward: whichever of its task and ticket is driven that day, else its task, else its ticket, else the session's. */
+export function cardTicket(card, sessionTicket, drivenTickets = new Set()){
+  // The worklog bills parent stories, so a driven match is the only way a card joins its column.
+  const own = [normTicket(card && card.task), normTicket(card && card.ticket)];
+  return own.find(t => t && drivenTickets.has(t)) ?? own.find(Boolean) ?? normTicket(sessionTicket);
+}
+
+const DISPATCH = /\b(dispatched|re-?dispatch\w*|sent to the same builder|fix round)\b/i;
+const REPORT = /\b(done|accept\w*|rework|partial|blocked|report\w*)\b/i;
+
 /**
- * Unattended agent time: a "dispatched" event naming a card starts a span, the next event naming the same card
- * (report, commit, inline) ends it. An unanswered dispatch ends at the card's last progress line after it, else
- * the session's `updated`. The ticket is the card's task, else its ticket, else the session's.
+ * Unattended agent time: a dispatch event naming a card starts a span, the next event naming the same card
+ * (report, commit, inline) ends it. An unanswered dispatch ends at the session's next report event that names
+ * no card, else the card's last progress line after it, else the session's `updated` but at most 2 h on.
+ * The ticket is cardTicket(card, session ticket, drivenTickets).
  */
-export function agentSpans(sessions, cards, dayStart, dayEnd){
+export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = new Set()){
   const lo = ms(dayStart), hi = ms(dayEnd), out = [];
   for (const s of sessions || []){
-    const byCard = {};
-    for (const e of (s.data && s.data.events) || []) if (e.card && !isNaN(ms(e.at))) (byCard[e.card] ||= []).push(e);
+    const byCard = {}, events = ((s.data && s.data.events) || []).filter(e => !isNaN(ms(e.at)));
+    for (const e of events) if (e.card) (byCard[e.card] ||= []).push(e);
     for (const [id, list] of Object.entries(byCard)){
       list.sort((a, b) => ms(a.at) - ms(b.at));
       const card = (cards || []).find(c => c._id === id);
-      const ticket = normTicket(card && card.task || card && card.ticket || s.data.ticket);
+      const ticket = cardTicket(card, s.data.ticket, drivenTickets);
       const progress = ((card && card.progress) || []).map(p => ms(p.at)).filter(t => !isNaN(t));
       list.forEach((e, i) => {
-        if (!/\bdispatched\b/i.test(e.text || "")) return;
+        if (!DISPATCH.test(e.text || "")) return;
         const a = ms(e.at), later = progress.filter(t => t >= a), upd = ms(s.data.updated);
-        const b = list[i + 1] ? ms(list[i + 1].at) : later.length ? Math.max(...later) : upd;
+        // Report events carry no card, so the session's next one is the best end a legacy dispatch has.
+        const report = events.filter(x => !x.card && ms(x.at) > a && REPORT.test(x.text || "")).map(x => ms(x.at));
+        const b = list[i + 1] ? ms(list[i + 1].at) : report.length ? Math.min(...report) : later.length ? Math.max(...later) : Math.min(isNaN(upd) ? Infinity : upd, a + 120 * MIN);
         const start = Math.max(a, lo), end = Math.min(b, hi);
         if (end > start) out.push({ticket, card: id, agent: e.text, start: iso(start), end: iso(end)});
       });
