@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal} from "../js/model.js";
+import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal, mergeOrder} from "../js/model.js";
 import {ago, esc, adoUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
@@ -116,4 +116,14 @@ test("isDone with the pr setting: a finished session waits for a final PR status
   const list = [sess({...done, pr: {id: 1, status: "active"}})];
   assert.equal(visibleSessions(list, false, "pr").length, 1, "an awaiting session stays on the chips");
   assert.equal(visibleSessions(list, false, "fable").length, 0);
+});
+
+test("mergeOrder: ids a reorder did not see go back after the id they followed", () => {
+  // c1 (hidden, done) followed the log; c3 (hidden) followed c2. c2 is dragged to the front.
+  assert.deepEqual(mergeOrder(["log", "c1", "c2", "c3", "c4"], ["c2", "log", "c4"]), ["c2", "c3", "log", "c1", "c4"]);
+  // A hidden id first in the old order stays first; nothing hidden leaves the new order as it is.
+  assert.deepEqual(mergeOrder(["c1", "log", "c2"], ["c2", "log"]), ["c1", "c2", "log"]);
+  assert.deepEqual(mergeOrder(["log", "c1", "c2"], ["c2", "c1", "log"]), ["c2", "c1", "log"]);
+  // Two hidden ids in a row keep their order behind the visible id before them.
+  assert.deepEqual(mergeOrder(["log", "c1", "c2", "c3"], ["c3", "log"]), ["c3", "log", "c1", "c2"]);
 });
