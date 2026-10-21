@@ -46,7 +46,7 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 | **Dispatch** | The card's stage turns `active` with `started`; set `agent`. Append an event `{at, text: "<agent> dispatched on #<task>", card: "<card id>"}`. Update `now` and `status`. The brief carries `BOARD: <board URL> card <card id>` (marching orders item 10). |
 | **Check-in** (Fable reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
 | **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |
-| **Report** | The stage turns `done` or `rework` (a rework stage gets a fresh `started`). Set `tokens` and `note`. Append the outcome as a top-level event ("refuter ACCEPT", "builder done: 40 tests pass"). |
+| **Report** | The stage turns `done` or `rework` (a rework stage gets a fresh `started`). Set `tokens` and `note`. Append the outcome as a top-level event that names the card, `{at, text, card}` ("refuter ACCEPT", "builder done: 40 tests pass"); the Time page ends that agent's span at this event. |
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
 | **PR opened** | Set the session's `pr: {id, url, status: "draft"}` (url is the PR's Azure DevOps link). |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
