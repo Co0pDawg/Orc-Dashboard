@@ -2,10 +2,10 @@
 // js/time modules, renders Day, Week or Month into #time-body, and opens the scrum dialog. Read-only: nothing here writes the db.
 import {state} from "../state.js";
 import {$, say} from "../board.js";
-import {drivingSegments, agentSpans, agentMarkers} from "./segments.js";
+import {drivingSegments, agentSpans, agentMarkers, normTicket} from "./segments.js";
 import {buildEntries} from "./entries.js";
-import {scrumSummary} from "./scrum.js";
-import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, ticketTitles, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
+import {scrumSummary, ticketTitles} from "./scrum.js";
+import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
 const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false};
@@ -38,8 +38,8 @@ function subscribe(){
 function dayInfo(date){
   const doc = T.docs.get(date), events = (doc && Array.isArray(doc.events)) ? doc.events : [];
   const dayStart = new Date(dayStartMs(date)).toISOString(), dayEnd = new Date(dayStartMs(addDays(date, 1)) - 1).toISOString();
-  return {date, doc, segments: drivingSegments(events, {dayStart, dayEnd, now: new Date().toISOString()}),
-    spans: agentSpans(state.sessions, T.cards, dayStart, dayEnd), markers: agentMarkers(events)};
+  const segments = drivingSegments(events, {dayStart, dayEnd, now: new Date().toISOString()}), driven = new Set(segments.map(s => normTicket(s.ticket)));
+  return {date, doc, segments, driven, spans: agentSpans(state.sessions, T.cards, dayStart, dayEnd, driven), markers: agentMarkers(events)};
 }
 
 function dayView(){
@@ -47,7 +47,7 @@ function dayView(){
   if (!d.doc) return emptyHtml(T.date, true);
   const result = buildEntries(d.segments, {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
-  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards), skin: state.skin})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
+  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
 }
 
 function weekView(){
@@ -165,6 +165,6 @@ export function initTime(){
   body.addEventListener("input", e => { if (e.target.dataset.note != null) T.notes.set(e.target.dataset.note, e.target.value); });
   // Leaving a note for a control in the Time body (a press or Tab onto Copy) waits for that click; elsewhere renders now.
   body.addEventListener("pointerdown", () => { T.down = true; });
-  document.addEventListener("pointerup", () => { if (!T.down) return; T.down = false; if (T.pending) setTimeout(renderTime, 50); });
+  for (const type of ["pointerup", "pointercancel"]) document.addEventListener(type, () => { if (!T.down) return; T.down = false; if (T.pending) setTimeout(renderTime, 50); });
   body.addEventListener("focusout", e => { if (T.pending && !T.down && !body.contains(e.relatedTarget)) setTimeout(renderTime, 0); });
 }

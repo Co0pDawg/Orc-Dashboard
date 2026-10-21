@@ -26,8 +26,8 @@ const segments = [seg("s1", "PET-17983*", "08:00", "09:00"), seg("s1", "17983", 
 
 test("yesterday: a line per ticket, most driven time first, with that day's outcomes in time order", () => {
   const r = scrumSummary({date: D, segments, sessions, cards, notes: {}});
-  assert.equal(r.yesterday[0], "PET-17983 Search bar rework, 1h 45m: committed 581a23a31; refuter ACCEPT");
-  assert.equal(r.yesterday[1], "PET-17980 Fee gateway, 30m: REWORK: missing null guard; REWORK: tenant filter missing; REWORK: still missing the guard");
+  assert.equal(r.yesterday[0], "PET-17983 Search bar, 1h 45m: committed 581a23a31; refuter ACCEPT");
+  assert.equal(r.yesterday[1], "PET-17980 Fee rework, 30m: REWORK: missing null guard; REWORK: tenant filter missing; REWORK: still missing the guard");
   assert.equal(r.yesterday[2], "No ticket, 10m");
   assert.equal(r.yesterday.length, 3);
 });
@@ -76,6 +76,45 @@ test("blockers: a card still in rework gives the text of the last REWORK event",
   const r = scrumSummary({date: D, segments, sessions, cards});
   assert.deepEqual(r.blockers, ["PET-17980 Fee gateway: REWORK: still missing the guard"]);
   assert.deepEqual(scrumSummary({date: D, segments, sessions, cards: [cards[0]]}).blockers, ["None"]);
+});
+
+test("blockers: a finished session, a session begun after the day, or a rework begun after it is not that day's blocker", () => {
+  const rw = (started) => [{label: "Build", state: "rework", ...(started ? {started} : {})}];
+  const cs = [{_id: "a", session: "done", ticket: "1", title: "A", stages: rw()},
+    {_id: "b", session: "late", ticket: "2", title: "B", stages: rw()},
+    {_id: "c", session: "open", ticket: "3", title: "C", stages: rw(at("19:12", "2026-10-20"))},
+    {_id: "d", session: "open", ticket: "4", title: "D", stages: rw(at("10:00"))}];
+  const ss = [{id: "done", data: {status: "Done", completed: at("17:00"), events: []}},
+    {id: "late", data: {started: at("18:08", "2026-10-20"), events: []}},
+    {id: "open", data: {started: at("08:00"), events: []}}];
+  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: ss, cards: cs}).blockers, ["PET-4 D: in rework"]);
+});
+
+test("blockers: a REWORK event after the day is not that day's reason", () => {
+  const ss = [{id: "s", data: {ticket: "9", events: [{at: at("10:00"), text: "REWORK: day reason", card: "b"}, {at: at("09:00", "2026-10-20"), text: "REWORK: next day", card: "b"}]}}];
+  const cs = [{_id: "b", session: "s", ticket: "9", title: "B", stages: stg(["Review", "rework"])}];
+  assert.deepEqual(scrumSummary({date: D, segments: [], sessions: ss, cards: cs}).blockers, ["PET-9 B: REWORK: day reason"]);
+});
+
+test("yesterday: pre-PR and a bare PR mention are not outcomes; the last 3 outcomes are kept", () => {
+  const sg = [seg("s", "PET-1", "10:00", "11:00")];
+  const ev = (hm, text) => ({at: at(hm), text});
+  const ss = [{id: "s", data: {ticket: "1", events: [ev("10:00", "Pre-PR review dispatched"), ev("10:05", "Panel on PR 6218 staged 3+3"),
+    ev("10:10", "committed 581a23a31"), ev("10:20", "refuter ACCEPT"), ev("10:30", "Draft PR 6246 -> develop opened"), ev("10:40", "builder done: 9 tests")]}}];
+  assert.deepEqual(scrumSummary({date: D, segments: sg, sessions: ss, cards: []}).yesterday, ["PET-1, 1h: refuter ACCEPT; Draft PR 6246 -> develop opened; builder done: 9 tests"]);
+  ss[0].data.events = [ev("10:00", "Pre-PR review dispatched"), ev("10:05", "Panel on PR 6218 staged 3+3"), ev("10:06", "Builder A dispatched: commit groups 1-3.")];
+  assert.deepEqual(scrumSummary({date: D, segments: sg, sessions: ss, cards: []}).yesterday, ["PET-1, 1h"]);
+});
+
+test("yesterday: the title and outcomes follow the driven one of a card's task and ticket", () => {
+  const sg = [seg("s1", "PET-17983", "10:00", "11:00"), seg("s2", "PET-17942", "11:00", "11:30")];
+  const ss = [{id: "s1", data: {title: "Top search bar rework", ticket: "13520", started: at("09:00"), events: [{at: at("10:30"), text: "refuter ACCEPT", card: "sb"}]}},
+    {id: "s2", data: {title: "Peer review PR 6218", ticket: "17942", started: at("09:30"), events: [{at: at("11:10"), text: "Commit 916f032f2", card: "pr"}]}}];
+  const cs = [{_id: "later", session: "s1", order: 2, ticket: "13520", task: "17983", title: "Later card"},
+    {_id: "sb", session: "s1", order: 1, ticket: "13520", task: "17983", title: "Search backend"},
+    {_id: "pr", session: "s2", ticket: 17942, task: "PR 6218", title: "Org Search fix"}];
+  assert.deepEqual(scrumSummary({date: D, segments: sg, sessions: ss, cards: cs}).yesterday,
+    ["PET-17983 Search backend, 1h: refuter ACCEPT", "PET-17942 Peer review PR 6218, 30m: Commit 916f032f2"]);
 });
 
 test("an empty day says Nothing logged; a notify-only day yields no segments so it reads the same", () => {

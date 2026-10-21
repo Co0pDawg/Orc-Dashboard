@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {normTicket, drivingSegments, agentSpans, agentMarkers} from "../js/time/segments.js";
+import {normTicket, drivingSegments, agentSpans, agentMarkers, cardTicket} from "../js/time/segments.js";
 
 // Times are local (no offset) so the tests hold in any time zone; hm() reads them back as local HH:MM.
 const D = "2026-10-19", at = (hm, d = D) => `${d}T${hm}:00`;
@@ -106,12 +106,50 @@ test("agentSpans: a dispatch followed by a report for the same card is one span 
   assert.deepEqual([spans[0].ticket, spans[0].card, spans[0].agent, hm(spans[0].start), hm(spans[0].end)], ["PET-17981", "c2", "builder dispatched", "10:00", "10:40"]);
 });
 
-test("agentSpans: an unanswered dispatch ends at the card's last progress line after it, else the session's updated", () => {
+test("agentSpans: an unanswered dispatch ends at the card's last progress line after it, else the session's updated, at most 2 h on", () => {
   const sessions = [{id: "s1", data: {ticket: "17983", updated: at("10:50"), events: [{at: at("10:00"), text: "builder dispatched", card: "c2"}]}}];
   const cards = [{_id: "c2", ticket: "17980", progress: [{at: at("09:00"), text: "old"}, {at: at("10:10"), text: "a"}, {at: at("10:30"), text: "b"}]}];
   assert.equal(hm(agentSpans(sessions, cards, day.dayStart, day.dayEnd)[0].end), "10:30");
   const none = agentSpans(sessions, [{_id: "c2", ticket: "17980"}], day.dayStart, day.dayEnd);
   assert.deepEqual([none.length, hm(none[0].end)], [1, "10:50"]);
+  sessions[0].data.updated = at("18:00");
+  assert.equal(hm(agentSpans(sessions, [], day.dayStart, day.dayEnd)[0].end), "12:00");
+});
+
+test("agentSpans: fc-wrapup shape, an unanswered dispatch ends at the session's next report event with no card", () => {
+  const sessions = [{id: "fc", data: {ticket: "17994", updated: "2026-10-20T18:03:22", events: [
+    {at: at("18:46"), text: "Rerun green. Committed #17999 as 9e7b3d56b."},
+    {at: at("18:55"), text: "Pre-PR review (full tier, 7 agents) batch 1 dispatched: code-reviewer", card: "fc-wrapup"},
+    {at: at("19:05"), text: "Cooper: ship it"},
+    {at: at("19:15"), text: "Pre-PR review done: needs changes, 1 issue / 3 warning"},
+    {at: at("19:16"), text: "builder done", card: "other"}]}}];
+  const s = agentSpans(sessions, [{_id: "fc-wrapup", ticket: "17994"}], day.dayStart, day.dayEnd);
+  assert.deepEqual(s.map(x => `${x.ticket} ${hm(x.start)}-${hm(x.end)}`), ["PET-17994 18:55-19:15"]);
+});
+
+test("agentSpans: a rework sent to the same builder starts a span", () => {
+  const sessions = [sess("s1", [{at: at("17:05"), text: "Rework sent to the same builder.", card: "c"}, {at: at("18:25"), text: "Fresh refuter dispatched on the rework delta.", card: "c"}])];
+  const s = agentSpans(sessions, [{_id: "c", ticket: "17999"}], day.dayStart, day.dayEnd);
+  assert.deepEqual(s.map(x => `${hm(x.start)}-${hm(x.end)}`).slice(0, 1), ["17:05-18:25"]);
+});
+
+test("cardTicket: the driven one of task and ticket wins, else task, else ticket, else the session's", () => {
+  const driven = new Set(["PET-17942", "PET-17983", "PET-17994"]);
+  assert.equal(cardTicket({task: "PR 6218", ticket: 17942}, "17942", driven), "PET-17942");
+  assert.equal(cardTicket({task: "PR 6218", ticket: 17942}, null), "PET-17942");
+  assert.equal(cardTicket({task: "17983", ticket: "13520"}, "13520", driven), "PET-17983");
+  assert.equal(cardTicket({task: "17997", ticket: "17994"}, "17994", driven), "PET-17994");
+  assert.equal(cardTicket({task: "17997", ticket: "17994"}, "17994"), "PET-17997");
+  assert.equal(cardTicket({task: "PR 6218"}, "#17942"), "PET-17942");
+  assert.equal(cardTicket(undefined, "17983"), "PET-17983");
+});
+
+test("agentSpans: the span lands in the driven column, task or parent", () => {
+  const ss = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "a"}, {at: at("10:30"), text: "builder done", card: "a"}])];
+  const on = (card, driven) => agentSpans(ss, [{_id: "a", ...card}], day.dayStart, day.dayEnd, driven)[0].ticket;
+  assert.equal(on({task: "PR 6218", ticket: "17942"}, new Set(["PET-17942"])), "PET-17942");
+  assert.equal(on({task: "17983", ticket: "13520"}, new Set(["PET-17983"])), "PET-17983");
+  assert.equal(on({task: "17997", ticket: "17994"}, new Set(["PET-17994"])), "PET-17994");
 });
 
 test("agentSpans: card 18027 sequence gives exactly the builder and refuter runs", () => {

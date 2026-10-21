@@ -77,10 +77,27 @@ test("a day built from overlapping sessions never double-counts", () => {
   assert.equal(r.drivenMin, 25 + 10 + 25 + 25 + 55 + 25 + 35);
   assert.ok(overlapFree(r.entries));
   assert.ok(r.entries.some(x => x.needsTicket));
-  assert.ok(Math.abs(r.entries.reduce((n, x) => n + x.minutes, 0) + r.notEntered - r.drivenMin) <= 15 * r.entries.length);
+  assert.ok(Math.abs(r.entries.reduce((n, x) => n + x.minutes, 0) + r.notEntered - r.drivenMin) <= 15 * segs.length);
 });
 
-test("property: 200 random days, every unit: no overlap, within one unit per entry, capped at maxMin", () => {
+test("real 2026-10-20 PET-17983 11:15 AM-12:30 PM: entries touching once the fragments between them round away are one", () => {
+  const sec = (a, b, ticket) => ({session: "A", ticket, start: new Date(`2026-10-20T${a}`).toISOString(), end: new Date(`2026-10-20T${b}`).toISOString()});
+  const segs = [sec("11:07:55", "11:26:27", "PET-17983"), sec("11:26:27", "11:27:12", "PET-17905"), sec("11:27:12", "11:44:25", "PET-17983"),
+    sec("11:44:25", "11:51:47", "PET-17403"), sec("11:51:47", "11:52:45", "PET-17983"), sec("11:52:45", "11:53:22", "PET-18018"),
+    sec("11:53:22", "11:53:52", "PET-17403"), sec("11:53:52", "11:56:33", "PET-18018"), sec("11:56:33", "11:57:56", "PET-17983"),
+    sec("11:57:56", "11:59:32", "PET-18018"), sec("11:59:32", "12:30:27", "PET-17983")];
+  const r = buildEntries(segs);
+  assert.deepEqual(show(r), ["PET-17983 11:15-12:30 75"]);
+  assert.ok(Math.abs(75 + r.notEntered - r.drivenMin) <= 15 * segs.length);
+});
+
+test("touching same-ticket entries join only while the result fits maxMin", () => {
+  const r = buildEntries([seg("08:00", "09:30"), seg("09:30", "09:34", "PET-2"), seg("09:34", "10:30")], {unit: 15});
+  assert.deepEqual(show(r), ["PET-1 08:00-09:30 90", "PET-1 09:30-10:30 60"]);
+  assert.deepEqual(show(buildEntries([seg("08:00", "08:30"), seg("08:30", "08:34", "PET-2"), seg("08:34", "09:00")])), ["PET-1 08:00-09:00 60"]);
+});
+
+test("property: 200 random days, every unit: no overlap, within one unit per source segment, capped at maxMin", () => {
   let seed = 12345;
   const rand = n => (seed = (seed * 1103515245 + 12345) % 2147483648) % n;
   const base = Date.parse(at("00:00"));
@@ -95,7 +112,7 @@ test("property: 200 random days, every unit: no overlap, within one unit per ent
       const r = buildEntries(segs, {unit}), label = `day ${d} unit ${unit}`;
       assert.ok(overlapFree(r.entries), "overlap " + label);
       assert.ok(r.entries.every(x => x.minutes <= 120 && x.minutes > 0), "size " + label);
-      assert.ok(Math.abs(r.entries.reduce((n, x) => n + x.minutes, 0) + r.notEntered - r.drivenMin) <= unit * r.entries.length, "total " + label);
+      assert.ok(Math.abs(r.entries.reduce((n, x) => n + x.minutes, 0) + r.notEntered - r.drivenMin) <= unit * segs.length, "total " + label);
     }
   }
 });
