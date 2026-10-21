@@ -8,7 +8,7 @@ import {scrumSummary, ticketTitles} from "./scrum.js";
 import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
-const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false};
+const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: ""};
 const monthOf = date => date.slice(0, 7);
 const lastOfMonth = date => { const [y, m] = date.split("-").map(Number); return ymd(new Date(y, m, 0)); };
 /** The first and last date the current view shows. */
@@ -79,12 +79,15 @@ export function renderTime(){
   T.pending = false;
   renderBar();
   const html = T.view === "week" ? weekView() : T.view === "month" ? monthView() : dayView();
-  // Card progress arrives often and rarely changes this view: skip identical output, else keep focus and sideways scroll.
+  // Card progress arrives often and rarely changes this view: skip identical output, else keep focus and scroll.
   if (html === T.html) return;
-  const ctl = () => [...body.querySelectorAll("button,textarea")], f = ctl().indexOf(document.activeElement), sx = body.querySelector(".tl")?.scrollLeft;
+  const ctl = () => [...body.querySelectorAll("button,textarea")], f = ctl().indexOf(document.activeElement), old = body.querySelector(".tl"), sx = old?.scrollLeft, sy = old?.scrollTop;
   T.html = html; body.innerHTML = html;
   if (f >= 0) ctl()[f]?.focus({preventScroll: true});
-  const tl = body.querySelector(".tl"); if (tl && sx) tl.scrollLeft = sx;
+  // A live re-render keeps the calendar's scroll; a newly shown date or view opens at its data-first point.
+  const tl = body.querySelector(".tl"), k = T.view + "|" + T.date;
+  if (tl && k === T.tlKey){ tl.scrollTop = sy || 0; tl.scrollLeft = sx || 0; }
+  else if (tl){ T.tlKey = k; tl.scrollTop = Number(tl.dataset.first) * tl.querySelector(".tl-track").offsetHeight; }
   // Note edits are never saved, but they survive a re-render on this page load.
   body.querySelectorAll("textarea[data-note]").forEach(ta => { if (T.notes.has(ta.dataset.note)) ta.value = T.notes.get(ta.dataset.note); });
 }
@@ -93,6 +96,8 @@ export function renderTime(){
 export function showTime(v, date){
   T.view = ["day", "week", "month"].includes(v) ? v : "day";
   if (/^\d{4}-\d{2}-\d{2}$/.test(date || "") && !isNaN(dayStartMs(date))) T.date = date;
+  // Showing the page (a tab, a step, a return from the board) always re-renders and re-scrolls to the first activity.
+  T.html = T.tlKey = "";
   subscribe();
   renderTime();
 }
@@ -123,9 +128,10 @@ function openScrum(date, btn){
 }
 
 // Copy into the clipboard from the click itself; where the frame refuses, select the text so Ctrl+C works.
+// A value button (.cv) shows its own text; a ⧉ or Copy button copies the textarea or block just before it.
 function copy(btn){
-  const src = btn.previousElementSibling, text = src && src.tagName === "TEXTAREA" ? src.value : btn.dataset.copy;
-  const done = () => { say(btn.title.replace(/^Copy/, "Copied") + "."); btn.classList.add("copied"); setTimeout(() => btn.classList.remove("copied"), 1500); };
+  const src = btn.classList.contains("cv") ? btn : btn.previousElementSibling, text = src && src.tagName === "TEXTAREA" ? src.value : btn.dataset.copy;
+  const done = () => { say((btn.getAttribute("aria-label") || btn.title).replace(/^Copy/, "Copied") + "."); btn.classList.add("copied"); setTimeout(() => btn.classList.remove("copied"), 1500); };
   const fallback = () => {
     if (!src) return;
     if (src.tagName === "TEXTAREA") src.select();
