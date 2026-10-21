@@ -1,9 +1,9 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
-import {cardState, isDone, visibleSessions, liveIds, logId, isLog, QUIET_MS} from "./model.js";
+import {cardState, isDone, visibleSessions, liveIds, logId, isLog, mergeOrder, QUIET_MS} from "./model.js";
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
-import {paneName, sessionTitle, editBar, emptyHtml, sessMover} from "./render/shared.js";
+import {paneName, sessionTitle, editBar, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
 
@@ -50,7 +50,10 @@ function orderedIds(ids){
 }
 /** Saves a session's pane order, keeping other sessions' saved order after it. */
 export function setOrder(visible){
-  state.layout.order = visible.concat(state.layout.order.filter(id => !visible.includes(id)));
+  // Hide done keeps finished cards out of the grid, so they go back beside the cards they followed.
+  const sid = visible.find(isLog)?.slice(4), v = sid && state.views.get(sid);
+  const ids = v ? mergeOrder(orderedIds([logId(sid), ...v.cards.map(c => c._id)]), visible) : visible;
+  state.layout.order = ids.concat(state.layout.order.filter(id => !ids.includes(id)));
   saveLayout(state.layout);
 }
 /** Applies a pane's saved column and row span. */
@@ -60,21 +63,38 @@ function applySize(el){
   // A minimized card spans one row whatever its saved height, so a row of minimized cards slims.
   el.style.gridRow = `span ${el.classList.contains("min") ? 1 : s.r || 1}`;
 }
+// Settings > Activity log fills its column, for this session's grid right now: two columns or more, and cards beside the log.
+const logFills = tiles => state.logFull && state.cols >= 2 && !tiles.classList.contains("log-only");
+// Rows no card sits in, which only the log spans: a 0-px track, or a band beside nothing.
+function emptyRows(tiles, log){
+  const cs = getComputedStyle(tiles), gap = parseFloat(cs.rowGap) || 0, cards = [...tiles.children].filter(x => x !== log).map(x => x.getBoundingClientRect());
+  let top = tiles.getBoundingClientRect().top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop), n = 0;
+  for (const h of cs.gridTemplateRows.split(" ").filter(Boolean).map(parseFloat)){
+    if (!cards.some(c => c.top < top + h - 0.5 && c.bottom > top + 0.5)) n++;
+    top += h + gap;
+  }
+  return n;
+}
 /**
- * Settings > Activity log fills its column: the log spans every row the grid uses. Spanning can push cards into new
- * rows, so it re-measures until the count holds (row count only grows, so it settles). Off for one column or no cards.
+ * Spans the log one row at a time until it reaches the last card's row, then keeps the longest span that left no
+ * empty row. A span may push a card into a new row as long as a later one catches up; one that can never catch up
+ * (a full-width card below, or a log saved after a full row) falls back to the last span with every row in use.
  */
 function fillLog(tiles){
   const log = tiles.querySelector(":scope > .slot.log");
-  if (!log || !state.logFull || state.cols < 2 || tiles.classList.contains("log-only") || !tiles.offsetParent) return;
-  let n = 1;
-  for (let i = 0; i < 8; i++){
-    log.style.gridRow = `span ${n}`;
-    const rows = getComputedStyle(tiles).gridTemplateRows.split(" ").filter(Boolean).length;
-    if (rows <= n) break;
-    n = rows;
+  if (!log || !logFills(tiles) || !tiles.offsetParent) return;
+  const reaches = () => log.getBoundingClientRect().bottom >= Math.max(...[...tiles.children].filter(x => x !== log).map(x => x.getBoundingClientRect().bottom)) - 1;
+  log.style.gridRow = "span 1";
+  let n = 1, keep = 1;
+  // ponytail: one forced layout per step, 8 at most, so a log beside more than 8 rows of cards stops short of the last.
+  for (let i = 1; i < 8 && !reaches(); i++){
+    log.style.gridRow = `span ${++n}`;
+    if (!emptyRows(tiles, log)) keep = n;
   }
+  if (keep !== n) log.style.gridRow = `span ${keep}`;
 }
+/** Re-fills every shown session's log, for a stack that was hidden (the Time page) while it rendered. */
+export function fillLogs(){ for (const v of state.views.values()) fillLog(v.tiles); }
 const gridCols = () => `repeat(${state.cols}, minmax(0, 1fr))`;
 // Moves a node only when it is out of place, so focus and inner scroll survive a live update.
 function place(parent, el, i){ if (parent.children[i] !== el) parent.insertBefore(el, parent.children[i] || null); }
@@ -87,6 +107,7 @@ function renderTiles(v, sess){
   const tiles = v.tiles, want = orderedIds([logId(sess.id), ...cards.map(c => c._id)]);
   tiles.style.gridTemplateColumns = gridCols();
   tiles.classList.toggle("log-only", !cards.length);
+  const fills = logFills(tiles);
   for (const el of [...tiles.children]) if (!want.includes(el.dataset.id)) el.remove();
   const events = sess.data.events || [];
   want.forEach((id, i) => {
@@ -107,7 +128,9 @@ function renderTiles(v, sess){
       console.error("Orchestration Board: pane", id, err);
       body = `<p class="note">This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
     }
-    el.innerHTML = (editing ? editBar(id) : "") + body + (editing ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
+    // A log that fills its column takes no saved height, so its edit bar drops the height controls and the corner.
+    const fixedH = log && fills;
+    el.innerHTML = (editing ? editBar(id, fixedH) : "") + body + (editing && !fixedH ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
     applySize(el);
   });
   fillLog(tiles);
@@ -179,7 +202,7 @@ export function render(){
     const nDone = v.cards.filter(c => cardState(c) === "done").length, hid = !!state.hideDone[sess.id];
     v.hide.hidden = !nDone || f;
     v.hide.setAttribute("aria-pressed", String(hid));
-    v.hide.textContent = state.skin === "leet" ? `[${hid ? "show" : "hide"} done:${nDone}]` : `${hid ? "Show" : "Hide"} done (${nDone})`;
+    v.hide.textContent = hideDoneText(nDone, state.skin === "leet");
     v.hide.title = hid ? "Show this session's finished cards" : "Hide this session's finished cards";
     try { v.summary.innerHTML = headHtml(sess, v.cards); }
     catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
