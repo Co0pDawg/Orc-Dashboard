@@ -154,3 +154,4 @@
 .leet .scrum::before{content:"["}
 .leet .scrum::after{content:"]"}
 .leet .tl-now{background:var(--t-edge)}
+.leet .tip::after{background:var(--t-pane);color:var(--t-ink);border:1px solid var(--t-edge);border-radius:var(--t-r);font-family:inherit}

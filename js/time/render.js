@@ -65,13 +65,15 @@ function axisHtml(ax){
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const md = date => { const d = new Date(date + "T00:00:00"); return `${d.getMonth() + 1}/${d.getDate()}`; };
+// The entry marker toggle; data-tip is its hover/focus tooltip (css .tip).
+const markerBtn = on => `<button type="button" class="btn scrum tip" data-marker aria-pressed="${on}" aria-label="Entry marker" data-tip="${on ? "Hide" : "Show"} the line marking the time of the entry centered in the Entries list">Marker</button>`;
 const scrumBtn = date => `<button type="button" class="btn scrum" data-scrum="${esc(date)}" aria-label="Scrum summary for ${esc(date)}">Scrum</button>`;
 
 /** The Day tab's timeline: totals, a Scrum button, then the hour axis and one column per ticket. */
-export function dayHtml({date, segments = [], spans = [], markers = [], entries, tickets = {}, skin}){
+export function dayHtml({date, segments = [], spans = [], markers = [], entries, tickets = {}, skin, marker = true}){
   const leet = skin === "leet";
   const drivenMin = minutes(segments), agentMin = minutes(spans);
-  const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span>${scrumBtn(date)}</div>`;
+  const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span><span class="day-acts">${entries && entries.entries.length ? markerBtn(marker) : ""}${scrumBtn(date)}</span></div>`;
   const times = [...segments.flatMap(s => [ms(s.start), ms(s.end)]), ...spans.flatMap(s => [ms(s.start), ms(s.end)]), ...markers.map(m => ms(m.at))].filter(t => !isNaN(t));
   if (!times.length) return `${head}<div class="empty"><b>${leet ? `$ nothing logged on ${esc(date)}_` : `Nothing logged on ${esc(date)}`}</b>No prompts were recorded this day.</div>`;
   const ax = axis(date);
