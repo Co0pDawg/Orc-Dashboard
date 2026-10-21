@@ -144,6 +144,26 @@ test("cardTicket: the driven one of task and ticket wins, else task, else ticket
   assert.equal(cardTicket(undefined, "17983"), "PET-17983");
 });
 
+test("agentSpans: fc-review-fixes shape, a paused run redispatched next morning is cut at 2 h", () => {
+  const sessions = [sess("fc", [{at: at("19:25"), text: "Review-fix builder dispatched.", card: "f"}, {at: at("10:34", "2026-10-20"), text: "builder dispatched on the review fixes (redispatch).", card: "f"}], "17994")];
+  const cards = [{_id: "f", ticket: "17994", progress: [{at: at("19:07"), text: "started"}, {at: "2026-10-20T10:34:05", text: "restarted"}]}];
+  const s = agentSpans(sessions, cards, day.dayStart, day.dayEnd);
+  assert.deepEqual(s.map(x => `${hm(x.start)}-${hm(x.end)}`), ["19:25-21:25"]);
+});
+
+test("agentSpans: a long run that keeps posting progress lasts to its last line + 15 min", () => {
+  const sessions = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "c"}, {at: at("15:00"), text: "builder done", card: "c"}])];
+  const cards = [{_id: "c", ticket: "1", progress: [{at: at("11:30"), text: "build green"}, {at: at("13:00"), text: "tests 40/40"}]}];
+  assert.deepEqual(agentSpans(sessions, cards, day.dayStart, day.dayEnd).map(x => `${hm(x.start)}-${hm(x.end)}`), ["10:00-13:15"]);
+});
+
+test("cardTicket: a driven session ticket wins over an undriven task and ticket", () => {
+  const driven = new Set(["PET-17994"]);
+  assert.equal(cardTicket({task: "18000", ticket: "17999"}, "17994", driven), "PET-17994");
+  assert.equal(cardTicket({task: "18000", ticket: "17994"}, "17999", new Set(["PET-17994", "PET-17999"])), "PET-17994");
+  assert.equal(cardTicket({task: "18000", ticket: "17999"}, "17994"), "PET-18000");
+});
+
 test("agentSpans: the span lands in the driven column, task or parent", () => {
   const ss = [sess("s1", [{at: at("10:00"), text: "builder dispatched", card: "a"}, {at: at("10:30"), text: "builder done", card: "a"}])];
   const on = (card, driven) => agentSpans(ss, [{_id: "a", ...card}], day.dayStart, day.dayEnd, driven)[0].ticket;
