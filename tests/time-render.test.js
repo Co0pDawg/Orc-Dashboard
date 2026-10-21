@@ -180,7 +180,7 @@ test("the entry marker has what it needs: the day axis bounds, a hidden line, an
 test("the Marker button sits beside Scrum when the day has entries, pressed when the marker is on", () => {
   const seg = [{session: "s1", ticket: "PET-17983", start: L("10:00"), end: L("11:00")}];
   const on = dayHtml({date: D, segments: seg, entries: result, skin: "sleek"});
-  assert.match(on, /<span class="day-acts"><button type="button" class="btn scrum tip" data-marker aria-pressed="true"[^>]*data-tip="Hide [^"]+">Marker<\/button><button type="button" class="btn scrum" data-scrum=/);
-  assert.match(dayHtml({date: D, segments: seg, entries: result, skin: "sleek", marker: false}), /data-marker aria-pressed="false"[^>]*data-tip="Show /);
+  assert.match(on, /<span class="day-acts"><button type="button" class="btn scrum tip" data-marker aria-pressed="true" aria-label="Entry marker">Marker<span class="tip-t" aria-hidden="true">Hide [^<]+<\/span><\/button><button type="button" class="btn scrum" data-scrum=/);
+  assert.match(dayHtml({date: D, segments: seg, entries: result, skin: "sleek", marker: false}), /data-marker aria-pressed="false"[^>]*>Marker<span class="tip-t" aria-hidden="true">Show /);
   assert.ok(!dayHtml({date: D, segments: seg, entries: {entries: [], notEntered: 0, drivenMin: 60}, skin: "sleek"}).includes("data-marker"));
 });

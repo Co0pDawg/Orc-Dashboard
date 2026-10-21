@@ -128,10 +128,10 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .tl-now{position:absolute;left:0;height:2px;margin-top:-1px;z-index:1;pointer-events:none;background:var(--ink);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .tl-now[hidden]{display:none}
 .day-acts{display:flex;gap:6px;align-items:center}
-/* A tooltip on hover or keyboard focus, from data-tip; anchored right so it never runs off the panel. */
+/* A tooltip (.tip-t child) on hover or keyboard focus; anchored right so it never runs off the panel. */
 .tip{position:relative}
-.tip::after{content:attr(data-tip);position:absolute;right:0;top:calc(100% + 6px);z-index:5;width:max-content;max-width:240px;padding:6px 9px;border-radius:6px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:400;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;transition:opacity .12s}
-.tip:hover::after,.tip:focus-visible::after{opacity:1}
+.tip-t{position:absolute;right:0;top:calc(100% + 6px);z-index:5;width:max-content;max-width:240px;padding:6px 9px;border-radius:6px;background:var(--ink);color:var(--surface);font-size:12px;font-weight:400;line-height:1.35;text-align:left;white-space:normal;pointer-events:none;opacity:0;transition:opacity .12s}
+.tip:hover .tip-t,.tip:focus-visible .tip-t{opacity:1}
 .day-main{display:grid;gap:10px;min-width:0}
 .day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 14px}
 .time-body > .day-head{margin-bottom:10px}
@@ -139,7 +139,8 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 /* The whole day scrolls inside one box, never the page, at the portal's scale (--slot-h per 30 minutes).
    Column heads stay pinned on top and the time axis on the left; their shadows cover the gaps beside them.
    Columns are flex, not grid: a sticky grid item is held inside its own grid area and never moves. */
-.tl{--slot-h:36px;display:flex;gap:8px;overflow:auto;max-height:max(360px,calc(100vh - 220px));min-width:0;padding-bottom:4px}
+/* flex-start: a stretched column is only the box's visible height, and its sticky head would scroll away past it. */
+.tl{--slot-h:36px;display:flex;align-items:flex-start;gap:8px;overflow:auto;max-height:max(360px,calc(100vh - 220px));min-width:0;padding-bottom:4px}
 .tl-col{flex:1 0 104px;display:flex;flex-direction:column;gap:6px;min-width:104px}
 .tl-colhead{flex:none;height:64px;display:grid;align-content:start;gap:1px;font-size:12px;line-height:1.3;overflow:hidden;position:sticky;top:0;z-index:1;background:var(--tl-bg,var(--surface));box-shadow:0 6px 0 var(--tl-bg,var(--surface))}
 .tl-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
