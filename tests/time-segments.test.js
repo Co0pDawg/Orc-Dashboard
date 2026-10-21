@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {normTicket, drivingSegments, agentSpans, agentMarkers, cardTicket} from "../js/time/segments.js";
+import {normTicket, drivingSegments, agentSpans, agentMarkers, cardTicket, waitingSegments} from "../js/time/segments.js";
 
 // Times are local (no offset) so the tests hold in any time zone; hm() reads them back as local HH:MM.
 const D = "2026-10-19", at = (hm, d = D) => `${d}T${hm}:00`;
@@ -188,4 +188,16 @@ test("agentSpans: falls back to the session ticket and is clipped to the day", (
   const s = agentSpans(sessions, [], day.dayStart, day.dayEnd);
   assert.equal(s[0].ticket, "APP-17983");
   assert.equal(Date.parse(s[0].end), Date.parse(day.dayEnd));
+});
+
+test("waitingSegments: agent time outside driving only; the last-driven ticket wins a tie, else the latest-started span", () => {
+  const S = (t, a, b) => ({ticket: t, start: at(a), end: at(b)});
+  const drive = [S("APP-1", "09:00", "09:50"), S("APP-1", "10:00", "10:30"), S("APP-5", "12:30", "12:40")];
+  const spans = [S("APP-2", "09:50", "11:00"), S("APP-1", "10:20", "10:50"), S("APP-3", "12:00", "12:30"), S("APP-4", "12:10", "12:20")];
+  const w = waitingSegments(drive, spans).map(x => x.ticket + " " + hm(x.start) + "-" + hm(x.end));
+  // 09:50-10:00 only APP-2 runs; 10:30-10:50 APP-1 (last driven) beats APP-2; 10:50-11:00 APP-2 alone;
+  // 12:00-12:30 nobody drove before in that gap's tie, so the later-started APP-4 wins 12:10-12:20.
+  assert.deepEqual(w, ["APP-2 09:50-10:00", "APP-1 10:30-10:50", "APP-2 10:50-11:00", "APP-3 12:00-12:10", "APP-4 12:10-12:20", "APP-3 12:20-12:30"]);
+  assert.ok(waitingSegments(drive, spans).every(x => x.waiting));
+  assert.deepEqual(waitingSegments(drive, []), []);
 });

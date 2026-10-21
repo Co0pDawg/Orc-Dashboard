@@ -3,7 +3,7 @@
 import {state} from "../state.js";
 import {saveEntryLine} from "../prefs.js";
 import {$, say} from "../board.js";
-import {drivingSegments, agentSpans, agentMarkers, normTicket} from "./segments.js";
+import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
 import {scrumSummary, ticketTitles} from "./scrum.js";
 import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
@@ -46,7 +46,8 @@ function dayInfo(date){
 function dayView(){
   const d = dayInfo(T.date);
   if (!d.doc) return emptyHtml(T.date, true);
-  const result = buildEntries(d.segments, {unit: state.rounding});
+  // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
+  const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
 }
