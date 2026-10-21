@@ -189,3 +189,11 @@ test("the Marker button sits beside Scrum when the day has entries, pressed when
   assert.doesNotMatch(on, /<button[^>]*data-marker[^>]*hidden/);
   assert.ok(!dayHtml({date: D, segments: seg, entries: {entries: [], notEntered: 0, drivenMin: 60}, skin: "sleek"}).includes("data-marker"));
 });
+
+test("a waiting-only entry is tagged and the header adds the waiting total", () => {
+  const w = {entries: [{...entry("PET-17983", "11:30", "12:00", 30), waiting: true}, entry("PET-17891", "13:00", "13:30", 30)], notEntered: 0, drivenMin: 30, waitingMin: 30};
+  const h = entriesHtml(w, {date: D});
+  assert.equal(count(h, /class="waiting"/g), 1);
+  assert.ok(h.includes("1h entered · 30m driven · 30m waiting"));
+  assert.ok(!entriesHtml(result, {date: D}).includes("waiting"));
+});
