@@ -43,18 +43,22 @@ export function emptyHtml(date, scrum = false){
   return `${scrum ? `<div class="day-head"><span class="facts"></span>${scrumBtn(date)}</div>` : ""}<div class="empty"><b>No time synced for ${esc(date)} yet</b>Run <code>sync-timeline.ps1 -Date ${esc(date)}</code> from the worklog repo; this page fills in as soon as it uploads.</div>`;
 }
 
-// The axis runs from the first activity to the last, padded out to whole hours.
-function axis(lo, hi, dayLo){
-  const a = dayLo + Math.floor((lo - dayLo) / HOUR) * HOUR, b = Math.max(a + HOUR, dayLo + Math.ceil((hi - dayLo) / HOUR) * HOUR);
+// The axis is always the whole local day, midnight to midnight, so a day reads like the portal calendar.
+function axis(date){
+  const a = dayStartMs(date), b = dayStartMs(addDays(date, 1));
   return {a, b, hours: Math.round((b - a) / HOUR)};
 }
 const pct = (t, ax) => ((t - ax.a) / (ax.b - ax.a) * 100).toFixed(3);
 const box = (x, ax) => `top:${pct(ms(x.start), ax)}%;height:${(((ms(x.end) - ms(x.start)) / (ax.b - ax.a)) * 100).toFixed(3)}%`;
-const hourLabel = t => { const h = new Date(t).getHours(); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
+// Where the controller first scrolls a date to, as a fraction of the axis: the half-hour line at least 30 minutes above
+// the first activity, so a whole label tops the view; 8 AM with no activity.
+const firstAt = (ax, first) => { const t = first == null ? 8 * HOUR : Math.max(0, Math.floor((first - 30 * MIN - ax.a) / (30 * MIN)) * 30 * MIN); return (t / (ax.b - ax.a)).toFixed(4); };
+/** Axis label like the portal's: "2 PM" on the hour, "2:30" on the half hour, local. */
+const tick = t => { const d = new Date(t), h = d.getHours(), m = d.getMinutes(); return m ? `${h % 12 || 12}:${pad(m)}` : `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
 const range = x => `${hm12(x.start)} to ${hm12(x.end)}`;
 function axisHtml(ax){
   let marks = "";
-  for (let i = 0; i < ax.hours; i++) marks += `<span style="top:${(i / ax.hours * 100).toFixed(3)}%">${hourLabel(ax.a + i * HOUR)}</span>`;
+  for (let i = 0; i <= ax.hours * 2; i++) marks += `<span style="top:${(i / (ax.hours * 2) * 100).toFixed(3)}%">${tick(ax.a + i * 30 * MIN)}</span>`;
   return `<div class="tl-axis" aria-hidden="true"><div class="tl-colhead"></div><div class="tl-track">${marks}</div></div>`;
 }
 
@@ -69,7 +73,7 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
   const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span>${scrumBtn(date)}</div>`;
   const times = [...segments.flatMap(s => [ms(s.start), ms(s.end)]), ...spans.flatMap(s => [ms(s.start), ms(s.end)]), ...markers.map(m => ms(m.at))].filter(t => !isNaN(t));
   if (!times.length) return `${head}<div class="empty"><b>${leet ? `$ nothing logged on ${esc(date)}_` : `Nothing logged on ${esc(date)}`}</b>No prompts were recorded this day.</div>`;
-  const ax = axis(Math.min(...times), Math.max(...times), dayStartMs(date));
+  const ax = axis(date);
   const cols = new Map(), col = (t, at) => { if (!cols.has(t)) cols.set(t, {t, first: at, segs: [], spans: [], marks: []}); const c = cols.get(t); c.first = Math.min(c.first, at); return c; };
   segments.forEach(s => col(normTicket(s.ticket), ms(s.start)).segs.push(s));
   spans.forEach(s => col(normTicket(s.ticket), ms(s.start)).spans.push(s));
@@ -83,12 +87,13 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
       + c.marks.map(m => `<b class="mk" style="top:${pct(ms(m.at), ax)}%" role="img" aria-label="Agent dispatched ${hm12(m.at)}" title="Agent dispatched ${hm12(m.at)}"></b>`).join("");
     return `<div class="tl-col ${tkClass(c.t)}"><div class="tl-colhead"><b>${esc(name)}</b>${title ? `<span class="tl-title" title="${esc(title)}">${esc(title)}</span>` : ""}<span class="tl-tot">${dur(minutes(c.segs))} driven${c.spans.length ? ` · ${dur(minutes(c.spans))} agents` : ""}</span></div><div class="tl-track">${blocks}</div></div>`;
   }).join("");
-  return `${head}<div class="tl" style="--hours:${ax.hours}">${axisHtml(ax)}${colsHtml}</div>`;
+  return `${head}<div class="tl" style="--hours:${ax.hours}" data-first="${firstAt(ax, Math.min(...times))}">${axisHtml(ax)}${colsHtml}</div>`;
 }
 
-const field = (k, v, extra = "") => `<div class="fld"><span class="k">${k}</span><span class="v">${v ? esc(v) : extra}</span><button type="button" class="btn cp" data-copy="${esc(v)}" title="Copy ${k}" aria-label="Copy ${k}${v ? " " + esc(v) : ""}"${v ? "" : " disabled"}>⧉</button></div>`;
+// A value is its own copy button; a missing value (a needs-a-ticket Ticket) is plain text, not clickable.
+const field = (k, v, extra = "") => `<div class="fld"><span class="k">${k}</span>${v ? `<button type="button" class="v cv" data-copy="${esc(v)}" title="Click to copy" aria-label="Copy ${k} ${esc(v)}">${esc(v)}</button>` : `<span class="v">${extra}</span>`}</div>`;
 
-/** The Entries panel: one Work Detail-shaped entry per row, a copy button per field, totals and Not entered. */
+/** The Entries panel: one Work Detail-shaped entry per row, each value click-to-copy, totals and Not entered. */
 export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
   const rows = list.map((e, i) => {
@@ -136,12 +141,12 @@ export function weekHtml(days){
   // Every day is laid on the first day's clock, so 9 AM lines up across the week.
   const shiftOf = d => ref - dayStartMs(d.date);
   const times = days.flatMap(d => [...d.segments, ...d.spans].flatMap(x => [ms(x.start), ms(x.end)]).map(t => t + shiftOf(d)));
-  const ax = times.length ? axis(Math.min(...times), Math.max(...times), ref) : axis(ref + 9 * HOUR, ref + 17 * HOUR, ref);
+  const ax = axis(days[0].date);
   const total = days.reduce((n, d) => n + minutes(d.segments), 0);
   const cols = days.map((d, i) => `<div class="wk-col tl-col${d.missing ? " missing" : ""}" data-day="${esc(d.date)}">
     <div class="tl-colhead wk-head"><button type="button" class="wk-date" aria-label="Open ${esc(d.date)}">${DOW[i]} ${md(d.date)}</button><span class="tl-tot">${d.missing ? "not synced" : dur(minutes(d.segments))}</span>${scrumBtn(d.date)}</div>
     <div class="tl-track">${bandsHtml(d.segments, d.spans, shiftOf(d), ax)}</div></div>`).join("");
-  return `<div class="wk-sum">Week total <b>${dur(total)} driven</b></div><div class="tl wk" style="--hours:${ax.hours}">${axisHtml(ax)}${cols}</div>`;
+  return `<div class="wk-sum">Week total <b>${dur(total)} driven</b></div><div class="tl wk" style="--hours:${ax.hours}" data-first="${firstAt(ax, times.length ? Math.min(...times) : null)}">${axisHtml(ax)}${cols}</div>`;
 }
 
 /** The Month tab: Monday-first weeks of day cells (total, ticket bar, agent mark, Scrum), week totals at row ends. */

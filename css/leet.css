@@ -129,6 +129,11 @@
 .leet .fld textarea{font-family:var(--t-mono);background:var(--t-bg);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
 .leet .fld textarea:focus-visible{outline:1px solid var(--t-lime)}
 .leet .cp.copied{border-color:var(--t-green);color:var(--t-green)}
+.leet .cv{border-radius:var(--t-r)}
+.leet .cv:hover{border-color:var(--t-faint)}
+.leet .cv:focus-visible{outline:1px solid var(--t-lime)}
+.leet .cv.copied{border-color:var(--t-green)}
+.leet .cv.copied::after{color:var(--t-green)}
 .leet .needs,.leet .not-entered{color:var(--t-amber)}
 .leet .sugg .on{color:var(--t-green)}
 .leet .time-body code{font-family:var(--t-mono);color:var(--t-green)}
