@@ -1,6 +1,6 @@
 # Orchestration Board
 
-A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1, `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; Fable and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
+A private claude.ai Artifact (your own, published from this repo; its URL lives in `~/.claude/board.local.md`; `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; Fable and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
 
 ## Files
 
