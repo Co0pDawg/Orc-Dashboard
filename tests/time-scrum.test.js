@@ -31,7 +31,7 @@ test("yesterday: a line per ticket, most driven time first, labelled by ADO titl
 });
 
 test("plainSummary: process clauses (agents, reviews, commits, merges, PR housekeeping, test runs) are dropped", () => {
-  const s = plainSummary(["Development: Refuted the diff; ran six review agents on the PR; posted the checklist; set the release note; committed it; merged develop; read the build logs; requeued the policy; proved it by mutation; tests passing; Playwright run; builder done; dispatched a scout; retitled the PR; updated the PR description; created the draft PR; made a worktree; fetched the branch; queried work items; filed a task; reviewed the round; Added the export button"]);
+  const s = plainSummary(["Development: Refuted the diff; ran six review agents on the PR; posted the checklist; set the release note; committed it; merged develop; read the build logs; requeued the policy; proved it by mutation; tests passing; Playwright run; builder done; dispatched a scout; retitled the PR; updated the PR description; created the draft PR; created pull request refusing tokens; linked the pull requests; made a worktree; fetched the branch; queried work items; filed a task; reviewed the round; Added the export button"]);
   assert.equal(s, "added the export button");
 });
 
@@ -65,6 +65,23 @@ test("yesterday: no surviving block clause falls back to the note; a note that i
   const r = scrumSummary({date: D, segments: sg, sessions: [], cards: [], blocks: [blk("09:00", "APP-5", "Code review: Refuted the diff")],
     notes: {"APP-5": "Added the export button; committed abc1234", "APP-6": "User Story: Export button", "APP-7": "Task: Something"}, titles: {"APP-6": "Export button"}});
   assert.deepEqual(r.yesterday, ["APP-5: added the export button", "APP-6 Export button", "APP-7"]);
+});
+
+test("plainSummary: a clause with 60% or more of its non-stopword words in the title is dropped", () => {
+  const title = "Facility Calendar: unified month view of rooms, dining, spa and events";
+  assert.equal(plainSummary(["Development: Made the Facility Calendar the Service Calendar Month view; built the Service Calendar month view; added a day drawer for the calendar"], title),
+    "added a day drawer for the calendar");
+  assert.equal(plainSummary(["Development: Made the Facility Calendar the Service Calendar Month view"]), "made the Facility Calendar the Service Calendar Month view", "no title, nothing is an echo");
+});
+
+test("yesterday: a board fallback title loses its PR framing; an ADO title is kept as it is", () => {
+  const sg = [seg("a", "APP-1", "08:00", "09:00"), seg("b", "APP-2", "09:00", "09:50"), seg("c", "APP-3", "10:00", "10:40"), seg("d", "APP-4", "11:00", "11:30"), seg("e", "APP-5", "12:00", "12:20")];
+  const ss = [["a", "1", "PR 6243 feedback: Rows layout + Cards/Rows toggle"], ["b", "2", "Peer review PR 6218 (Sam,Admin Org Search hotfix)"],
+    ["c", "3", "Shared customer + guest avatars (PR 1 of 2)"], ["d", "4", "PR: move the dashboard sort to a cookie"], ["e", "5", "Board title"]]
+    .map(([id, ticket, title]) => ({id, data: {ticket, title, events: []}}));
+  const bl = [blk("12:00", "APP-5", "Development: Updated the ADO title; added the export")];
+  assert.deepEqual(scrumSummary({date: D, segments: sg, sessions: ss, cards: [], blocks: bl, titles: {"APP-5": "PR: ADO title (PR 1 of 2)"}}).yesterday,
+    ["APP-1 Rows layout + Cards/Rows toggle", "APP-2 Sam, Admin Org Search hotfix", "APP-3 Shared customer + guest avatars", "APP-4 move the dashboard sort to a cookie", "APP-5 PR: ADO title (PR 1 of 2): added the export"]);
 });
 
 test("yesterday: a board title is the fallback label, scrubbed", () => {

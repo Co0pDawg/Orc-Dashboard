@@ -4,7 +4,11 @@ import {stagesOf, cardState, fableDone} from "../model.js";
 
 const t = e => Date.parse(e.at);
 // Process talk (agents, reviews, commits, PR housekeeping, test runs, reading and filing) is not what the work was.
-const PROCESS = /\b(refut\w*|review agents?|ran .*review|reviewed|checklist|release[- ]notes?|commit\w*|merg\w*|pipeline|build logs?|requeue\w*|mutation|tests? (?:pass\w*|green|run)|playwright|builder|dispatch\w*|retitl\w*|PR description|created the .*PR|worktree|fetch\w*|read|quer\w*|filed)\b/i;
+const PROCESS = /\b(refut\w*|review agents?|ran .*review|reviewed|checklist|release[- ]notes?|commit\w*|merg\w*|pipeline|build logs?|requeue\w*|mutation|tests? (?:pass\w*|green|run)|playwright|builder|dispatch\w*|retitl\w*|PR description|created the .*PR|worktree|fetch\w*|read|quer\w*|filed|pull requests?)\b/i;
+const STOP = new Set(["the", "a", "an", "of", "and", "to", "for", "in", "on", "with"]);
+const words = s => String(s).toLowerCase().split(/[^a-z0-9]+/).filter(w => w && !STOP.has(w));
+/** A board-derived title without its PR framing: "PR feedback:", "PR:" or "Peer review PR" up front, a "(PR N of M)" tail. */
+const boardTitle = s => scrub(s).replace(/^(?:PR feedback:|PR:|Peer review PR\b:?)\s*/i, "").replace(/^\((.*)\)$/, "$1").replace(/\s*\(PR \d+ of \d+\)$/i, "");
 // A note that is only the ADO "<Type>: <title>" fallback says nothing the label does not.
 const ADO_NOTE = /^(?:User Story|Task|Bug|Support Item|Feature|Epic): /;
 
@@ -20,14 +24,16 @@ export function scrub(s){
     .trim().replace(/^[\s,;:.-]+|[\s,;:-]+$/g, "");
 }
 
-/** Up to 3 plain "what the work was" clauses from roll-up texts, in order, joined with "; " as whole clauses within 160 chars; only an over-long first clause is cut on a word, with "…". */
-export function plainSummary(texts = []){
-  const out = [];
+/** Up to 3 plain "what the work was" clauses from roll-up texts, in order, none mostly repeating `title`, joined with "; " as whole clauses within 160 chars; only an over-long first clause is cut on a word, with "…". */
+export function plainSummary(texts = [], title = ""){
+  const out = [], tw = new Set(words(title));
+  // A clause whose words are mostly the title's says nothing the label does not.
+  const echo = c => { const w = words(c); return w.length > 0 && w.filter(x => tw.has(x)).length / w.length >= 0.6; };
   for (const text of texts) for (const raw of String(text ?? "").replace(/^[A-Z][a-z]+(?: [a-z]+)?:\s+/, "").split(";")) {
     if (PROCESS.test(raw)) continue;
     // An acronym ("PR", "UI") keeps its capital.
     const c = scrub(raw).replace(/\.$/, "").replace(/^[A-Z](?![A-Z])/, m => m.toLowerCase());
-    if (c && !out.includes(c)) out.push(c);
+    if (c && !echo(c) && !out.includes(c)) out.push(c);
   }
   const [first = "", ...rest] = out.slice(0, 3);
   // Whole clauses only: a later clause that would pass 160 chars is dropped with everything after it, never cut.
@@ -64,10 +70,10 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
   const drivenTickets = new Set(driven.keys()), boardTitles = ticketTitles(sessions, cards, drivenTickets);
   const yesterday = [...driven].sort((a, b) => b[1] - a[1]).map(([tk]) => {
     if (!tk) return "Other work";
-    const label = `${tk} ${scrub(titles[tk] || boardTitles[tk] || "")}`.trim();
+    const title = titles[tk] ? scrub(titles[tk]) : boardTitle(boardTitles[tk] || ""), label = `${tk} ${title}`.trim();
     const texts = blocks.filter(b => normTicket(b.ticket) === tk).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).map(b => b.text);
     const note = notes[tk] && !ADO_NOTE.test(notes[tk]) ? notes[tk] : "";
-    const summary = plainSummary(texts) || plainSummary([note]);
+    const summary = plainSummary(texts, title) || plainSummary([note], title);
     return summary ? `${label}: ${summary}` : label;
   });
 
