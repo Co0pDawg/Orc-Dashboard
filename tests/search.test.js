@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {searchSessions, lastTouched} from "../js/search.js";
+import {searchSessions, lastTouched, keepOpened} from "../js/search.js";
 
 const at = (d, h = 12) => { const [y, m, da] = d.split("-").map(Number); return new Date(y, m - 1, da, h).toISOString(); };
 const sess = (id, data) => ({id, data});
@@ -49,4 +49,11 @@ test("lastTouched: the latest of the session's and its cards' touches", () => {
   assert.equal(lastTouched(S[1]), at("2026-10-19", 15));
   assert.equal(lastTouched(S[4], C), at("2026-09-02"));
   assert.equal(lastTouched(sess("x", {updated: "bad"})), null);
+});
+test("keepOpened: a pinned result drops once the day moves or it leaves the shown list", () => {
+  const o = {id: "s", day: "2026-10-22"};
+  assert.equal(keepOpened(o, "2026-10-22", ["s"]), true);
+  assert.equal(keepOpened(o, "2026-10-21", ["s"]), false, "another day");
+  assert.equal(keepOpened(o, "2026-10-22", ["t"]), false, "another session shown");
+  assert.equal(keepOpened(null, "2026-10-22", ["s"]), false);
 });

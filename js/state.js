@@ -8,7 +8,7 @@ export const state = {
   // dayPicked is false while it follows today, which rolls it over at midnight.
   day: "", dayPicked: false,
   // A session opened from search stays on the chips for its day even when finished and Show finished is off.
-  opened: null,
+  opened: null, // {id, day} while pinned
   views: new Map(), // session id -> {el, summary, ctl, fold, tiles, cards, stop, sortable}
   viewSeq: 0,
   stackSortable: null, sessFocus: null,
