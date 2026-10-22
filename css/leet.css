@@ -159,3 +159,4 @@
 .leet .tip-t{background:var(--t-pane);color:var(--t-ink);border:1px solid var(--t-edge);border-radius:var(--t-r);font-family:inherit}
 .leet .ent-top .waiting{color:var(--t-dim)}
 .leet .ent-strip{color:var(--t-dim);font-family:var(--t-mono)}
+.leet .sched b{color:var(--t-amber)}

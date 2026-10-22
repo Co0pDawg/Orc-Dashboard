@@ -1,10 +1,14 @@
 // HTML helpers both skins use. Strings only: nothing here touches the DOM.
-import {esc, t12, ago, fmtDay} from "../util.js";
+import {esc, t12, ago, fmtDay, untilText} from "../util.js";
 import {QUIET_MS, cardState, progressOf, isLog, prFinal} from "../model.js";
 import {state} from "../state.js";
 
 // Elapsed timers render pre-filled and tick() refreshes every [data-since] span, so no re-render (and no lost focus) is needed.
 /** A live elapsed-time span; quiet ones turn stale (amber) after QUIET_MS. */
+/** A scheduled session's status: a badge with a live countdown (board.js tick refreshes [data-until]). */
+export function schedHtml(iso, leet){
+  return `<span class="sched">${leet ? "scheduled" : "Scheduled"} <b data-until="${esc(iso)}">${esc(untilText(iso))}</b></span>`;
+}
 export function sinceHtml(iso, prefix = "", quiet = false){
   if (!iso || isNaN(new Date(iso))) return "";
   const stale = quiet && Date.now() - new Date(iso) > QUIET_MS;
