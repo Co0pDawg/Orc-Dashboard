@@ -18,6 +18,13 @@ export const t12 = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.to
 /** Clamps n into [lo, hi]. */
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 /** Elapsed time since iso as "Nm", "Nh Nm" or "Nd Nh". */
+/** Countdown to a future time: "starts 3:28 PM · in 1h 5m", or "starting now" once it has passed. */
+export function untilText(iso, now = Date.now()){
+  const t = new Date(iso); if (isNaN(t)) return "";
+  const m = Math.ceil((t - now) / 60000), at = t.toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+  if (m <= 0) return `starting now (${at})`;
+  return `starts ${at} · in ${m < 60 ? m + "m" : Math.floor(m / 60) + "h" + (m % 60 ? " " + (m % 60) + "m" : "")}`;
+}
 export function ago(iso){
   const m = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 60000));
   return m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h`;

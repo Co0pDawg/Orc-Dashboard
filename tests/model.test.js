@@ -127,3 +127,12 @@ test("mergeOrder: ids a reorder did not see go back after the id they followed",
   // Two hidden ids in a row keep their order behind the visible id before them.
   assert.deepEqual(mergeOrder(["log", "c1", "c2", "c3"], ["c3", "log"]), ["c3", "log", "c1", "c2"]);
 });
+
+import {untilText} from "../js/util.js";
+test("untilText counts down to a scheduled start and says starting now once it passes", () => {
+  const now = new Date("2026-10-22T14:00:00").getTime();
+  assert.match(untilText("2026-10-22T15:28:00", now), /^starts .+ · in 1h 28m$/);
+  assert.match(untilText("2026-10-22T14:05:00", now), /· in 5m$/);
+  assert.match(untilText("2026-10-22T13:00:00", now), /^starting now/);
+  assert.equal(untilText("nope", now), "");
+});

@@ -1,6 +1,6 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
 import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, QUIET_MS} from "./model.js";
-import {ago, esc} from "./util.js";
+import {ago, esc, untilText} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
 import {paneName, sessionTitle, editChrome, editBtn, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
@@ -42,6 +42,7 @@ const headHtml = (sess, cards) => state.skin === "leet" ? leetHead(sess, cards) 
 /* ---------- live timers ---------- */
 /** Refreshes every [data-since] span in place. */
 function tickSince(){
+  document.querySelectorAll("[data-until]").forEach(el => { el.textContent = untilText(el.dataset.until); });
   document.querySelectorAll("[data-since]").forEach(el => {
     el.textContent = el.dataset.prefix + ago(el.dataset.since);
     if (el.hasAttribute("data-quiet")) el.classList.toggle("stale", Date.now() - new Date(el.dataset.since) > QUIET_MS);
