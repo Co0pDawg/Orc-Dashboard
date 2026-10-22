@@ -1,7 +1,7 @@
 // Sleek skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
 import {LABEL, cardState, stagesOf, stageLabel, stageSince, subsOf, lastAt, progress, logId} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml} from "./shared.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml, schedHtml} from "./shared.js";
 
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
 export function sleekCard(c, ado, min){
@@ -37,7 +37,7 @@ export function sleekHead(sess, cards){
       ${s.branch ? `<span>Branch <b class="mono">${esc(s.branch)}</b></span>` : ""}
       ${s.started ? `<span>Started <b>${esc(fmt(s.started))}</b></span>` : ""}
       ${s.updated ? `<span>Updated <b>${esc(fmt(s.updated))}</b></span>` : ""}
-      ${s.status ? `<span>Status <b>${esc(s.status)}</b></span>` : ""}
+      ${s.scheduledAt && !s.completed ? schedHtml(s.scheduledAt, false) : s.status ? `<span>Status <b>${esc(s.status)}</b></span>` : ""}
       ${s.completed ? `<span>Finished <b>${esc(fmt(s.completed))}</b></span>` : ""}
       ${prHtml(s.pr, false)}
     </div>

@@ -1,7 +1,7 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
 import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress, logId} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml} from "./shared.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml, schedHtml} from "./shared.js";
 
 /** The activity log pane's body, oldest first with a cursor on the last line. */
 export function leetLog(events, updated, live, sid, cards){
@@ -42,7 +42,7 @@ export function leetHead(sess, cards){
         ${s.ticket ? `<span>ticket <a href="${esc(adoUrl(s.ticket, s.ado))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}
         ${s.branch ? `<span>branch <b>${esc(s.branch)}</b></span>` : ""}
         ${s.started ? `<span>started <b>${esc(fmt(s.started))}</b></span>` : ""}
-        ${s.status ? `<span>status <b>${esc(s.status)}</b></span>` : ""}
+        ${s.scheduledAt && !s.completed ? schedHtml(s.scheduledAt, true) : s.status ? `<span>status <b>${esc(s.status)}</b></span>` : ""}
         ${s.completed ? `<span>finished <b>${esc(fmt(s.completed))}</b></span>` : ""}
         ${prHtml(s.pr, true)}
       </div>
