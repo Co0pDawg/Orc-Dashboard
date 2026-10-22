@@ -1,5 +1,5 @@
 // The board's shared mutable runtime state. DOM modules read and write it; render modules only read it.
-import {loadSkin, loadLayout, loadShown, loadShowDone, loadFold, loadCardFold, loadBarColor, loadDoneWhen, loadPalette, loadRounding, loadEntryLine, loadLogFull, loadHideDone, loadEntriesFold} from "./prefs.js";
+import {loadSkin, loadLayout, loadShown, loadShowDone, loadFold, loadCardFold, loadDoneWhen, loadThemes, loadRounding, loadEntryLine, loadLogFull, loadHideDone, loadEntriesFold} from "./prefs.js";
 
 /** Shared runtime state; per-viewer values start from prefs. */
 export const state = {
@@ -20,13 +20,12 @@ export const state = {
   shown: loadShown(),
   showDone: loadShowDone(),
   doneWhen: loadDoneWhen(),
-  palette: loadPalette(),
   fold: loadFold(),
   cardFold: loadCardFold(),
-  barColor: loadBarColor(),
   rounding: loadRounding(),
   entryLine: loadEntryLine(),
   entriesFold: loadEntriesFold(),
   logFull: loadLogFull(),
-  hideDone: loadHideDone()
+  hideDone: loadHideDone(),
+  ...loadThemes() // theme: the selected id; themes: the custom ones
 };
