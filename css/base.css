@@ -299,6 +299,9 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
   .bar-row1 > *,.bar-row2 > :not(.chip-slot){display:flex;align-items:center;min-height:var(--bar-row,36px)}
   .leet{--bar-row:26px}
   .bar-row2 .chip-slot{display:block;flex:1 1 auto;min-width:0}
+  /* Each line of chips is one bar row tall and centred, so the first line shares the day control's centre line. */
+  .bar-row2 .chips{align-items:center}
+  .bar-row2 .chips > *{min-height:var(--bar-row,36px);display:flex;align-items:center}
 }
 .th-exp .chev{display:inline-block;transition:transform .12s}
 .th-exp[aria-expanded="true"] .chev{transform:rotate(90deg)}
