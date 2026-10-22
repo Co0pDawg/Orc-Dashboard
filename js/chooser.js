@@ -72,8 +72,8 @@ export function renderChooser(){
     gear.remove();
     chooser.dataset.skin = skin;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span>${dayNav(true)}${searchBox(true)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}</nav>`
-      : `<span class="brand">Orchestration Board</span>${dayNav(false)}${searchBox(false)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}`;
+      ? `<nav class="status" aria-label="Board status"><span class="tag">[orc]</span>${dayNav(true)}${searchBox(true)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}</nav>`
+      : `<span class="brand">Orc-istrator</span>${dayNav(false)}${searchBox(false)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}`;
     $("clock").after(gear);
     focused?.focus();
   }
