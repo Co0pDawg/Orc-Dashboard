@@ -75,7 +75,7 @@ export function renderChooser(){
     const row2 = `<div class="bar-row2">${dayNav(skin === "leet")}${searchBox(skin === "leet")}<div class="chip-slot" id="chip-slot"></div></div>`;
     const row1 = name => `<div class="bar-row1">${name}<span class="clock" id="clock"></span>${helpBtn}</div>`;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status">${row1(`<span class="tag">[orc]</span>`)}${row2}</nav>`
+      ? `<div class="status" role="group" aria-label="Board status">${row1(`<span class="tag">[orc]</span>`)}${row2}</div>`
       : row1(`<span class="brand">Orc-istrator</span>`) + row2;
     chooser.querySelector(".bar-row1").firstElementChild.after(views);
     $("clock").after(gear);
