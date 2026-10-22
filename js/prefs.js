@@ -85,3 +85,9 @@ export const saveLogFull = on => store.set("board.logFull", on ? "1" : "0");
 export const loadHideDone = () => { try { const f = JSON.parse(store.get("board.hideDone")); if (f && typeof f === "object" && !Array.isArray(f)) return f; } catch {} return {}; };
 /** Saves the per-session hide-finished-cards choices. */
 export const saveHideDone = f => store.set("board.hideDone", JSON.stringify(f));
+
+// The Day view's Entries pane folded to a side strip (default open).
+/** Whether the Entries pane is folded. */
+export const loadEntriesFold = () => store.get("board.entriesFold") === "1";
+/** Saves the Entries fold. */
+export const saveEntriesFold = on => store.set("board.entriesFold", on ? "1" : "0");

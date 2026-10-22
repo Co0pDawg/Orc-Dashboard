@@ -100,6 +100,12 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
 const field = (k, v, extra = "") => `<div class="fld"><span class="k">${k}</span>${v ? `<button type="button" class="v cv" data-copy="${esc(v)}" title="Click to copy" aria-label="Copy ${k} ${esc(v)}">${esc(v)}</button>` : `<span class="v">${extra}</span>`}</div>`;
 
 /** The Entries panel: one Work Detail-shaped entry per row, each value click-to-copy, totals and Not entered; notes[i] is entry i's Note. */
+// The pane's fold toggle: the side pop-out arrow, pointing the way the pane will move.
+const foldBtn = folded => `<button type="button" class="btn ent-fold" data-entfold aria-expanded="${!folded}" aria-label="${folded ? "Expand" : "Collapse"} entries" title="${folded ? "Expand" : "Collapse"} entries">${folded ? "‹" : "›"}</button>`;
+
+/** The Entries panel folded to a side strip: the expand arrow and a vertical label. */
+export const entriesStripHtml = () => `<section class="entries folded" aria-label="Entries">${foldBtn(true)}<span class="ent-strip" aria-hidden="true">Entries</span></section>`;
+
 export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
   const rows = list.map((e, i) => {
@@ -116,7 +122,7 @@ export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
   }).join("");
   const drivenMin = result ? result.drivenMin : 0, waitingMin = (result && result.waitingMin) || 0, notEntered = result ? result.notEntered : 0;
   return `<section class="entries" aria-label="Entries">
-    <div class="ent-head"><h2>Entries</h2><span class="ent-tot">${dur(entered)} entered · ${dur(drivenMin)} driven${waitingMin ? ` · ${dur(waitingMin)} waiting` : ""}</span></div>
+    <div class="ent-head">${foldBtn(false)}<h2>Entries</h2><span class="ent-tot">${dur(entered)} entered · ${dur(drivenMin)} driven${waitingMin ? ` · ${dur(waitingMin)} waiting` : ""}</span></div>
     ${rows ? `<ol class="ent-list">${rows}</ol>` : `<p class="note">No entries for this day.</p>`}
     ${notEntered ? `<p class="not-entered">Not entered: ${notEntered} min</p>` : ""}
   </section>`;
