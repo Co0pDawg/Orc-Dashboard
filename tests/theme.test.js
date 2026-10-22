@@ -62,3 +62,10 @@ test("contrast warnings: each checked pair on its own, and one token failing two
   // 1337 ink on background.
   assert.match(warnings("leet", {"--t-ink": "#101010", "--t-bg": "#000000"})["--t-ink"], /on Background$/);
 });
+
+import {parseColor} from "../js/theme.js";
+test("parseColor accepts the common pasted forms and rejects the rest", () => {
+  for (const s of ["#282828", "282828", " #282828 ", "rgb(40, 40, 40)", "rgba(40,40,40,0.5)", "40, 40, 40", "40 40 40", "RGB(40 40 40)"]) assert.equal(parseColor(s), "#282828", s);
+  assert.equal(parseColor("#abc"), "#aabbcc");
+  for (const s of ["", "#12345", "300, 0, 0", "red", "rgb(1,2)", "#gggggg"]) assert.equal(parseColor(s), null, s);
+});

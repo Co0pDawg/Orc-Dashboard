@@ -2,7 +2,7 @@
 import {state} from "./state.js";
 import {saveThemes, saveThemeId} from "./prefs.js";
 import {esc} from "./util.js";
-import {BUILTINS, ALL_TOKENS, TOKENS, resolveTheme, cssToHex, hexToRgb, rgbToHex, rowsHtml, warnings} from "./theme.js";
+import {BUILTINS, ALL_TOKENS, TOKENS, resolveTheme, cssToHex, hexToRgb, rgbToHex, rowsHtml, warnings, parseColor} from "./theme.js";
 
 const root = document.documentElement, $ = id => document.getElementById(id);
 let draft = null, nameMode = "";
@@ -43,6 +43,7 @@ function sync(){
     r.querySelector(".th-sw").style.background = hex;
     const c = r.querySelector('input[type="color"]'); if (c !== document.activeElement) c.value = hex;
     r.querySelectorAll("[data-ch]").forEach(n => { if (n !== document.activeElement) n.value = rgb[n.dataset.ch]; });
+    const hx = r.querySelector("[data-hex]"); if (hx && hx !== document.activeElement){ hx.value = hex; hx.removeAttribute("aria-invalid"); }
     r.querySelector("[data-warn]").textContent = w[t] ? "Low contrast: " + w[t] : "";
   });
   const custom = isCustom(draft.id);
@@ -114,10 +115,18 @@ export function initTheme(say){
   $("theme-base").addEventListener("change", e => { if (ed().hidden){ select(e.target.value); say(`Colors: ${e.target.selectedOptions[0]?.text || "Board default"}.`); } else { pick(e.target.value); select(e.target.value); rows(); } });
   ed().addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b) act(b.dataset.th, say); });
   $("theme-name").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); act("name-ok", say); } else if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); ask(""); } });
+  // Copy: focusing the value field selects it. Paste: a whole color pasted into an R, G or B field fills all three.
+  ed().addEventListener("focusin", e => { if (e.target.matches("[data-hex]")) e.target.select(); });
+  ed().addEventListener("paste", e => {
+    const n = e.target.closest("[data-ch]"); if (!n) return;
+    const hex = parseColor(e.clipboardData?.getData("text") || ""); if (!hex || !/[,\s#(]|^[0-9a-f]{6}$/i.test(e.clipboardData.getData("text").trim())) return;
+    e.preventDefault(); draft.colors[n.closest(".th-row").dataset.tok] = hex; persist(); sync();
+  });
   ed().addEventListener("input", e => {
     const row = e.target.closest(".th-row"); if (!row) return;
     let hex;
     if (e.target.type === "color") hex = e.target.value;
+    else if (e.target.matches("[data-hex]")){ hex = parseColor(e.target.value); e.target.toggleAttribute("aria-invalid", !hex); if (!hex) return; }
     else { const rgb = [...row.querySelectorAll("[data-ch]")].map(n => n.value); hex = rgbToHex(rgb); }
     draft.colors[row.dataset.tok] = hex; persist(); sync();
   });

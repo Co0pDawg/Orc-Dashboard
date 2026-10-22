@@ -306,3 +306,7 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 /* Wider while the theme editor is open, so token labels read in full. */
 .settings .menu:has(#theme-ed:not([hidden])){min-width:min(440px,calc(100vw - 32px));max-width:min(460px,calc(100vw - 32px))}
 .th-row{grid-template-columns:18px minmax(8em,1fr) 32px auto}
+.th-row{grid-template-columns:18px minmax(8em,1fr) 32px 7.5em auto}
+.th-hex{width:100%;min-width:0;font-family:var(--f-mono,monospace);font-size:12px;padding:2px 4px}
+.th-hex[aria-invalid]{outline:2px solid var(--bad,#e5484d);outline-offset:-1px}
+.settings .menu:has(#theme-ed:not([hidden])){min-width:min(520px,calc(100vw - 32px));max-width:min(540px,calc(100vw - 32px))}
