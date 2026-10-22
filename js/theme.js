@@ -35,6 +35,15 @@ export const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
 /** [r, g, b] (clamped to 0-255) to "#rrggbb". */
 export const rgbToHex = c => "#" + c.map(v => Math.max(0, Math.min(255, Math.round(Number(v) || 0))).toString(16).padStart(2, "0")).join("");
 /** A computed CSS color ("rgb(...)", "rgba(...)", "color(srgb r g b)" or "#rrggbb") as "#rrggbb", or null. */
+/** A pasted color in any common form ("#282828", "282828", "#abc", "rgb(40, 40, 40)", "40, 40, 40", "40 40 40") as "#rrggbb", or null. */
+export function parseColor(s){
+  const t = String(s ?? "").trim().toLowerCase();
+  let m = /^#?([0-9a-f]{6})$/.exec(t); if (m) return "#" + m[1];
+  m = /^#?([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(t); if (m) return "#" + m[1] + m[1] + m[2] + m[2] + m[3] + m[3];
+  m = /^(?:rgba?\()?\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*(?:[,/]\s*[\d.]+%?\s*)?\)?$/.exec(t);
+  if (m && m.slice(1, 4).every(v => Number(v) <= 255)) return rgbToHex(m.slice(1, 4));
+  return null;
+}
 export function cssToHex(s){
   s = String(s || "").trim();
   if (HEX.test(s)) return s.toLowerCase();
@@ -72,7 +81,7 @@ export function migrateTheme({theme, themes, palette, barColor}){
 /** The editor's token rows for a skin, given each token's current "#rrggbb". */
 export const rowsHtml = (skin, values) => TOKENS[skin].map(([group, rows]) => `<fieldset class="th-group"><legend>${group}</legend>${rows.map(([t, label]) => {
   const v = esc(values[t] || "#000000"), [r, g, b] = hexToRgb(values[t] || "#000000"), id = "th" + t.replace(/-/g, "_");
-  return `<div class="th-row" data-tok="${t}"><span class="th-sw" style="background:${v}"></span><label for="${id}">${label}</label><input type="color" id="${id}" value="${v}"><span class="th-rgb">${["R", "G", "B"].map((c, i) => `<input type="number" min="0" max="255" data-ch="${i}" aria-label="${label} ${c}" value="${[r, g, b][i]}">`).join("")}</span><span class="th-warn" data-warn></span></div>`;
+  return `<div class="th-row" data-tok="${t}"><span class="th-sw" style="background:${v}"></span><label for="${id}">${label}</label><input type="color" id="${id}" value="${v}"><input type="text" class="th-hex" data-hex aria-label="${label} value (paste hex or rgb)" title="Click to select and copy; paste #hex, rgb(), or R, G, B" value="${v}" spellcheck="false" autocomplete="off" maxlength="40"><span class="th-rgb">${["R", "G", "B"].map((c, i) => `<input type="number" min="0" max="255" data-ch="${i}" aria-label="${label} ${c}" value="${[r, g, b][i]}">`).join("")}</span><span class="th-warn" data-warn></span></div>`;
 }).join("")}</fieldset>`).join("");
 /** The contrast warning per foreground token: {token: "2.1:1 on Background"} for each pair under 4.5:1. */
 export function warnings(skin, values){
