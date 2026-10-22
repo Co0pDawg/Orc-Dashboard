@@ -22,6 +22,7 @@ A private claude.ai Artifact (your own, published from this repo; its URL lives 
 | `js/time/segments.js`, `entries.js`, `notes.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, each entry's Note, the scrum summary |
 | `js/time/render.js`, `controller.js` | Time page HTML strings (Day, Week, Month, entries, scrum dialog) and its controller (timeline subscription, date navigation, copy) |
 | `js/settings.js` | The Settings gear: theme, Colors, Entry rounding, Activity log fills its column, 1337 bar border color, and when a session counts as finished (the gear's Layout reset row is bound in `layout-edit.js`) |
+| `js/partials/settings-menu.js` | The Settings menu markup (static). Imported first by `main.js`, so its controls exist before other modules look them up |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
