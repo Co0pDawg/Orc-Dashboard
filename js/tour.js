@@ -8,8 +8,8 @@ export const STEPS = [
   {sel: ".sess .slot.log", title: "Activity log", text: "What happened in this session, newest first. Each dispatch's agent progress is nested under it."},
   {sel: ".sess .slot:not(.log)", title: "A ticket card", text: "Its stages, live timer and agent progress lines. The ✎ edits this card's size and place."},
   {sel: ".sess .hide-done", title: "Hide done", text: "Hides this session's finished cards, so only open work is left."},
-  {sel: '[data-go="time"]', title: "Time", text: "Time worked per ticket by day, week or month. Work Detail entries copy on click, with the Marker and Scrum there too."},
-  {sel: "#settings-menu > summary", title: "Settings", text: "Theme, colors, entry rounding, the log fill and layout resets. Take the tour again from here."}
+  {sel: '[data-go="time"]', title: "Time", text: "This tab beside the name opens time worked per ticket by day, week or month. Work Detail entries copy on click, with the Marker and Scrum there too."},
+  {sel: "#settings-menu > summary", title: "Settings", text: "Theme and colors for every page, then this page's own settings. Take the tour again from here."}
 ];
 
 /** The steps whose target is on the page, given the selectors that are present. */

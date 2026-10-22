@@ -1,5 +1,6 @@
 // Every per-viewer preference, and the only module that touches localStorage. Storage can throw or come back
 // empty (private windows, blocked site data), so every access is wrapped and the board works without it.
+import {cleanThemes, migrateTheme} from "./theme.js";
 const store = {
   get(k){ try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v){ try { localStorage.setItem(k, v); } catch {} },
@@ -51,17 +52,19 @@ export const loadDoneWhen = () => store.get("board.doneWhen") === "pr" ? "pr" : 
 /** Saves the finished-session rule. */
 export const saveDoneWhen = v => store.set("board.doneWhen", v);
 
-// 1337 status bar border color, picked by the viewer; it also outlines and tints the active tab.
-/** The viewer's own status bar color, or null to follow the color scheme. */
-export const loadBarColor = () => /^#[0-9a-f]{6}$/i.test(store.get("board.barColor") || "") ? store.get("board.barColor") : null;
-/** Saves the status bar color; null goes back to following the color scheme. */
-export const saveBarColor = c => c ? store.set("board.barColor", c) : store.del("board.barColor");
-
-// The color scheme (an id from js/palettes.js), or "" for the board's own colors.
-/** The saved color scheme id. */
-export const loadPalette = () => store.get("board.palette") || "";
-/** Saves the color scheme id. */
-export const savePalette = id => id ? store.set("board.palette", id) : store.del("board.palette");
+// Themes: board.themes holds the viewer's custom themes, board.theme the selected id (a built-in palette id, "" for the
+// board's own colors, or a custom id). The older board.palette / board.barColor are migrated once, then removed.
+/** {theme, themes}: the selected theme id and the custom themes, migrating the old color prefs on first read. */
+export function loadThemes(){
+  let themes = []; try { themes = cleanThemes(JSON.parse(store.get("board.themes"))); } catch {}
+  const r = migrateTheme({theme: store.get("board.theme"), themes, palette: store.get("board.palette") || "", barColor: store.get("board.barColor")});
+  if (r.migrated){ saveThemes(r.themes); saveThemeId(r.theme); store.del("board.palette"); store.del("board.barColor"); }
+  return {theme: r.theme, themes: r.themes};
+}
+/** Saves the custom themes. */
+export const saveThemes = themes => store.set("board.themes", JSON.stringify(themes));
+/** Saves the selected theme id. */
+export const saveThemeId = id => store.set("board.theme", id);
 
 // Entry rounding in minutes (1 = Exact); it changes the Time page's entries only, never the drawn times.
 /** The entry rounding unit: 1, 5, 10, 15 or 30 minutes (default 15). */
