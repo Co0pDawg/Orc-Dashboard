@@ -36,7 +36,7 @@ export function leetHead(sess, cards){
   const s = sess.data, p = progress(cards);
   const width = 24, fill = p.all ? Math.round(p.done / p.all * width) : 0;
   return `<div class="head">
-      <div class="prompt"><b>orch@board</b>:<i>~/${esc(sess.id)}</i>$ watch board</div>
+      <div class="prompt"><b>orc@board</b>:<i>~/${esc(sess.id)}</i>$ watch board</div>
       <h1 class="title">${esc(s.title)}</h1>
       <div class="facts">
         ${s.ticket ? `<span>ticket <a href="${esc(adoUrl(s.ticket, s.ado))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}

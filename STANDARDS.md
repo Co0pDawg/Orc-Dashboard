@@ -1,6 +1,6 @@
 # Board code standards
 
-Rules for every change to the Orchestration Board. A change that breaks one either fixes it or says why in its own comment.
+Rules for every change to Orc-istrator, the orchestration board. A change that breaks one either fixes it or says why in its own comment.
 
 ## Structure
 
