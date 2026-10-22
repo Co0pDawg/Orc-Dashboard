@@ -169,3 +169,8 @@
 .leet .search-list li{color:var(--t-ink)}
 .leet .search-list li[aria-selected="true"],.leet .search-list li[role="option"]:hover{background:color-mix(in srgb,var(--t-bar) 14%,transparent);color:var(--t-bar)}
 .leet .search-list .m,.leet .search-list .note{color:var(--t-dim)}
+.leet .tour-ring{outline:1px solid var(--t-bar);border-radius:var(--t-r)}
+.leet .tour-pop{background:var(--t-pane);color:var(--t-ink);border:1px solid var(--t-bar);border-radius:var(--t-r)}
+.leet .tour-n{color:var(--t-green);font-weight:700}
+.leet .tour-pop h2{font-size:13px;color:var(--t-ink)}
+.leet .tour-btns .btn{min-height:24px}

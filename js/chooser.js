@@ -59,6 +59,8 @@ function openResult(sid){
   const el = state.views.get(sid)?.el; if (el){ el.tabIndex = -1; el.focus({preventScroll: true}); }
   say(`Opened ${sessionTitle(sid)}, ${fmtDay(d)}.`);
 }
+// Replays the tour (js/tour-ui.js binds every [data-tour]); the gear goes back between the clock and this.
+const helpBtn = `<button type="button" class="btn tour-help" data-tour aria-label="Take the tour" title="Take the tour">?</button>`;
 // The bar shell is built once per skin and only the chips re-render, so live data never closes an open color picker.
 /** Renders the chooser bar and its chips, restoring chip focus. */
 export function renderChooser(){
@@ -70,8 +72,8 @@ export function renderChooser(){
     gear.remove();
     chooser.dataset.skin = skin;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span>${searchBox(true)}<div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span></nav>`
-      : `<span class="brand">Orchestration Board</span>${searchBox(false)}<div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>`;
+      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span>${searchBox(true)}<div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span>${helpBtn}</nav>`
+      : `<span class="brand">Orchestration Board</span>${searchBox(false)}<div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>${helpBtn}`;
     $("clock").after(gear);
     focused?.focus();
   }
