@@ -10,7 +10,19 @@ const span = (ticket, card, agent, a, b) => ({ticket, card, agent, start: L(a), 
 test("a driven entry joins every same-ticket block it overlaps, in time order, deduplicated", () => {
   const blocks = [block("PET-17994", "18:00", "18:30", "Second."), block("PET-17994", "17:30", "18:00", "Drawer."), block("PET-17994", "18:15", "18:30", "Second."),
     block("PET-17994", "18:30", "19:00", "Touches only.")];
-  assert.deepEqual(entryNotes([entry("PET-17994", "17:45", "18:30")], {blocks}), ["Drawer.; Second."]);
+  assert.deepEqual(entryNotes([entry("PET-17994", "17:45", "18:30")], {blocks}), ["Drawer; Second."]);
+});
+
+test("with no overlapping block the nearest same-ticket block is the note, the earlier on a tie; notes[ticket] only when the ticket has none", () => {
+  const blocks = [block("PET-17994", "14:00", "14:30", "Before."), block("PET-17994", "16:15", "17:00", "After."), block("PET-18025", "15:00", "16:00", "Other ticket.")];
+  const notes = {"PET-17994": "Day's first row.", "PET-17983": "Ticket note."};
+  const r = entryNotes([entry("PET-17994", "15:00", "15:15"), entry("PET-17994", "15:45", "16:00"), entry("PET-17994", "15:15", "15:30"), entry("PET-17983", "15:00", "15:15")], {blocks, notes});
+  assert.deepEqual(r, ["Before.", "After.", "Before.", "Ticket note."]);
+});
+
+test("joined block texts lose their inner periods; the note ends in one only when the last text did", () => {
+  const blocks = [block("PET-1", "09:00", "09:15", "Built A."), block("PET-1", "09:15", "09:30", "Built B"), block("PET-1", "09:30", "09:45", "Built C.")];
+  assert.deepEqual(entryNotes([entry("PET-1", "09:00", "09:45"), entry("PET-1", "09:00", "09:30")], {blocks}), ["Built A; Built B; Built C.", "Built A; Built B"]);
 });
 
 test("a block on another ticket is ignored and the ticket note is the fallback, else empty", () => {
