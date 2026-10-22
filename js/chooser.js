@@ -11,7 +11,6 @@ function chipsHtml(){
   const skin = state.skin, showDone = state.showDone;
   const vis = visible(), live = liveNow(), multi = vis.length > 1, done = doneOnDay();
   const doneBtn = done ? `<span class="chip show-done${showDone ? " on" : ""}"><button type="button" class="chip-main" data-show-done aria-pressed="${showDone}" title="${showDone ? "Hide" : "Show"} finished sessions">${skin === "leet" ? `finished:${done}` : `Show finished (${done})`}</button></span>` : "";
-  if (!multi && skin !== "leet") return doneBtn && `<div class="chips" role="group" aria-label="Sessions">${doneBtn}</div>`;
   return `<div class="chips" role="group" aria-label="Sessions">${vis.map((x, i) => {
     const on = live.includes(x.id), t = x.data.title || x.id, mark = doneNow(x) ? "✓ " : x.data.scheduledAt && !x.data.completed && /^scheduled$/i.test(x.data.status || "") ? "⏱ " : "";
     const label = skin === "leet" ? `<span class="n">${i}</span> ${mark}${esc(t)}` : mark + esc(t);
