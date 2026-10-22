@@ -28,6 +28,7 @@ export const settingsMenuHtml = `
       <label><input type="radio" name="done-when" id="done-when-pr" value="pr"> Its pull request is completed</label>
       <small>Until then it stays on the chips and expanded, with its PR status in the header. Sessions without a recorded PR finish when the orchestrator marks them Done.</small>
     </fieldset>
+    <div class="opt"><button type="button" class="btn" data-tour>Take the tour</button></div>
   </div>
 `;
 
