@@ -67,8 +67,14 @@ export function cardFoldBtn(id, name, min, leet){
   return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"} · Shift-click for the whole row">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
 }
 /** The ✎ toggle on a pane's header: edit mode for this pane only; aria-pressed carries whether it is on. */
+/** True when a pane is in edit mode: its own ✎ is on, or its session's ✎ is (which opens every pane in that session). */
+export function isEditing(id){
+  if (state.editing.has(id)) return true;
+  const sid = isLog(id) ? id.slice(4) : (state.cards.find(c => c._id === id) || {}).session;
+  return !!sid && state.editSess.has(sid);
+}
 export function editBtn(id, name, leet){
-  return `<button type="button" class="more pedit" data-edit="${esc(id)}" aria-pressed="${state.editing.has(id)}" aria-label="Edit layout of ${esc(name)}" title="Edit layout">${leet ? "[✎]" : "✎"}</button>`;
+  return `<button type="button" class="more pedit" data-edit="${esc(id)}" aria-pressed="${isEditing(id)}" aria-label="Edit layout of ${esc(name)}" title="Edit layout">${leet ? "[✎]" : "✎"}</button>`;
 }
 /** The fixed label of a session's Hide done button; aria-pressed carries whether it is on. */
 export const hideDoneText = (n, leet) => leet ? `[hide done:${n}]` : `Hide done (${n})`;
@@ -89,7 +95,7 @@ export function editBar(id, fixedH = false){
 }
 /** A pane's edit bar and resize corner, both "" unless this pane's ✎ is on; fixedH drops the height controls and the corner. */
 export function editChrome(id, fixedH = false){
-  if (!state.editing.has(id)) return {bar: "", corner: ""};
+  if (!isEditing(id)) return {bar: "", corner: ""};
   return {bar: editBar(id, fixedH), corner: fixedH ? "" : `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>`};
 }
 /** The stack's empty state: the day's sessions all finished and hidden, nothing touched that day, or no sessions yet. */
