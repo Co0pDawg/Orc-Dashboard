@@ -14,12 +14,10 @@ export const settingsMenuHtml = `
     <div class="theme-ed" id="theme-ed" hidden>
       <div data-theme-rows></div>
       <div class="th-acts">
-        <button type="button" class="btn" data-th="save">Save</button>
         <button type="button" class="btn" data-th="new">Save as new</button>
         <button type="button" class="btn" data-th="rename">Rename</button>
         <button type="button" class="btn" data-th="delete">Delete</button>
         <button type="button" class="btn" data-th="reset">Reset to base</button>
-        <button type="button" class="btn" data-th="cancel">Cancel</button>
       </div>
       <div class="th-name" data-th-name hidden><label for="theme-name">Name</label><input type="text" id="theme-name" maxlength="40" autocomplete="off"><button type="button" class="btn" data-th="name-ok">OK</button><button type="button" class="btn" data-th="name-no">Back</button></div>
       <div class="th-name" data-th-del hidden><span>Delete this theme?</span><button type="button" class="btn" data-th="del-ok">Delete</button><button type="button" class="btn" data-th="del-no">Keep</button></div>

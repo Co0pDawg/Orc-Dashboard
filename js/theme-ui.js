@@ -5,7 +5,7 @@ import {esc} from "./util.js";
 import {BUILTINS, ALL_TOKENS, TOKENS, resolveTheme, cssToHex, hexToRgb, rgbToHex, rowsHtml, warnings} from "./theme.js";
 
 const root = document.documentElement, $ = id => document.getElementById(id);
-let draft = null, before = "", nameMode = "";
+let draft = null, nameMode = "";
 const skin = () => state.skin === "leet" ? "leet" : "sleek";
 const isCustom = id => state.themes.some(t => t.id === id);
 
@@ -45,19 +45,26 @@ function sync(){
     r.querySelectorAll("[data-ch]").forEach(n => { if (n !== document.activeElement) n.value = rgb[n.dataset.ch]; });
     r.querySelector("[data-warn]").textContent = w[t] ? "Low contrast: " + w[t] : "";
   });
-  const custom = isCustom(draft.id), dirty = JSON.stringify(draft.colors) !== JSON.stringify(resolveTheme(state.themes, draft.id).colors);
-  const save = ed().querySelector('[data-th="save"]');
-  save.textContent = custom ? "Save" : "Use theme"; save.disabled = !custom && dirty;
-  save.title = save.disabled ? "Built-in themes are read-only: save your changes as a new theme" : "";
+  const custom = isCustom(draft.id);
   ed().querySelectorAll('[data-th="rename"],[data-th="delete"]').forEach(b => { b.hidden = !custom; });
 }
 function preview(){ apply(resolveTheme(state.themes, draft.id).palette, draft.colors); }
 function pick(id){ draft = {id, colors: {...resolveTheme(state.themes, id).colors}}; preview(); }
 function select(id){ state.theme = id; saveThemeId(id); applyTheme(); }
-function open(){ before = state.theme; pick(state.theme); fillBase(); ed().hidden = false; $("settings-menu").querySelector("[data-theme-edit]").setAttribute("aria-expanded", "true"); rows(); }
-function close(revert){
+// Every edit saves at once: a custom theme takes the new colors; a built-in is copied first to "<name> (custom)",
+// so built-ins never change. "Reset to base" undoes the edits.
+function persist(){
+  if (!isCustom(draft.id)){
+    const cur = BUILTINS.find(b => b.id === draft.id), nid = "c" + Date.now().toString(36);
+    state.themes = [...state.themes, {id: nid, name: `${cur?.name || "Board default"} (custom)`, base: draft.id, colors: {}}];
+    draft.id = nid; fillBase();
+  }
+  state.themes = state.themes.map(t => t.id === draft.id ? {...t, colors: {...draft.colors}} : t);
+  saveThemes(state.themes); select(draft.id);
+}
+function open(){ pick(state.theme); fillBase(); ed().hidden = false; $("settings-menu").querySelector("[data-theme-edit]").setAttribute("aria-expanded", "true"); rows(); }
+function close(){
   if (ed().hidden) return;
-  if (revert){ state.theme = before; applyTheme(); }
   ed().hidden = true; draft = null; ask(""); fillBase();
   $("settings-menu").querySelector("[data-theme-edit]").setAttribute("aria-expanded", "false");
 }
@@ -74,12 +81,7 @@ function ask(mode){
 }
 function act(a, say){
   const id = draft.id;
-  if (a === "cancel"){ close(true); $("settings-menu").querySelector("[data-theme-edit]").focus(); say("Colors restored."); return; }
-  if (a === "reset"){ draft.colors = {}; preview(); rows(); say("Back to the base colors."); return; }
-  if (a === "save"){
-    if (isCustom(id)){ state.themes = state.themes.map(t => t.id === id ? {...t, colors: {...draft.colors}} : t); saveThemes(state.themes); }
-    select(id); before = id; sync(); say("Theme saved."); return;
-  }
+  if (a === "reset"){ draft.colors = isCustom(id) ? {...resolveTheme(state.themes, state.themes.find(t => t.id === id).base || "").colors} : {}; if (isCustom(id)) persist(); else preview(); rows(); say("Back to the base colors."); return; }
   if (a === "new" || a === "rename" || a === "delete"){ ask(a); return; }
   if (a === "name-no" || a === "del-no"){ ask(""); return; }
   if (a === "name-ok"){
@@ -90,13 +92,13 @@ function act(a, say){
       state.themes = [...state.themes, {id: nid, name, base: resolveTheme(state.themes, id).palette, colors: {...draft.colors}}];
       draft.id = nid;
     }
-    saveThemes(state.themes); select(draft.id); before = draft.id; ask(""); fillBase(); sync();
+    saveThemes(state.themes); select(draft.id); ask(""); fillBase(); sync();
     say(nameMode === "rename" ? `Renamed to ${name}.` : `Saved ${name}.`); return;
   }
   if (a === "del-ok"){
     const base = state.themes.find(t => t.id === id)?.base || "";
     state.themes = state.themes.filter(t => t.id !== id); saveThemes(state.themes);
-    if (state.theme === id || before === id){ select(isCustom(base) || BUILTINS.some(b => b.id === base) ? base : ""); before = state.theme; }
+    if (state.theme === id) select(isCustom(base) || BUILTINS.some(b => b.id === base) ? base : "");
     ask(""); pick(state.theme); fillBase(); rows(); say("Theme deleted.");
   }
 }
@@ -105,11 +107,11 @@ function act(a, say){
 export function initTheme(say){
   applyTheme(); fillBase();
   const menu = $("settings-menu");
-  menu.querySelector("[data-theme-edit]").addEventListener("click", () => { if (ed().hidden) open(); else close(true); });
-  // Closing the menu with unsaved edits drops them, the same as Cancel.
-  menu.addEventListener("toggle", () => { if (!menu.open) close(true); });
+  menu.querySelector("[data-theme-edit]").addEventListener("click", () => { if (ed().hidden) open(); else close(); });
+  // Edits are already saved, so closing the menu just folds the editor away.
+  menu.addEventListener("toggle", () => { if (!menu.open) close(); });
   // Collapsed, the select is the theme picker (applies and saves); expanded, it picks the base the edits start from.
-  $("theme-base").addEventListener("change", e => { if (ed().hidden){ select(e.target.value); say(`Colors: ${e.target.selectedOptions[0]?.text || "Board default"}.`); } else { pick(e.target.value); rows(); } });
+  $("theme-base").addEventListener("change", e => { if (ed().hidden){ select(e.target.value); say(`Colors: ${e.target.selectedOptions[0]?.text || "Board default"}.`); } else { pick(e.target.value); select(e.target.value); rows(); } });
   ed().addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b) act(b.dataset.th, say); });
   $("theme-name").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); act("name-ok", say); } else if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); ask(""); } });
   ed().addEventListener("input", e => {
@@ -117,7 +119,7 @@ export function initTheme(say){
     let hex;
     if (e.target.type === "color") hex = e.target.value;
     else { const rgb = [...row.querySelectorAll("[data-ch]")].map(n => n.value); hex = rgbToHex(rgb); }
-    draft.colors[row.dataset.tok] = hex; preview(); sync();
+    draft.colors[row.dataset.tok] = hex; persist(); sync();
   });
   // A skin switch from inside the menu swaps the token list.
   $("skin-toggle").addEventListener("change", () => { if (!ed().hidden) rows(); });
