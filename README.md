@@ -108,6 +108,12 @@ The page is `orchestration-board.html`; the Artifact skeleton wraps it, so it ha
 
 The Artifact tool reads `files` sources only from a session working directory, not from this folder. So copy `orchestration-board.html`, `css/` and `js/` into a working-dir folder first, publish with that folder as `root` and `url` set to the board, then confirm the 16 published paths with `action: list, scope: files`. The page is served as `index.html`.
 
+## Tour
+
+A first-time viewer gets a short guided tour: each step outlines a real control and explains it. It starts once, when the `board.toured` pref is unset, and finishing, skipping or closing it sets the flag (`js/prefs.js`). Settings > Take the tour and the `?` beside the gear replay it. A step whose control is not on the page (no session yet, the Time page open) is skipped.
+
+To edit the copy, change the `STEPS` array in `js/tour.js` (selector, title, one or two sentences under 25 words each); `tests/tour.test.js` checks those limits. The spotlight and popover live in `js/tour-ui.js`.
+
 ## Color schemes
 
 Settings > Colors switches the board to one of the schemes in `dev/palettes.json`; each has a light and a dark Sleek variant (following the viewer's light or dark mode) and a 1337 variant. `npm run palettes` turns that file into `css/palettes.css` and `js/palettes.js`. Any text color under 4.5:1 is moved toward white (dark) or black (light) just far enough to pass, which keeps its hue; the script prints each change, and `tests/palettes.test.js` fails if a generated text color reads under 4.5:1. Status colors keep their original hue for fills and borders; their `--ok-text`, `--run-text` and `--bad-text` twins are used for text. The 1337 bar border follows the scheme's green until the viewer picks a color ("Match colors" goes back).

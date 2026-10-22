@@ -92,3 +92,9 @@ export const saveHideDone = f => store.set("board.hideDone", JSON.stringify(f));
 export const loadEntriesFold = () => store.get("board.entriesFold") === "1";
 /** Saves the Entries fold. */
 export const saveEntriesFold = on => store.set("board.entriesFold", on ? "1" : "0");
+
+// The guided tour has been finished, skipped or closed once; it then starts only from Settings or the ? button.
+/** Whether the viewer has seen the tour. */
+export const loadToured = () => store.get("board.toured") === "1";
+/** Marks the tour as seen. */
+export const saveToured = () => store.set("board.toured", "1");

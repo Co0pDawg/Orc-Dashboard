@@ -9,6 +9,7 @@ import {renderChooser, initChooser} from "./chooser.js";
 import {initLayoutEdit} from "./layout-edit.js";
 import {initSettings} from "./settings.js";
 import {initTime, showTime, renderTime} from "./time/controller.js";
+import {initTour, autoTour} from "./tour-ui.js";
 
 function applySkin(){
   const skin = state.skin;
@@ -43,7 +44,7 @@ function rollDay(){
 // window.claude.use("db") resolves after first paint, so the empty state renders before any data arrives.
 async function boot(){
   state.db = await (window.claude?.use?.("db") ?? null);
-  if (!state.db) return;
+  if (!state.db){ autoTour(); return; }
   state.db.collection("sessions").orderBy("updated", "desc").onSnapshot(snap => {
     state.sessions = snap.docs.map(d => ({id: d.id, data: d.data()}));
     if (!state.sessions.length) return;
@@ -58,6 +59,8 @@ async function boot(){
     state.cards = snap.docs.map(d => ({_id: d.id, ...d.data()}));
     if (chipKey() !== before) renderChooser();
     render(); renderTime();
+    // ponytail: a short wait lets the per-session card subscriptions paint before the first-visit tour looks for targets.
+    setTimeout(autoTour, 400);
   }, () => {});
   try { route(); } catch (err){ console.error("Orchestration Board: route", err); }
 }
@@ -68,6 +71,7 @@ toggle.addEventListener("change", () => { state.skin = toggle.checked ? "leet" :
 initLayoutEdit();
 initSettings();
 initTime();
+initTour();
 document.querySelector(".views").addEventListener("click", e => {
   const b = e.target.closest("[data-go]"); if (!b) return;
   try { location.hash = pageHash(b.dataset.go, state.dayPicked && state.day, today()); } catch {}
