@@ -44,9 +44,10 @@ export const loadCardFold = () => { try { const f = JSON.parse(store.get("board.
 /** Saves the per-card minimize choices. */
 export const saveCardFold = fold => store.set("board.cardFold", JSON.stringify(fold));
 
-// When a session counts as finished: "fable" (Fable marks it Done) or "pr" (its pull request is completed).
+// When a session counts as finished: "orchestrator" (the orchestrator marks it Done) or "pr" (its pull request is completed);
+// anything else, including the older "fable", reads as the default.
 /** The finished-session rule. */
-export const loadDoneWhen = () => store.get("board.doneWhen") === "pr" ? "pr" : "fable";
+export const loadDoneWhen = () => store.get("board.doneWhen") === "pr" ? "pr" : "orchestrator";
 /** Saves the finished-session rule. */
 export const saveDoneWhen = v => store.set("board.doneWhen", v);
 

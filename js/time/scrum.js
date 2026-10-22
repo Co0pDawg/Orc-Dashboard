@@ -1,6 +1,6 @@
 // Pure: builds the morning-meeting summary of one day from segments and the board data. No DOM, no storage, no model.
 import {normTicket, cardTicket} from "./segments.js";
-import {stagesOf, cardState, fableDone} from "../model.js";
+import {stagesOf, cardState, orchestratorDone} from "../model.js";
 
 const t = e => Date.parse(e.at);
 // Process talk (agents, reviews, commits, PR housekeeping, test runs, reading and filing) is not what the work was.
@@ -77,7 +77,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
     return summary ? `${label}: ${summary}` : label;
   });
 
-  const finished = s => fableDone(s) && (!s.data.completed || Date.parse(s.data.completed) < dayEnd);
+  const finished = s => orchestratorDone(s) && (!s.data.completed || Date.parse(s.data.completed) < dayEnd);
   const open = sessions.filter(s => !finished(s) && (!s.data.started || Date.parse(s.data.started) < dayEnd));
   const today = open.map(s => {
     const nextStage = cards.filter(c => c.session === s.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap(stagesOf).find(x => x.state === "pending");
