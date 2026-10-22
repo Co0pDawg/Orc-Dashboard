@@ -21,6 +21,8 @@ function chipsHtml(){
 }
 // The day control: the chips show the sessions touched on this day. It lives in the shell, so a snapshot never closes its date picker.
 const dayNav = leet => `<span class="tnav day-nav" role="group" aria-label="Day"><button type="button" class="btn" data-dnav="-1" aria-label="Previous day" title="Previous day">◀</button><input type="date" data-dday aria-label="Go to date"><button type="button" class="btn" data-dnav="1" aria-label="Next day" title="Next day">▶</button><button type="button" class="btn" data-dnav="0" title="Back to today">${leet ? "today" : "Today"}</button></span>`;
+// Replays the tour (js/tour-ui.js binds every [data-tour]); the gear goes back between the clock and this.
+const helpBtn = `<button type="button" class="btn tour-help" data-tour aria-label="Take the tour" title="Take the tour">?</button>`;
 // The bar shell is built once per skin and only the chips re-render, so live data never closes an open color picker.
 /** Renders the chooser bar and its chips, restoring chip focus. */
 export function renderChooser(){
@@ -32,8 +34,8 @@ export function renderChooser(){
     gear.remove();
     chooser.dataset.skin = skin;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span><div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span></nav>`
-      : `<span class="brand">Orchestration Board</span><div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>`;
+      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span><div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span>${helpBtn}</nav>`
+      : `<span class="brand">Orchestration Board</span><div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>${helpBtn}`;
     $("clock").after(gear);
     focused?.focus();
   }

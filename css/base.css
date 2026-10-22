@@ -246,3 +246,12 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 /* Scrollbar on the left: the box runs right-to-left (browsers put its scrollbar on the left); row-reverse puts the axis and columns back in reading order. */
 .tl{direction:rtl;flex-direction:row-reverse}
 .tl > *{direction:ltr}
+
+/* the guided tour (js/tour-ui.js): a ring that dims everything around its target, and a popover that stays on screen */
+.tour-ring{position:fixed;z-index:60;pointer-events:none;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.tour-pop{position:fixed;z-index:61;width:min(320px,calc(100vw - 16px));padding:12px 14px;display:grid;gap:6px}
+.tour-pop h2{margin:0;font-size:15px}
+.tour-pop p{margin:0}
+.tour-btns{display:flex;gap:6px;justify-content:flex-end}
+.tour-btns [hidden]{display:none}
+@media (prefers-reduced-motion: no-preference){.tour-ring,.tour-pop{transition:top .15s,left .15s,width .15s,height .15s}}

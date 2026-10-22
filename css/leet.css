@@ -160,3 +160,8 @@
 .leet .ent-top .waiting{color:var(--t-dim)}
 .leet .ent-strip{color:var(--t-dim);font-family:var(--t-mono)}
 .leet .sched b{color:var(--t-amber)}
+.leet .tour-ring{outline:1px solid var(--t-bar);border-radius:var(--t-r)}
+.leet .tour-pop{background:var(--t-pane);color:var(--t-ink);border:1px solid var(--t-bar);border-radius:var(--t-r)}
+.leet .tour-n{color:var(--t-green);font-weight:700}
+.leet .tour-pop h2{font-size:13px;color:var(--t-ink)}
+.leet .tour-btns .btn{min-height:24px}
