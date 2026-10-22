@@ -300,3 +300,6 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
   .leet{--bar-row:26px}
   .bar-row2 .chip-slot{display:block;flex:1 1 auto;min-width:0}
 }
+.th-exp .chev{display:inline-block;transition:transform .12s}
+.th-exp[aria-expanded="true"] .chev{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.th-exp .chev{transition:none}}
