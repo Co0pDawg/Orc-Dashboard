@@ -9,9 +9,9 @@ export const settingsMenuHtml = `
       <span class="opt-h">Theme</span>
       <label class="skin" for="skin-toggle"><span id="lbl-sleek">Sleek</span><input type="checkbox" role="switch" id="skin-toggle" aria-label="Terminal (1337) look"><span id="lbl-leet">1337</span></label>
     </div>
-    <div class="opt"><button type="button" class="btn" data-theme-edit aria-expanded="false" aria-controls="theme-ed">Customize colors</button></div>
+    <label class="opt pick" for="theme-base"><span class="opt-h">Colors</span><select id="theme-base"></select></label>
+    <div class="opt"><button type="button" class="btn th-exp" data-theme-edit aria-expanded="false" aria-controls="theme-ed"><span class="chev" aria-hidden="true">▸</span> Customize colors</button></div>
     <div class="theme-ed" id="theme-ed" hidden>
-      <label class="opt pick" for="theme-base"><span class="opt-h">Base</span><select id="theme-base"></select></label>
       <div data-theme-rows></div>
       <div class="th-acts">
         <button type="button" class="btn" data-th="save">Save</button>
