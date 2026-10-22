@@ -57,7 +57,7 @@ async function boot(){
     if (chipKey() !== before) renderChooser();
     render(); renderTime();
   }, () => {});
-  route();
+  try { route(); } catch (err){ console.error("Orchestration Board: route", err); }
 }
 
 initChooser();
