@@ -6,6 +6,7 @@ import {saveSkin, saveShown} from "./prefs.js";
 import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay} from "./board.js";
 import {hashDay, pageHash} from "./util.js";
 import {renderChooser, initChooser, openSearch} from "./chooser.js";
+import {keepOpened} from "./search.js";
 import {initLayoutEdit} from "./layout-edit.js";
 import {initSettings} from "./settings.js";
 import {initTime, showTime, renderTime} from "./time/controller.js";
@@ -27,6 +28,8 @@ function route(){
   const h = location.hash, m = /\btime(?:-(week|month))?/.exec(h), time = !!m;
   // A dated hash picks the day; plain "#board" is today; plain "#time" keeps the shared day (today on a fresh load).
   setDay(hashDay(h) || (time && state.day) || today());
+  // An opened search result stays pinned only while the Board stays on its day (its own hash write lands here too).
+  if (time || !keepOpened(state.opened, state.day, state.shown)) state.opened = null;
   document.body.dataset.view = time ? "time" : "board";
   document.querySelectorAll("[data-go]").forEach(b => { if ((b.dataset.go === "time") === time) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   // Time may have moved the day, and the stack's logs cannot be measured behind Time, so the board renders on the way back.

@@ -21,7 +21,7 @@ export function setDay(d){ state.day = d; state.dayPicked = d !== today(); }
 const onDay = s => touchedOn(s, state.day, state.cards), past = () => state.day < today();
 /** Sessions offered on the chips right now: those touched on the selected day. */
 export const visible = () => {
-  const v = visibleSessions(state.sessions, state.showDone, state.doneWhen, onDay, past()), o = state.opened && state.sessions.find(s => s.id === state.opened);
+  const v = visibleSessions(state.sessions, state.showDone, state.doneWhen, onDay, past()), o = state.opened && state.sessions.find(s => s.id === state.opened.id);
   return o && onDay(o) && !v.includes(o) ? v.concat(o) : v;
 };
 /** The Show finished count for the selected day. */
