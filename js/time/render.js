@@ -99,11 +99,11 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
 // A value is its own copy button; a missing value (a needs-a-ticket Ticket) is plain text, not clickable.
 const field = (k, v, extra = "") => `<div class="fld"><span class="k">${k}</span>${v ? `<button type="button" class="v cv" data-copy="${esc(v)}" title="Click to copy" aria-label="Copy ${k} ${esc(v)}">${esc(v)}</button>` : `<span class="v">${extra}</span>`}</div>`;
 
-/** The Entries panel: one Work Detail-shaped entry per row, each value click-to-copy, totals and Not entered. */
-export function entriesHtml(result, {date, notes = {}, flags = {}} = {}){
+/** The Entries panel: one Work Detail-shaped entry per row, each value click-to-copy, totals and Not entered; notes[i] is entry i's Note. */
+export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
   const rows = list.map((e, i) => {
-    const f = (e.ticket && flags && flags[e.ticket]) || {}, note = (e.ticket && notes && notes[e.ticket]) || "", id = `note-${esc(date)}-${i}`;
+    const f = (e.ticket && flags && flags[e.ticket]) || {}, note = (notes && notes[i]) || "", id = `note-${esc(date)}-${i}`;
     return `<li class="entry ${tkClass(e.ticket)}" data-at="${ms(e.start)}" data-to="${ms(e.end)}">
       <div class="ent-top"><b>${esc(label(e.ticket))}</b><span>${e.waiting ? `<em class="waiting" title="Agent time while you were not driving">waiting</em> · ` : ""}${hm12(e.start)} to ${hm12(e.end)} · ${dur(e.minutes)}</span></div>
       ${field("Ticket", e.ticket || "", `<em class="needs">needs a ticket</em>`)}
