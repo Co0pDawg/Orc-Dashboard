@@ -1,4 +1,6 @@
 // The page's only entry: binds every controller, paints the empty state, then subscribes to the db (read-only).
+// First: the partial fills the Settings menu before any module looks up its controls.
+import "./partials/settings-menu.js";
 import {state} from "./state.js";
 import {saveSkin, saveShown} from "./prefs.js";
 import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay} from "./board.js";

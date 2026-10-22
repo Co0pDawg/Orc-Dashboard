@@ -41,7 +41,9 @@ test("the pane pencil toggles per pane in both skins, with a 1337 bracket face",
 
 test("Settings holds the Layout reset row, and the global Customize layout button is gone", () => {
   const html = readFileSync(new URL("../orchestration-board.html", import.meta.url), "utf8");
-  const at = html.indexOf('id="settings-menu"'), gear = html.slice(at, html.indexOf("</details>", at));
+  // The menu lives in its partial; the page keeps only the empty <details id="settings-menu"> shell.
+  const gear = readFileSync(new URL("../js/partials/settings-menu.js", import.meta.url), "utf8");
+  assert.match(html, /<details class="pop settings" id="settings-menu">/);
   assert.match(gear, /<span class="opt-h" id="layout-h">Layout<\/span>/);
   for (const r of ["order", "size", "all"]) assert.match(gear, new RegExp(`data-reset="${r}"`));
   assert.doesNotMatch(html, /id="(customize|reset-menu|layout-bar|controls)"/);
