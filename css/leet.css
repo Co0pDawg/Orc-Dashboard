@@ -14,6 +14,7 @@
 .leet .bar-color input{border-color:var(--t-faint);border-radius:2px}
 .leet .opt select{font-family:var(--t-mono);background:var(--t-pane);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
 .leet .status .gear{min-height:24px;padding:0 6px}
+.leet .status .day-nav .btn,.leet .status .day-nav input{min-height:24px;padding:0 6px}
 .leet .chips{gap:4px 8px}
 .leet .chip{border:1px solid var(--t-faint);border-radius:2px;color:var(--t-dim)}
 .leet .chip:hover{border-color:var(--t-dim);color:var(--t-ink)}

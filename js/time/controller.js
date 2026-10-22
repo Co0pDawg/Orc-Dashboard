@@ -1,8 +1,8 @@
-// The Time page: subscribes to timeline/<date> docs and the cards collection, computes each day with the pure
+// The Time page: subscribes to timeline/<date> docs, reads the cards main.js subscribes to, computes each day with the pure
 // js/time modules, renders Day, Week or Month into #time-body, and opens the scrum dialog. Read-only: nothing here writes the db.
 import {state} from "../state.js";
 import {saveEntryLine, saveEntriesFold} from "../prefs.js";
-import {$, say} from "../board.js";
+import {$, say, setDay} from "../board.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
 import {entryNotes} from "./notes.js";
@@ -10,7 +10,8 @@ import {scrumSummary, ticketTitles} from "./scrum.js";
 import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
-const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: "", restoring: false};
+// The date is the board's shared day (state.day), so a Time step moves the Board's chips and the Board's control moves Time.
+const T = {view: "day", get date(){ return state.day; }, set date(d){ setDay(d); }, docs: new Map(), key: "", stop: null, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: "", restoring: false};
 const monthOf = date => date.slice(0, 7);
 const lastOfMonth = date => { const [y, m] = date.split("-").map(Number); return ymd(new Date(y, m, 0)); };
 /** The first and last date the current view shows. */
@@ -22,10 +23,6 @@ const active = () => document.body.dataset.view === "time";
 // One subscription per shown range (a day, a week or a month), replaced when the range changes.
 function subscribe(){
   if (!state.db) return;
-  if (!T.cardsOn){
-    T.cardsOn = true;
-    state.db.collection("cards").onSnapshot(snap => { T.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})); renderTime(); }, () => {});
-  }
   const [from, to] = span(), key = from + "|" + to;
   if (key === T.key) return;
   // The old range's docs stay until the new snapshot lands, so Month -> Day never flashes "No time synced".
@@ -41,7 +38,7 @@ function dayInfo(date){
   const doc = T.docs.get(date), events = (doc && Array.isArray(doc.events)) ? doc.events : [];
   const dayStart = new Date(dayStartMs(date)).toISOString(), dayEnd = new Date(dayStartMs(addDays(date, 1)) - 1).toISOString();
   const segments = drivingSegments(events, {dayStart, dayEnd, now: new Date().toISOString()}), driven = new Set(segments.map(s => normTicket(s.ticket)));
-  return {date, doc, segments, driven, spans: agentSpans(state.sessions, T.cards, dayStart, dayEnd, driven), markers: agentMarkers(events)};
+  return {date, doc, segments, driven, spans: agentSpans(state.sessions, state.cards, dayStart, dayEnd, driven), markers: agentMarkers(events)};
 }
 
 function dayView(){
@@ -50,8 +47,8 @@ function dayView(){
   // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
-  const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: T.cards});
-  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml() : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
+  const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards});
+  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, state.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml() : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
 }
 
 function weekView(){
@@ -128,7 +125,7 @@ function step(n){
 function openScrum(date, btn){
   const d = dayInfo(date);
   $("scrum-title").textContent = "Scrum " + fmtDate(date, {weekday: "short", month: "short", day: "numeric", year: "numeric"});
-  $("scrum-body").innerHTML = scrumHtml(scrumSummary({date, segments: d.segments, sessions: state.sessions, cards: T.cards, notes: (d.doc && d.doc.notes) || {}, blocks: (d.doc && d.doc.blocks) || [], titles: (d.doc && d.doc.titles) || {}}), date);
+  $("scrum-body").innerHTML = scrumHtml(scrumSummary({date, segments: d.segments, sessions: state.sessions, cards: state.cards, notes: (d.doc && d.doc.notes) || {}, blocks: (d.doc && d.doc.blocks) || [], titles: (d.doc && d.doc.titles) || {}}), date);
   T.opener = {btn, date};
   dlg.showModal();
 }
