@@ -128,7 +128,7 @@ function step(n){
 function openScrum(date, btn){
   const d = dayInfo(date);
   $("scrum-title").textContent = "Scrum " + fmtDate(date, {weekday: "short", month: "short", day: "numeric", year: "numeric"});
-  $("scrum-body").innerHTML = scrumHtml(scrumSummary({date, segments: d.segments, sessions: state.sessions, cards: T.cards, notes: (d.doc && d.doc.notes) || {}}), date);
+  $("scrum-body").innerHTML = scrumHtml(scrumSummary({date, segments: d.segments, sessions: state.sessions, cards: T.cards, notes: (d.doc && d.doc.notes) || {}, blocks: (d.doc && d.doc.blocks) || [], titles: (d.doc && d.doc.titles) || {}}), date);
   T.opener = {btn, date};
   dlg.showModal();
 }
