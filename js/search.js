@@ -5,6 +5,8 @@ import {touchTimes} from "./model.js";
 const norm = v => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 /** The session's latest touch (same sources as touchedOn) as an ISO string, or null. */
 export const lastTouched = (s, cards = []) => touchTimes(s, cards).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
+/** True while a pinned search result ({id, day}) is still on its day and still in the shown list. */
+export const keepOpened = (o, day, shown) => !!o && o.day === day && shown.includes(o.id);
 // Every word must start a word somewhere in the session's title, ticket, branch, id or its cards' titles, tickets and tasks.
 // A ticket hit (a number inside a ticket or task) or an exact title outranks the rest; then newest touch first.
 /** {hits: [{s, last}], more}: the best `cap` matches for query and how many more matched. */

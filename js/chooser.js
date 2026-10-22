@@ -5,7 +5,7 @@ import {saveShown, saveShowDone} from "./prefs.js";
 import {sessionTitle} from "./render/shared.js";
 import {$, chooser, say, visible, liveNow, render, tick, doneNow, doneOnDay, setDay, today} from "./board.js";
 import {addDays, ymd} from "./time/render.js";
-import {searchSessions, lastTouched} from "./search.js";
+import {searchSessions, lastTouched, keepOpened} from "./search.js";
 
 function chipsHtml(){
   const skin = state.skin, showDone = state.showDone;
@@ -52,7 +52,7 @@ function renderList(){
 function openResult(sid){
   const s = state.sessions.find(x => x.id === sid); if (!s) return;
   const last = lastTouched(s, state.cards), d = last ? ymd(last) : today();
-  setDay(d); state.dayPicked = true; state.opened = sid;
+  setDay(d); state.dayPicked = true; state.opened = {id: sid, day: d};
   try { location.hash = pageHash("board", d, today()); } catch {}
   closeSearch(false);
   setShown([sid], sid);
@@ -87,6 +87,7 @@ export function renderChooser(){
   tick();
 }
 function setShown(next, scrollTo){
+  if (!keepOpened(state.opened, state.day, next)) state.opened = null;
   state.shown = next; saveShown(state.shown); renderChooser(); render();
   if (scrollTo) state.views.get(scrollTo)?.el.scrollIntoView({block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
 }
@@ -116,8 +117,14 @@ export function initChooser(){
     } else if (e.key === "Enter"){ if (!list().hidden && hits[active]){ e.preventDefault(); openResult(hits[active].s.id); } }
     else if (e.key === "Escape"){ e.preventDefault(); if (!list().hidden) closeList(); else closeSearch(true); }
   });
-  // A click outside closes the popover and returns focus to the icon (a focusable target then takes focus as usual).
-  document.addEventListener("mousedown", e => { if (!pop().hidden && !e.target.closest?.(".search")) closeSearch(true); });
+  // A click outside closes the popover; focus returns to the icon unless the click landed on something focusable.
+  document.addEventListener("mousedown", e => {
+    if (pop().hidden || e.target.closest?.(".search")) return;
+    // Blur first: a hidden field drops focus only at the next style pass, which can land after the check below.
+    if (pop().contains(document.activeElement)) document.activeElement.blur();
+    closeSearch(false);
+    setTimeout(() => { const f = document.activeElement; if (!f || f === document.body || pop().contains(f)) icon().focus(); }, 0);
+  });
   // Tab out closes it too; focus stays where it went, or returns to the icon when it went nowhere.
   document.addEventListener("focusout", e => { if (e.target.closest?.(".search-pop") && !e.relatedTarget?.closest?.(".search-pop")) setTimeout(() => closeSearch(document.activeElement === document.body), 0); });
   chooser.addEventListener("mousedown", e => { if (e.target.closest(".search-list")) e.preventDefault(); });
@@ -126,7 +133,7 @@ export function initChooser(){
     const nav = e.target.closest("[data-dnav]");
     if (nav){ const n = Number(nav.dataset.dnav); pickDay(n ? addDays(state.day, n) : today()); return; }
     if (e.target.closest("[data-show-done]")){
-      state.showDone = !state.showDone; saveShowDone(state.showDone);
+      state.showDone = !state.showDone; state.opened = null; saveShowDone(state.showDone);
       state.chipFocus = {id: "", kind: "show-done"}; renderChooser(); render();
       say(state.showDone ? "Showing finished sessions." : "Finished sessions hidden.");
       return;
