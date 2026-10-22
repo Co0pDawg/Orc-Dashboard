@@ -16,7 +16,8 @@ A private claude.ai Artifact (your own, published from this repo; its URL lives 
 | `js/state.js` | The shared runtime state object |
 | `js/render/shared.js`, `sleek.js`, `leet.js` | HTML strings for panes, logs and headers |
 | `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
-| `js/chooser.js` | Session chips, Show finished, the day control |
+| `js/chooser.js` | Session chips, Show finished, the day control, the session search box |
+| `js/search.js` | Pure session search: matching, ranking and each session's last-touched time |
 | `js/layout-edit.js` | Per-pane edit mode (the ✎ on each pane): move/resize, corner drag, grip keys, Esc; session reorder; Settings > Layout resets and the undo toast |
 | `css/palettes.css`, `js/palettes.js` | GENERATED color schemes (`npm run palettes` from `dev/palettes.json`); never edit by hand |
 | `js/time/segments.js`, `entries.js`, `notes.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, each entry's Note, the scrum summary |
@@ -24,6 +25,7 @@ A private claude.ai Artifact (your own, published from this repo; its URL lives 
 | `js/settings.js` | The Settings gear: theme, Colors, Entry rounding, Activity log fills its column, 1337 bar border color, and when a session counts as finished (the gear's Layout reset row is bound in `layout-edit.js`) |
 | `js/partials/settings-menu.js` | The Settings menu markup (static). Imported first by `main.js`, so its controls exist before other modules look them up |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
+| `tests/search.test.js` | `node:test` suite for `search.js` |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
 
@@ -70,6 +72,10 @@ Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.sho
 ## Layout editing
 
 Each pane (every ticket card and each session's activity log) has a ✎ button (`[✎]` in 1337) on its header. It turns on edit mode for that pane only: the pane is outlined and shows its edit bar (grip, ◀ ▶ move, width and height steps, size reset) and a resize corner. Several panes can be in edit mode at once; Esc inside one, or its ✎ again, ends it. A pane that leaves the screen (Hide done, another day) leaves edit mode. With more than one session shown, each session header has its own ✎ that shows that session's ▲ ▼ mover and grip. Settings > Layout resets the order, the sizes or both for every pane, with Undo. The saved layout is still `board.layout` `{order, size}`.
+
+## Session search
+
+The magnifier beside the board's name in the top bar (or `/`) opens a search field in a small popover that finds any session in the db, on any day, finished or not. It matches, ignoring case and punctuation, the session's title, ticket (`17983`, a partial `1798`, `PET-17983` or `#17983`), branch, id, and its cards' titles, tickets and tasks; every word must start a word in one of those. Event text is not searched (too noisy). Ticket hits and exact titles come first, then the newest last touch; at most 8 show. ↑ ↓ move, Enter or a click opens, Esc closes the list, then the popover (focus returns to the icon); Tab or a click elsewhere closes it too. Opening one moves the shared day to its last touch and shows it alone, even a finished one with Show finished off.
 
 ## Time page
 

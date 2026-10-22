@@ -99,3 +99,10 @@
 .sleek .mo-bar{background:var(--line)}
 .sleek .mo-agent{color:var(--accent);font-size:11px}
 .sleek .dlg-head h2{font-family:var(--f-display);font-weight:700}
+.sleek .search input{border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink);padding:3px 12px}
+.sleek .search input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sleek .search-pop{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.sleek .search-btn{border-radius:99px}
+.sleek .search-list li{border-radius:8px;color:var(--ink)}
+.sleek .search-list li[aria-selected="true"],.sleek .search-list li[role="option"]:hover{background:var(--accent-soft)}
+.sleek .search-list .m,.sleek .search-list .note{color:var(--muted)}
