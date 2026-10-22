@@ -17,11 +17,11 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/render/shared.js`, `sleek.js`, `leet.js` | HTML strings for panes, logs and headers |
 | `js/board.js` | Session views, tiles, `render()`, timers, column fitting, Sortable per view |
 | `js/chooser.js` | Session chips, Show finished, the day control |
-| `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
+| `js/layout-edit.js` | Per-pane edit mode (the ✎ on each pane): move/resize, corner drag, grip keys, Esc; session reorder; Settings > Layout resets and the undo toast |
 | `css/palettes.css`, `js/palettes.js` | GENERATED color schemes (`npm run palettes` from `dev/palettes.json`); never edit by hand |
 | `js/time/segments.js`, `entries.js`, `notes.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, each entry's Note, the scrum summary |
 | `js/time/render.js`, `controller.js` | Time page HTML strings (Day, Week, Month, entries, scrum dialog) and its controller (timeline subscription, date navigation, copy) |
-| `js/settings.js` | The Settings gear: theme, Colors, Entry rounding, Activity log fills its column, 1337 bar border color, and when a session counts as finished |
+| `js/settings.js` | The Settings gear: theme, Colors, Entry rounding, Activity log fills its column, 1337 bar border color, and when a session counts as finished (the gear's Layout reset row is bound in `layout-edit.js`) |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
@@ -64,7 +64,11 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
 
 Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
-Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off), `board.logFull` (the activity log spans every row its cards use; default on; it grows a row at a time and stops above a card that can never sit beside it, such as a full-width one, so no row is left empty; in Customize layout the log then has no height controls), `board.hideDone` ({session id: true}, set by a session's Hide done button), `board.entriesFold` (the Day Entries pane folded to a side strip). The selected day is never stored: it lives in the hash and the page load.
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off), `board.logFull` (the activity log spans every row its cards use; default on; it grows a row at a time and stops above a card that can never sit beside it, such as a full-width one, so no row is left empty; in its edit mode the log then has no height controls), `board.hideDone` ({session id: true}, set by a session's Hide done button), `board.entriesFold` (the Day Entries pane folded to a side strip). The selected day is never stored: it lives in the hash and the page load.
+
+## Layout editing
+
+Each pane (every ticket card and each session's activity log) has a ✎ button (`[✎]` in 1337) on its header. It turns on edit mode for that pane only: the pane is outlined and shows its edit bar (grip, ◀ ▶ move, width and height steps, size reset) and a resize corner. Several panes can be in edit mode at once; Esc inside one, or its ✎ again, ends it. A pane that leaves the screen (Hide done, another day) leaves edit mode. With more than one session shown, each session header has its own ✎ that shows that session's ▲ ▼ mover and grip. Settings > Layout resets the order, the sizes or both for every pane, with Undo. The saved layout is still `board.layout` `{order, size}`.
 
 ## Time page
 

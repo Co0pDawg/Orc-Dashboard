@@ -3,15 +3,14 @@ import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
-import {paneName, sessionTitle, editBar, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
+import {paneName, sessionTitle, editChrome, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
 import {ymd} from "./time/render.js";
 
 /** Element by id. */
 export const $ = id => document.getElementById(id);
-export const chooser = $("chooser"), stack = $("stack"), toggle = $("skin-toggle"), resetMenu = $("reset-menu"), customize = $("customize");
-const topEl = $("top"), controls = $("controls"), bar = $("layout-bar");
+export const chooser = $("chooser"), stack = $("stack"), toggle = $("skin-toggle");
 
 /** Announces msg through the sr live region. */
 export function say(msg){ const sr = $("sr"); sr.textContent = ""; setTimeout(() => { sr.textContent = msg; }, 30); }
@@ -107,7 +106,7 @@ function place(parent, el, i){ if (parent.children[i] !== el) parent.insertBefor
 /** The pane element with this id, if shown. */
 export const slotEl = id => stack.querySelector(`.slot[data-id="${CSS.escape(id)}"]`);
 function renderTiles(v, sess){
-  const skin = state.skin, editing = state.editing;
+  const skin = state.skin;
   // The session's "Hide done" button drops finished cards from the grid; the log still nests their progress.
   const cards = state.hideDone[sess.id] ? v.cards.filter(c => cardState(c) !== "done") : v.cards;
   const tiles = v.tiles, want = orderedIds([logId(sess.id), ...cards.map(c => c._id)]);
@@ -122,7 +121,7 @@ function renderTiles(v, sess){
     place(tiles, el, i);
     const log = isLog(id), c = log ? null : cards.find(x => x._id === id);
     const st = c ? cardState(c) : "", min = !log && !!state.cardFold[id];
-    el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
+    el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (state.editing.has(id) ? " editing" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
     el.setAttribute("aria-label", paneName(id));
     // One unreadable doc must not stop the rest of the board, so a pane that throws shows why and logs the error.
     let body;
@@ -135,8 +134,8 @@ function renderTiles(v, sess){
       body = `<p class="note">This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
     }
     // A log that fills its column takes no saved height, so its edit bar drops the height controls and the corner.
-    const fixedH = log && fills;
-    el.innerHTML = (editing ? editBar(id, fixedH) : "") + body + (editing && !fixedH ? `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>` : "");
+    const {bar, corner} = editChrome(id, log && fills);
+    el.innerHTML = bar + body + corner;
     applySize(el);
   });
   fillLog(tiles);
@@ -151,21 +150,22 @@ function openView(sid){
   el.dataset.sid = sid; tiles.id = "tiles-" + (++state.viewSeq);
   fold.type = "button"; fold.setAttribute("aria-controls", tiles.id);
   fold.addEventListener("click", () => toggleFold(sid));
-  const mover = mk("span", "mover"), hide = mk("button", "btn hide-done");
-  hide.type = "button";
+  const mover = mk("span", "mover"), hide = mk("button", "btn hide-done"), sedit = mk("button", "btn sedit");
+  hide.type = "button"; sedit.type = "button"; sedit.dataset.sedit = sid; sedit.title = "Edit position";
   hide.addEventListener("click", () => {
     if (state.hideDone[sid]) delete state.hideDone[sid]; else state.hideDone[sid] = true;
     saveHideDone(state.hideDone); say(`Finished cards ${state.hideDone[sid] ? "hidden" : "shown"}.`); render();
   });
-  ctl.append(mover, hide, fold); shead.append(summary, ctl); el.append(shead, tiles);
-  const v = {el, summary, ctl, mover, hide, fold, tiles, cards: [], stop: null, sortable: null};
+  ctl.append(mover, sedit, hide, fold); shead.append(summary, ctl); el.append(shead, tiles);
+  const v = {el, summary, ctl, mover, sedit, hide, fold, tiles, cards: [], stop: null, sortable: null};
   v.stop = state.db.collection("cards").where("session", "==", sid).onSnapshot(snap => {
     v.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     render();
   }, () => {});
   // Sortable is wired here, not in layout-edit.js, so this module never imports a DOM controller above it.
+  // It stays enabled: only a pane in edit mode renders a .grip, so only that pane can be dragged.
   if (window.Sortable) v.sortable = Sortable.create(tiles, {
-    group: "s:" + sid, handle: ".grip", animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: "ghost", disabled: !state.editing,
+    group: "s:" + sid, handle: ".grip", animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: "ghost",
     onStart(){ state.busy = true; },
     onEnd(evt){
       state.busy = false;
@@ -179,7 +179,6 @@ function openView(sid){
 }
 function closeView(sid){
   const v = state.views.get(sid); if (!v) return;
-  if (v.el.contains(controls)) topEl.append(controls);
   v.stop?.(); v.sortable?.destroy(); v.el.remove(); state.views.delete(sid);
 }
 
@@ -189,19 +188,23 @@ export function render(){
   state.pending = false;
   const live = liveNow().map(sid => state.sessions.find(x => x.id === sid));
   for (const sid of [...state.views.keys()]) if (!live.some(s => s.id === sid)) closeView(sid);
-  bar.hidden = !live.length;
   stack.dataset.cols = state.cols;
-  if (!live.length){ if (controls.parentElement !== topEl) topEl.append(controls); stack.innerHTML = emptyHtml(state.showDone ? 0 : doneOnDay()); return; }
+  if (!live.length){ state.editing.clear(); state.editSess.clear(); stack.innerHTML = emptyHtml(state.showDone ? 0 : doneOnDay()); return; }
   stack.querySelector(":scope > .empty")?.remove();
   live.forEach((sess, i) => {
     const v = state.views.get(sess.id) || openView(sess.id), t = sess.data.title || sess.id, f = isFolded(sess);
     place(stack, v.el, i);
-    if (i === 0 && controls.parentElement !== v.ctl) v.ctl.prepend(controls);
     v.el.setAttribute("aria-label", t);
     v.el.classList.toggle("folded", f);
     v.fold.setAttribute("aria-expanded", String(!f));
     v.fold.setAttribute("aria-label", `${f ? "Expand" : "Minimize"} ${t}`);
-    v.mover.innerHTML = state.editing && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
+    // A session's ✎ only reorders, so it shows only while there is another session to move past.
+    const sEdit = state.editSess.has(sess.id);
+    v.sedit.hidden = live.length < 2;
+    v.sedit.setAttribute("aria-pressed", String(sEdit));
+    v.sedit.setAttribute("aria-label", `Edit position of ${t}`);
+    v.sedit.textContent = state.skin === "leet" ? "[✎]" : "✎";
+    v.mover.innerHTML = sEdit && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
     v.fold.textContent = state.skin === "leet" ? (f ? "[+]" : "[-]") : (f ? "+" : "−");
     v.fold.title = f ? "Expand" : "Minimize";
     // Shown only while the session has finished cards and is expanded.
@@ -214,6 +217,9 @@ export function render(){
     catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);
   });
+  // A pane or session that left the screen (Hide done, a day change, a hidden session) leaves edit mode.
+  for (const id of state.editing) if (!slotEl(id)) state.editing.delete(id);
+  for (const sid of state.editSess) if (live.length < 2 || !state.views.has(sid)) state.editSess.delete(sid);
   if (state.refocus){ slotEl(state.refocus.id)?.querySelector(`[data-act="${state.refocus.act}"]`)?.focus(); state.refocus = null; }
   if (state.sessFocus){
     const s = stack.querySelector(`[data-sact="${state.sessFocus.act}"][data-sid="${CSS.escape(state.sessFocus.sid)}"]`);
@@ -229,7 +235,7 @@ export function fitCols(){
   if (next === state.cols && stack.dataset.cols) return;
   state.cols = next;
   stack.dataset.cols = state.cols;
-  if (state.editing) render();
+  if (state.editing.size) render();
   else for (const v of state.views.values()){ v.tiles.style.gridTemplateColumns = gridCols(); [...v.tiles.children].forEach(applySize); fillLog(v.tiles); }
 }
 

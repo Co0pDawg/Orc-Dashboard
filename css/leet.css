@@ -37,13 +37,14 @@
 .leet .btn:hover{border-color:var(--t-green);color:var(--t-green)}
 .leet .btn[aria-pressed="true"]{background:var(--t-green);border-color:var(--t-green);color:var(--t-on-green)}
 .leet .pop .menu{background:var(--t-pane);border-color:var(--t-green);border-radius:var(--t-r);box-shadow:none}
-.leet .reset .menu small,.leet .edit .dim,.leet .opt small{color:var(--t-dim)}
+.leet .edit .dim,.leet .opt small{color:var(--t-dim)}
 .leet .opt input{accent-color:var(--t-green)}
 .leet .pr.open b{color:var(--t-amber)}
 .leet .edit{border-bottom-color:var(--t-faint)}
 .leet .edit .sep{background:var(--t-faint)}
 .leet .corner{background:linear-gradient(135deg,transparent 50%,var(--t-lime) 50%) no-repeat}
-.leet.editing .slot{outline-color:var(--t-lime)}
+.leet .slot.editing{outline-color:var(--t-lime)}
+.leet .pedit[aria-pressed="true"]{color:var(--t-lime)}
 .leet .toast{background:var(--t-green);color:var(--t-on-green);border-radius:var(--t-r);font-family:var(--t-mono)}
 .leet .toast .btn{background:var(--t-on-green);color:var(--t-green);border-color:var(--t-on-green)}
 .leet .head{display:grid;gap:2px;padding:4px 2px 2px}
@@ -97,9 +98,9 @@
 .leet .feed li.sub span{opacity:.9}
 .leet .more{color:var(--t-dim);padding:0 2px;min-height:20px}
 .leet .more:hover{color:var(--t-bar)}
-.leet .cfold{min-height:24px}
+.leet .cfold,.leet .pedit{min-height:24px}
 /* the toggle leads the header line, so a long status never pushes it onto its own row */
-.leet .ph .cfold{order:-1;padding-left:0}
+.leet .ph .cfold,.leet .ph .pedit{order:-1;padding-left:0}
 .leet .more:focus-visible{outline:1px solid var(--t-lime);outline-offset:1px}
 .leet .feed li.cursor span::after{content:"▍";color:var(--t-green);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}

@@ -56,7 +56,8 @@
 .sleek .note{margin:0;font-size:13px;overflow-wrap:anywhere}
 .sleek .cfoot{font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
 .sleek .log h2{font-family:var(--f-display);font-weight:600;font-size:15px;margin:0}
-.sleek .lhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sleek .lhead{display:flex;align-items:baseline;gap:8px}
+.sleek .lhead h2{margin-right:auto}
 .sleek .lhead .since{font-size:12px;color:var(--muted)}
 .sleek .lhead .since.stale{color:var(--run-text);font-weight:600}
 .sleek .log ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
@@ -64,8 +65,9 @@
 .sleek .log ol.subs li{font-size:12.5px;color:var(--muted)}
 .sleek .more{font-size:12px;font-weight:600;color:var(--accent);padding:2px 0;min-height:24px}
 .sleek .more:hover{text-decoration:underline}
-.sleek .cfold{min-width:24px;font-size:14px;color:var(--muted);text-align:center}
-.sleek .cfold:hover{color:var(--ink);text-decoration:none}
+.sleek .cfold,.sleek .pedit{min-width:24px;font-size:14px;color:var(--muted);text-align:center}
+.sleek .cfold:hover,.sleek .pedit:hover{color:var(--ink);text-decoration:none}
+.sleek .pedit[aria-pressed="true"]{color:var(--accent)}
 .sleek .log li{display:grid;gap:1px;font-size:13px;overflow-wrap:anywhere}
 .sleek .log time{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .sleek .empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:28px;color:var(--muted);text-align:center}

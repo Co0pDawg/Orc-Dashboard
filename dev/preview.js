@@ -16,5 +16,5 @@ for (const s of scripts){
   document.body.append(n);
   await done;
 }
-if (location.hash.includes("edit")) setTimeout(() => document.getElementById("customize")?.click(), 400);
+if (location.hash.includes("edit")) setTimeout(() => document.querySelector(".slot:not(.log) [data-edit]")?.click(), 400);
 if (location.hash.includes("settings")) setTimeout(() => { const m = document.getElementById("settings-menu"); if (m) m.open = true; }, 400);

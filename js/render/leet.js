@@ -1,7 +1,7 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
-import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, prHtml} from "./shared.js";
+import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress, logId} from "../model.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml} from "./shared.js";
 
 /** The activity log pane's body, oldest first with a cursor on the last line. */
 export function leetLog(events, updated, live, sid, cards){
@@ -11,7 +11,7 @@ export function leetLog(events, updated, live, sid, cards){
     rows.push({cls: tone(e.text), html: `<time>${esc(t12(e.at))}</time><span>${esc(e.text)}${subs.length ? " " + subToggle(key, subs.length, open, true) : ""}</span>`});
     if (open) subs.forEach((s, j) => rows.push({cls: "sub " + tone(s.text), html: `<time>${esc(t12(s.at))}</time><i class="tree">${j === subs.length - 1 ? "└" : "├"}</i><span>${esc(s.text)}</span>`}));
   });
-  return `<div class="ph"><span class="id">activity</span><span>${events.length} events</span>${live ? sinceHtml(lastAt(events, cards), "quiet ", true) : ""}${updated ? `<span class="st">${esc(t12(updated))}</span>` : ""}</div>
+  return `<div class="ph">${editBtn(logId(sid), paneName(logId(sid)), true)}<span class="id">activity</span><span>${events.length} events</span>${live ? sinceHtml(lastAt(events, cards), "quiet ", true) : ""}${updated ? `<span class="st">${esc(t12(updated))}</span>` : ""}</div>
     ${rows.length ? `<ol class="feed">${rows.map((r, i) => `<li class="${r.cls}${i === rows.length - 1 ? " cursor" : ""}">${r.html}</li>`).join("")}</ol>` : `<p class="lbl">nothing logged yet</p>`}`;
 }
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
@@ -23,7 +23,7 @@ export function leetCard(c, ado, min){
       ${c.updated ? `<time>${esc(t12(c.updated))}</time>` : ""}
       ${c.task ? `<a class="id" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
       ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
-      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, true)}
+      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, true)}${editBtn(c._id, `#${c.task || c.ticket} ${c.title}`, true)}
     </div>
     <h3>${esc(c.title)}</h3>
     <div><div class="lbl">plan</div><ol class="plan">${plan}</ol></div>

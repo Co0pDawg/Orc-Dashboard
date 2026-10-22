@@ -44,7 +44,7 @@ const ops = {"==":(a,b)=>a===b, ">=":(a,b)=>a>=b, "<=":(a,b)=>a<=b};
 const q = name => ({ w:[], orderBy(){return this;}, where(f,o,v){return {...this, w:[...this.w,[f,o,v]]};},
   onSnapshot(cb){ const r=(S[name]||[]).filter(x=>this.w.every(([f,o,v])=>ops[o](x[f],v))); setTimeout(()=>cb({docs:r.map(x=>({id:x.id,data:()=>x}))}),50); return ()=>{}; }});
 window.claude = {use: async n => n==="db" ? {collection: q} : null};
-// Hash flags (dev only): "leet" picks the 1337 skin, "stack" shows both sessions, "edit" opens Customize layout.
+// Hash flags (dev only): "leet" picks the 1337 skin, "stack" shows both sessions, "edit" turns on the first card's edit (pencil) button.
 // The page itself reads "time", "time-week" or "time-month" plus an optional date, e.g. #leet-time-week-2026-10-14.
 if (location.hash.includes("stack")) localStorage.setItem("board.shown", JSON.stringify(S.sessions.map(s => s.id))); else localStorage.removeItem("board.shown");
 localStorage.setItem("board.skin", location.hash.includes("leet") ? "leet" : "sleek");

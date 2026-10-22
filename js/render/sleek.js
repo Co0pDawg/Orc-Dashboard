@@ -1,7 +1,7 @@
 // Sleek skin markup. Strings only: nothing here touches the DOM.
 import {esc, fmt, t12, adoUrl} from "../util.js";
-import {LABEL, cardState, stagesOf, stageLabel, stageSince, subsOf, lastAt, progress} from "../model.js";
-import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, prHtml} from "./shared.js";
+import {LABEL, cardState, stagesOf, stageLabel, stageSince, subsOf, lastAt, progress, logId} from "../model.js";
+import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml} from "./shared.js";
 
 /** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
 export function sleekCard(c, ado, min){
@@ -9,7 +9,7 @@ export function sleekCard(c, ado, min){
   const steps = stagesOf(c).map(x => `<li class="${esc(x.state)}" title="${esc(x.label)}: ${esc(LABEL[x.state] || x.state)}"><i></i><span>${esc(x.label)}</span></li>`).join("");
   const meta = [["Agent", c.agent && esc(c.agent)], ["Commit", c.commit && `<span class="mono">${esc(c.commit)}</span>`], ["Tokens", c.tokens && esc(c.tokens)], ["Task", c.task && `<a class="tid" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>`]]
     .filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  return `<div class="chead">${c.ticket ? `<a class="tid" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a>` : ""}<span class="kind">${esc(c.kind)}</span><span class="pill ${s}">${esc(stageLabel(c))}${stageSince(c) ? " · " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, false)}</div>
+  return `<div class="chead">${c.ticket ? `<a class="tid" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a>` : ""}<span class="kind">${esc(c.kind)}</span><span class="pill ${s}">${esc(stageLabel(c))}${stageSince(c) ? " · " + sinceHtml(stageSince(c)) : ""}</span>${editBtn(c._id, `#${c.task || c.ticket} ${c.title}`, false)}${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, false)}</div>
     <h3>${esc(c.title)}</h3>
     <ol class="steps" aria-label="Stages">${steps}</ol>
     ${progHtml(c)}
@@ -24,7 +24,7 @@ export function sleekLog(events, live, sid, cards){
     const nest = open ? `<ol class="subs">${subs.slice().reverse().map(s => `<li><time>${esc(t12(s.at))}</time><span>${esc(s.text)}</span></li>`).join("")}</ol>` : "";
     return `<li><time>${esc(fmt(e.at))}</time><span>${esc(e.text)}</span>${subs.length ? subToggle(key, subs.length, open, false) : ""}${nest}</li>`;
   }).reverse();
-  return `<div class="lhead"><h2>Activity</h2>${live ? sinceHtml(lastAt(events, cards), "Quiet ", true) : ""}</div>${items.length ? `<ol>${items.join("")}</ol>` : `<p class="kind">Nothing logged yet.</p>`}`;
+  return `<div class="lhead"><h2>Activity</h2>${live ? sinceHtml(lastAt(events, cards), "Quiet ", true) : ""}${editBtn(logId(sid), paneName(logId(sid)), false)}</div>${items.length ? `<ol>${items.join("")}</ol>` : `<p class="kind">Nothing logged yet.</p>`}`;
 }
 /** A session's summary header. */
 export function sleekHead(sess, cards){
