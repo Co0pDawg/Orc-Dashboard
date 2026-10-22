@@ -49,7 +49,7 @@ export function prHtml(pr, leet){
   const num = url ? `<a${leet ? "" : ' class="tid"'} href="${esc(url)}" target="_blank" rel="noopener">${leet ? `<b>${id}</b>` : id}</a>` : (leet ? `<b>${id}</b>` : id);
   return `<span class="pr${prFinal(st) ? "" : " open"}">${leet ? "pr" : "PR"} ${num} <b>${esc(st)}</b></span>`;
 }
-/** Customize-mode controls that reorder a stacked session block. */
+/** Edit-mode controls that reorder a stacked session block, shown while that session's ✎ is on. */
 export function sessMover(sid, title, i, count){
   const t = esc(title), s = esc(sid);
   return `<span class="sess-move" role="group" aria-label="Reorder ${t}">
@@ -62,9 +62,13 @@ export function sessMover(sid, title, i, count){
 export function cardFoldBtn(id, name, min, leet){
   return `<button type="button" class="more cfold" data-cardfold="${esc(id)}" aria-expanded="${!min}" aria-label="${min ? "Expand" : "Minimize"} ${esc(name)}" title="${min ? "Expand" : "Minimize"} · Shift-click for the whole row">${leet ? (min ? "[+]" : "[-]") : (min ? "▸" : "▾")}</button>`;
 }
+/** The ✎ toggle on a pane's header: edit mode for this pane only; aria-pressed carries whether it is on. */
+export function editBtn(id, name, leet){
+  return `<button type="button" class="more pedit" data-edit="${esc(id)}" aria-pressed="${state.editing.has(id)}" aria-label="Edit layout of ${esc(name)}" title="Edit layout">${leet ? "[✎]" : "✎"}</button>`;
+}
 /** The fixed label of a session's Hide done button; aria-pressed carries whether it is on. */
 export const hideDoneText = (n, leet) => leet ? `[hide done:${n}]` : `Hide done (${n})`;
-/** The customize-mode toolbar for a pane; fixedH drops the height controls (a log that fills its column). */
+/** The edit-mode toolbar for a pane; fixedH drops the height controls (a log that fills its column). */
 export function editBar(id, fixedH = false){
   const n = esc(paneName(id)), s = state.layout.size[id] || {}, cols = state.cols;
   const w = Math.min(s.w || 1, cols), h = `${s.r || 1} row${(s.r || 1) > 1 ? "s" : ""}`;
@@ -78,6 +82,11 @@ export function editBar(id, fixedH = false){
     <span class="sep"></span>`}
     <button type="button" class="btn" data-act="reset" aria-label="Reset size of ${n}" title="Reset this pane's size">⟲</button>
   </div>`;
+}
+/** A pane's edit bar and resize corner, both "" unless this pane's ✎ is on; fixedH drops the height controls and the corner. */
+export function editChrome(id, fixedH = false){
+  if (!state.editing.has(id)) return {bar: "", corner: ""};
+  return {bar: editBar(id, fixedH), corner: fixedH ? "" : `<div class="corner" data-act="resize" aria-hidden="true" title="Drag to resize"></div>`};
 }
 /** The stack's empty state: the day's sessions all finished and hidden, nothing touched that day, or no sessions yet. */
 export function emptyHtml(hidden = 0){

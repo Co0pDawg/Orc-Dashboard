@@ -1,15 +1,12 @@
 /* Two skins over one modular layout: each shown session is a card holding a grid of panes
    (activity log first, then one pane per ticket); the session minimizes to its summary.
-   Rows are even: every pane stretches to the tallest in its row. Panes reorder by drag or buttons and resize by
+   Rows are even: every pane stretches to the tallest in its row. In a pane's edit mode (its ✎), it reorders by drag or buttons and resizes by
    corner grip or buttons (width snaps to columns, height to whole rows). Sleek = light + dark cards. 1337 = single-dark tmux screen. */
 .wrap{max-width:1800px;margin:0 auto;padding-block:14px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* top: session chooser + date; the controls (skin slider, layout) sit on the first session's title row,
-   and fall back here only when no session is shown */
+/* top: session chooser + date, with the Settings gear after the clock */
 .top{display:grid;gap:6px;min-width:0}
-.top > .controls{justify-self:end}
-.controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 14px}
 #chooser{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-width:0}
 .clock{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);font-size:13px}
 .skin{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
@@ -20,8 +17,7 @@
 .skin input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .skin .on{color:var(--ink)}
 
-/* layout bar + edit controls, shared shape */
-.layout-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+/* buttons and edit controls, shared shape */
 .btn{font:inherit;font-size:12.5px;font-weight:600;min-height:28px;min-width:28px;padding:3px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn:hover{border-color:var(--accent)}
 .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
@@ -30,8 +26,7 @@
 .pop summary{list-style:none}
 .pop summary::-webkit-details-marker{display:none}
 .pop .menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:grid;gap:2px;padding:6px;min-width:190px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
-.reset .menu button{flex-direction:column;align-items:flex-start;gap:0;text-align:left;border-color:transparent;font-weight:600;padding:6px 10px}
-.reset .menu small{display:block;color:var(--muted);font-weight:400}
+.reset-btns{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .settings .menu{min-width:280px;max-width:min(340px,calc(100vw - 32px));padding:12px;gap:14px}
 .gear{font-size:15px;line-height:1;padding:3px 8px}
 .opt-h{font-weight:600}
@@ -80,7 +75,9 @@
 .chips .show-done{margin-left:8px}
 .corner{position:absolute;right:0;bottom:0;width:24px;height:24px;cursor:nwse-resize;touch-action:none;z-index:3;background:linear-gradient(135deg,transparent 50%,var(--accent) 50%) no-repeat;opacity:.75}
 @media (pointer:coarse){.corner{width:36px;height:36px}}
-.editing .slot{outline:1px dashed var(--accent);outline-offset:3px}
+/* a pane in edit mode (its ✎ on) is outlined, so it is clear which one the bar and corner belong to */
+.slot.editing{outline:2px dashed var(--accent);outline-offset:3px}
+.pedit{min-width:24px;min-height:24px;text-align:center}
 .ghost{opacity:.35}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;gap:12px;align-items:center;padding:8px 10px 8px 14px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
 .toast .btn{background:transparent;color:var(--bg);border-color:var(--muted)}
@@ -106,7 +103,7 @@
 
 /* ---------- Board | Time pages: one shell, the body's data-view picks which one shows ---------- */
 .views{display:flex;gap:6px}
-body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="time"] #controls,[data-view="time"] .chip-slot,[data-view="time"] .day-nav{display:none}
+body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="time"] .chip-slot,[data-view="time"] .day-nav{display:none}
 .time-view{display:grid;gap:14px;min-width:0}
 .time-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .tabs,.tnav{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
