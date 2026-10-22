@@ -65,9 +65,12 @@ test("Review and Unplanned are suggestions, not switches", () => {
   assert.doesNotMatch(h, /<input|role="switch"/);
 });
 
-test("the note is a textarea prefilled from notes, copied as typed, never saved", () => {
-  const h = entriesHtml(result, {date: D, notes: {"PET-17983": "Search <cards> & results"}});
+test("the note is a textarea prefilled from that entry's note, copied as typed, never saved", () => {
+  const h = entriesHtml(result, {date: D, notes: ["Search <cards> & results", "", "Tab strips"]});
   assert.match(h, /<textarea[^>]*>Search &lt;cards&gt; &amp; results<\/textarea><button[^>]*data-copy="Search &lt;cards&gt; &amp; results"/);
+  const [, , second, third] = h.split('<li class="entry');
+  assert.match(second, /<textarea[^>]*><\/textarea>/);
+  assert.match(third, /data-note="PET-17891\|[^"]+"[^>]*>Tab strips<\/textarea>/);
   assert.doesNotMatch(h, /<form|data-save/);
 });
 

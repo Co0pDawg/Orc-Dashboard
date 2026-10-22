@@ -19,7 +19,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 | `js/chooser.js` | Session chips, Show finished, the 1337 bar color |
 | `js/layout-edit.js` | Customize mode: move/resize, corner drag, grip keys, reset menu, undo toast, session reorder |
 | `css/palettes.css`, `js/palettes.js` | GENERATED color schemes (`npm run palettes` from `dev/palettes.json`); never edit by hand |
-| `js/time/segments.js`, `entries.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, the scrum summary |
+| `js/time/segments.js`, `entries.js`, `notes.js`, `scrum.js` | Time page pure logic: driving segments and agent spans, Work Detail entries with rounding, each entry's Note, the scrum summary |
 | `js/time/render.js`, `controller.js` | Time page HTML strings (Day, Week, Month, entries, scrum dialog) and its controller (timeline subscription, date navigation, copy) |
 | `js/settings.js` | The Settings gear: theme, Colors, Entry rounding, Activity log fills its column, 1337 bar border color, and when a session counts as finished |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
@@ -32,7 +32,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 - `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. `stages` is an array of `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`, in plan order (the page also reads an object `{label: state}`, but write the array); `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
 - Times are ISO with offset.
-- `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, flags:{<ticket>:{unplanned:true}}}`. `ticket` is `PET-NNNNN` or null (no ticket); events carry no prompt text. The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
+- `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, blocks:[{start, end, ticket, text}], flags:{<ticket>:{unplanned:true}}}`. `ticket` is `PET-NNNNN` or null (no ticket); events carry no prompt text. `blocks` are the worklog roll-up's time blocks (model-written descriptions, ISO times with offset); an entry's Note joins the same-ticket blocks it overlaps, a waiting-only entry's Note names the agent runs it covers (card title, else dispatch text), and `notes[ticket]` is the fallback (js/time/notes.js entryNotes). The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
 
 ## Writing protocol (Fable and its agents)
 
