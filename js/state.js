@@ -7,6 +7,8 @@ export const state = {
   // The selected local day (yyyy-MM-dd), shared by the Board and Time; set by route(), never stored.
   // dayPicked is false while it follows today, which rolls it over at midnight.
   day: "", dayPicked: false,
+  // A session opened from search stays on the chips for its day even when finished and Show finished is off.
+  opened: null,
   views: new Map(), // session id -> {el, summary, ctl, fold, tiles, cards, stop, sortable}
   viewSeq: 0,
   stackSortable: null, sessFocus: null,

@@ -74,13 +74,16 @@ export function subsOf(events, i, cards){
 export const lastAt = (events, cards = []) => events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]).concat(cards.flatMap(c => progressOf(c).map(x => x.at))).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
 // A session counts on a day when it, an event or sub-event, or one of its cards (update, progress line, stage start)
 // falls between that local midnight and the next, so a session started days ago shows again on each day it was touched.
+/** Every time the session or one of its cards was touched: the sources touchedOn and session search both read. */
+export function touchTimes(s, cards = []){
+  const d = s.data, events = Array.isArray(d.events) ? d.events : [];
+  return [d.started, d.updated, d.completed, ...events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]),
+    ...cards.filter(c => c.session === s.id).flatMap(c => [c.updated, ...progressOf(c).map(p => p.at), ...stagesOf(c).map(x => x.started)])];
+}
 /** True when the session or one of its cards was touched on the local day date (yyyy-MM-dd). */
 export function touchedOn(s, date, cards = []){
   const a = new Date(date + "T00:00:00"), b = new Date(a); b.setDate(b.getDate() + 1);
-  const on = t => { const x = Date.parse(t); return x >= a.getTime() && x < b.getTime(); };
-  const d = s.data, events = Array.isArray(d.events) ? d.events : [];
-  return [d.started, d.updated, d.completed, ...events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])])].some(on)
-    || cards.some(c => c.session === s.id && [c.updated, ...progressOf(c).map(p => p.at), ...stagesOf(c).map(x => x.started)].some(on));
+  return touchTimes(s, cards).some(t => { const x = Date.parse(t); return x >= a.getTime() && x < b.getTime(); });
 }
 // Sessions on the chips: the day's sessions (on = touched that day), unfinished first (newest update first), finished
 // after them when shown. A past day always shows its finished sessions, because history is mostly finished sessions.

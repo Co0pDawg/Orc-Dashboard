@@ -5,7 +5,7 @@ import {state} from "./state.js";
 import {saveSkin, saveShown} from "./prefs.js";
 import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay} from "./board.js";
 import {hashDay, pageHash} from "./util.js";
-import {renderChooser, initChooser} from "./chooser.js";
+import {renderChooser, initChooser, openSearch} from "./chooser.js";
 import {initLayoutEdit} from "./layout-edit.js";
 import {initSettings} from "./settings.js";
 import {initTime, showTime, renderTime} from "./time/controller.js";
@@ -74,6 +74,11 @@ document.querySelector(".views").addEventListener("click", e => {
   route();
 });
 addEventListener("hashchange", route);
+// "/" jumps to session search unless the viewer is typing somewhere already.
+addEventListener("keydown", e => {
+  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey || document.body.dataset.view === "time" || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+  e.preventDefault(); openSearch();
+});
 setInterval(rollDay, 30000);
 // A failed first route must not stop the skin, the columns or the db subscription.
 try { route(); } catch (err){ console.error("Orchestration Board: route", err); }
