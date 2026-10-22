@@ -65,7 +65,7 @@ async function boot(){
     // ponytail: a short wait lets the per-session card subscriptions paint before the first-visit tour looks for targets.
     setTimeout(autoTour, 400);
   }, () => {});
-  try { route(); } catch (err){ console.error("Orchestration Board: route", err); }
+  try { route(); } catch (err){ console.error("Orc-istrator: route", err); }
 }
 
 initChooser();
@@ -88,7 +88,7 @@ addEventListener("keydown", e => {
 });
 setInterval(rollDay, 30000);
 // A failed first route must not stop the skin, the columns or the db subscription.
-try { route(); } catch (err){ console.error("Orchestration Board: route", err); }
+try { route(); } catch (err){ console.error("Orc-istrator: route", err); }
 applySkin();
 fitCols();
 boot();

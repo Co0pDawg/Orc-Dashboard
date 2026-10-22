@@ -134,7 +134,7 @@ function renderTiles(v, sess){
         ? (skin === "leet" ? leetLog(events, sess.data.updated, !doneNow(sess), sess.id, v.cards) : sleekLog(events, !doneNow(sess), sess.id, v.cards))
         : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
     } catch (err){
-      console.error("Orchestration Board: pane", id, err);
+      console.error("Orc-istrator: pane", id, err);
       body = `<p class="note">${editBtn(id, paneName(id), skin === "leet")} This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
     }
     // A log that fills its column takes no saved height, so its edit bar drops the height controls and the corner.
@@ -222,7 +222,7 @@ export function render(){
     v.hide.textContent = hideDoneText(nDone, state.skin === "leet");
     v.hide.title = hid ? "Show this session's finished cards" : "Hide this session's finished cards";
     try { v.summary.innerHTML = headHtml(sess, v.cards); }
-    catch (err){ console.error("Orchestration Board: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
+    catch (err){ console.error("Orc-istrator: header", sess.id, err); v.summary.innerHTML = `<p class="note">This session's header could not be shown: ${esc(err.message)}</p>`; }
     renderTiles(v, sess);
   });
   // A pane or session that left the screen (Hide done, a day change, a hidden session) leaves edit mode.
