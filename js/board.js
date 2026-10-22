@@ -1,11 +1,12 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
-import {cardState, isDone, visibleSessions, liveIds, logId, isLog, mergeOrder, QUIET_MS} from "./model.js";
+import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, QUIET_MS} from "./model.js";
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
 import {paneName, sessionTitle, editBar, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
+import {ymd} from "./time/render.js";
 
 /** Element by id. */
 export const $ = id => document.getElementById(id);
@@ -14,8 +15,15 @@ const topEl = $("top"), controls = $("controls"), bar = $("layout-bar");
 
 /** Announces msg through the sr live region. */
 export function say(msg){ const sr = $("sr"); sr.textContent = ""; setTimeout(() => { sr.textContent = msg; }, 30); }
-/** Sessions offered on the chips right now. */
-export const visible = () => visibleSessions(state.sessions, state.showDone, state.doneWhen);
+/** Today as a local yyyy-MM-dd. */
+export const today = () => ymd(Date.now());
+/** Selects a day for the Board and Time; selecting today follows today again, so it rolls over at midnight. */
+export function setDay(d){ state.day = d; state.dayPicked = d !== today(); }
+const onDay = s => touchedOn(s, state.day, state.cards), past = () => state.day < today();
+/** Sessions offered on the chips right now: those touched on the selected day. */
+export const visible = () => visibleSessions(state.sessions, state.showDone, state.doneWhen, onDay, past());
+/** The Show finished count for the selected day. */
+export const doneOnDay = () => doneCount(state.sessions, state.doneWhen, onDay, past());
 /** Whether a session is finished under the viewer's setting. */
 export const doneNow = s => isDone(s, state.doneWhen);
 /** Session ids the stack shows right now. */
@@ -93,8 +101,6 @@ function fillLog(tiles){
   }
   if (keep !== n) log.style.gridRow = `span ${keep}`;
 }
-/** Re-fills every shown session's log, for a stack that was hidden (the Time page) while it rendered. */
-export function fillLogs(){ for (const v of state.views.values()) fillLog(v.tiles); }
 const gridCols = () => `repeat(${state.cols}, minmax(0, 1fr))`;
 // Moves a node only when it is out of place, so focus and inner scroll survive a live update.
 function place(parent, el, i){ if (parent.children[i] !== el) parent.insertBefore(el, parent.children[i] || null); }
@@ -185,7 +191,7 @@ export function render(){
   for (const sid of [...state.views.keys()]) if (!live.some(s => s.id === sid)) closeView(sid);
   bar.hidden = !live.length;
   stack.dataset.cols = state.cols;
-  if (!live.length){ if (controls.parentElement !== topEl) topEl.append(controls); stack.innerHTML = emptyHtml(); return; }
+  if (!live.length){ if (controls.parentElement !== topEl) topEl.append(controls); stack.innerHTML = emptyHtml(state.showDone ? 0 : doneOnDay()); return; }
   stack.querySelector(":scope > .empty")?.remove();
   live.forEach((sess, i) => {
     const v = state.views.get(sess.id) || openView(sess.id), t = sess.data.title || sess.id, f = isFolded(sess);

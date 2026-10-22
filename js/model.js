@@ -72,9 +72,25 @@ export function subsOf(events, i, cards){
 }
 /** Newest activity, counting sub-events and agent-posted card progress; null when none. */
 export const lastAt = (events, cards = []) => events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]).concat(cards.flatMap(c => progressOf(c).map(x => x.at))).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
-// Sessions on the chips: unfinished first (newest update first), finished after them when shown.
+// A session counts on a day when it, an event or sub-event, or one of its cards (update, progress line, stage start)
+// falls between that local midnight and the next, so a session started days ago shows again on each day it was touched.
+/** True when the session or one of its cards was touched on the local day date (yyyy-MM-dd). */
+export function touchedOn(s, date, cards = []){
+  const a = new Date(date + "T00:00:00"), b = new Date(a); b.setDate(b.getDate() + 1);
+  const on = t => { const x = Date.parse(t); return x >= a.getTime() && x < b.getTime(); };
+  const d = s.data, events = Array.isArray(d.events) ? d.events : [];
+  return [d.started, d.updated, d.completed, ...events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])])].some(on)
+    || cards.some(c => c.session === s.id && [c.updated, ...progressOf(c).map(p => p.at), ...stagesOf(c).map(x => x.started)].some(on));
+}
+// Sessions on the chips: the day's sessions (on = touched that day), unfinished first (newest update first), finished
+// after them when shown. A past day always shows its finished sessions, because history is mostly finished sessions.
 /** Sessions offered on the chips. */
-export const visibleSessions = (sessions, showDone, mode) => sessions.filter(s => !isDone(s, mode)).concat(showDone ? sessions.filter(s => isDone(s, mode)) : []);
+export function visibleSessions(sessions, showDone, mode, on = () => true, past = false){
+  const day = sessions.filter(on);
+  return day.filter(s => !isDone(s, mode)).concat(showDone || past ? day.filter(s => isDone(s, mode)) : []);
+}
+/** The Show finished count: the day's finished sessions, 0 on a past day (they always show there). */
+export const doneCount = (sessions, mode, on = () => true, past = false) => past ? 0 : sessions.filter(s => on(s) && isDone(s, mode)).length;
 // What the stack shows: the saved list minus hidden finished sessions, else the newest unfinished session.
 /** Session ids the stack shows. */
 export function liveIds(shown, vis){

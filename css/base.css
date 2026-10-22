@@ -72,6 +72,7 @@
 .sess-move .sgrip{cursor:grab;touch-action:none}
 .sess-move .btn:disabled{opacity:.4;cursor:default}
 .chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.chips:empty{display:none}
 .chip{display:inline-flex;align-items:stretch;min-width:0;max-width:100%}
 .chip button{font:inherit;cursor:pointer;min-height:28px;user-select:none}
 .chip-main{min-width:0;max-width:32ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -105,7 +106,7 @@
 
 /* ---------- Board | Time pages: one shell, the body's data-view picks which one shows ---------- */
 .views{display:flex;gap:6px}
-body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="time"] #controls,[data-view="time"] .chip-slot{display:none}
+body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="time"] #controls,[data-view="time"] .chip-slot,[data-view="time"] .day-nav{display:none}
 .time-view{display:grid;gap:14px;min-width:0}
 .time-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .tabs,.tnav{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}

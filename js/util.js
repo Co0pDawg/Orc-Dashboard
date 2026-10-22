@@ -22,3 +22,14 @@ export function ago(iso){
   const m = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 60000));
   return m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h`;
 }
+// Board is "#board" on today and "#board-yyyy-MM-dd" on another day; Time's tokens carry the same suffix.
+// A date must round-trip: Date rolls 2026-02-30 over to Mar 2 instead of refusing it.
+/** The yyyy-MM-dd a hash names, or "" when it names none or an impossible date. */
+export const hashDay = h => {
+  const d = /\d{4}-\d{2}-\d{2}/.exec(h || "")?.[0] || "", t = new Date(d + "T00:00:00");
+  return d && t.getFullYear() === +d.slice(0, 4) && t.getMonth() + 1 === +d.slice(5, 7) && t.getDate() === +d.slice(8) ? d : "";
+};
+/** The hash for a page ("board" or "time") on day: the plain page on today, else the page plus "-yyyy-MM-dd". */
+export const pageHash = (page, day, today) => !day || day === today ? page : `${page}-${day}`;
+/** A yyyy-MM-dd day as "Mon, Oct 20". */
+export const fmtDay = day => new Date(day + "T00:00:00").toLocaleDateString([], {weekday:"short", month:"short", day:"numeric"});

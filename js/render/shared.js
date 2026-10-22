@@ -1,6 +1,6 @@
 // HTML helpers both skins use. Strings only: nothing here touches the DOM.
-import {esc, t12, ago} from "../util.js";
-import {QUIET_MS, cardState, progressOf, isDone, isLog, prFinal} from "../model.js";
+import {esc, t12, ago, fmtDay} from "../util.js";
+import {QUIET_MS, cardState, progressOf, isLog, prFinal} from "../model.js";
 import {state} from "../state.js";
 
 // Elapsed timers render pre-filled and tick() refreshes every [data-since] span, so no re-render (and no lost focus) is needed.
@@ -79,12 +79,15 @@ export function editBar(id, fixedH = false){
     <button type="button" class="btn" data-act="reset" aria-label="Reset size of ${n}" title="Reset this pane's size">⟲</button>
   </div>`;
 }
-/** The stack's empty state: no sessions yet, or all finished and hidden. */
-export function emptyHtml(){
-  const hidden = state.sessions.filter(s => isDone(s, state.doneWhen)).length, skin = state.skin;
-  if (hidden && !state.showDone) return skin === "leet"
+/** The stack's empty state: the day's sessions all finished and hidden, nothing touched that day, or no sessions yet. */
+export function emptyHtml(hidden = 0){
+  const skin = state.skin;
+  if (hidden) return skin === "leet"
     ? `<div class="empty"><b>$ all sessions finished_</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Turn on finished: in the status bar to see ${hidden > 1 ? "them" : "it"}.</div>`
     : `<div class="empty"><b>All sessions are finished</b>${hidden} finished session${hidden > 1 ? "s are" : " is"} hidden. Use Show finished at the top to see ${hidden > 1 ? "them" : "it"}.</div>`;
+  if (state.sessions.length) return skin === "leet"
+    ? `<div class="empty"><b>$ no activity on ${esc(state.day)}_</b>No session or card was touched that day. Step the date in the status bar to look at another.</div>`
+    : `<div class="empty"><b>Nothing touched on ${esc(fmtDay(state.day))}</b>No session or card was updated that day. Pick another day at the top.</div>`;
   return skin === "leet"
     ? `<div class="empty"><b>$ waiting for a session_</b>Claude opens a session here when it starts orchestrating a ticket. Each ticket gets a pane that moves through its stages as agents report back.</div>`
     : `<div class="empty"><b>No sessions yet</b>Claude adds a session here when it starts orchestrating a task, then moves each ticket card through its stages as agents report back.</div>`;
