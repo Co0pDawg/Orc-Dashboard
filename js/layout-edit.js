@@ -3,7 +3,7 @@
 import {clamp} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveCardFold, saveShown} from "./prefs.js";
-import {paneName, sessionTitle} from "./render/shared.js";
+import {paneName, sessionTitle, isEditing} from "./render/shared.js";
 import {$, stack, say, render, slotEl, setOrder, liveNow} from "./board.js";
 
 const RMAX = 6; // tallest pane, in grid rows
@@ -124,7 +124,7 @@ export function initLayoutEdit(){
     }
     const b = e.target.closest("[data-act]"); if (!b) return;
     const id = b.closest(".slot").dataset.id, act = b.dataset.act;
-    if (!state.editing.has(id)) return;
+    if (!isEditing(id)) return;
     if (act === "left") move(id, -1);
     else if (act === "right") move(id, 1);
     else if (act === "w-") resize(id, -1, 0);
@@ -138,7 +138,7 @@ export function initLayoutEdit(){
   });
   stack.addEventListener("keydown", e => {
     const pane = e.target.closest(".slot");
-    if (e.key === "Escape" && pane && state.editing.has(pane.dataset.id)){ e.preventDefault(); setPaneEdit(pane.dataset.id, false); return; }
+    if (e.key === "Escape" && pane && isEditing(pane.dataset.id)){ e.preventDefault(); const sid = pane.closest(".sess")?.dataset.sid; if (!state.editing.has(pane.dataset.id) && sid && state.editSess.has(sid)){ state.editSess.delete(sid); say("Done editing " + sessionTitle(sid)); render(); stack.querySelector(`[data-sedit="${CSS.escape(sid)}"]`)?.focus(); } else setPaneEdit(pane.dataset.id, false); return; }
     const sg = e.target.closest(".sgrip");
     if (sg && state.editSess.has(sg.dataset.sid)){
       const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
@@ -146,7 +146,7 @@ export function initLayoutEdit(){
       moveSession(sg.dataset.sid, d); state.sessFocus = {sid: sg.dataset.sid, act: "grip"}; render();
       return;
     }
-    const g = e.target.closest(".grip"); if (!g || !state.editing.has(pane.dataset.id)) return;
+    const g = e.target.closest(".grip"); if (!g || !isEditing(pane.dataset.id)) return;
     const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
     e.preventDefault();
     const id = pane.dataset.id;
@@ -155,7 +155,7 @@ export function initLayoutEdit(){
 
   /* corner grip: width snaps to columns, height to whole grid rows */
   stack.addEventListener("pointerdown", e => {
-    const g = e.target.closest(".corner"); if (!g || !state.editing.has(g.closest(".slot").dataset.id)) return;
+    const g = e.target.closest(".corner"); if (!g || !isEditing(g.closest(".slot").dataset.id)) return;
     e.preventDefault();
     const el = g.closest(".slot"), id = el.dataset.id, tiles = el.parentElement;
     const r = el.getBoundingClientRect(), tr = tiles.getBoundingClientRect();
