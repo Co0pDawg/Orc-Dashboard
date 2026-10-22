@@ -46,3 +46,12 @@ test("Settings holds the Layout reset row, and the global Customize layout butto
   for (const r of ["order", "size", "all"]) assert.match(gear, new RegExp(`data-reset="${r}"`));
   assert.doesNotMatch(html, /id="(customize|reset-menu|layout-bar|controls)"/);
 });
+
+test("every pane body carries its pencil in both skins", async () => {
+  const {sleekCard, sleekLog} = await import("../js/render/sleek.js"), {leetCard, leetLog} = await import("../js/render/leet.js");
+  const c = {_id: "c9", task: "1", title: "T", kind: "Task", stages: []};
+  assert.match(sleekCard(c, "", false), /data-edit="c9"/);
+  assert.match(leetCard(c, "", false), /data-edit="c9"/);
+  assert.match(sleekLog([], true, "s1", []), /data-edit="log:s1"/);
+  assert.match(leetLog([], "", true, "s1", []), /data-edit="log:s1"/);
+});
