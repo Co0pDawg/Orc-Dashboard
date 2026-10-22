@@ -4,6 +4,18 @@ The orchestration board (the name keeps the repo family's spelling: Orc-istratio
 
 A private claude.ai Artifact (your own, published from this repo; its URL lives in `~/.claude/board.local.md`; `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; the orchestrator and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
 
+## Screenshots
+
+All of these use made-up demo data.
+
+| Board (Sleek) | Board (1337) |
+|---|---|
+| ![Board in the Sleek skin: two-row top bar, a session with its activity log and ticket cards](docs/screenshots/board-sleek.png) | ![Board in the 1337 terminal skin](docs/screenshots/board-leet.png) |
+| **Session search**: the magnifier (or `/`) finds any session on any day | **Theme editor**: Settings > Customize colors, saved as you go |
+| ![Session search popover listing matching sessions](docs/screenshots/search.png) | ![Theme editor with a row per colour: picker, pasteable value and RGB](docs/screenshots/theme.png) |
+| **Time, Day**: time per ticket, Work Detail entries that copy on click, the entry marker | **Time, Week**: one column per day, each with its own Scrum button |
+| ![Time page Day view with ticket columns and the Entries panel](docs/screenshots/time-day.png) | ![Time page Week view](docs/screenshots/time-week.png) |
+
 ## Files
 
 | Path | Role |
