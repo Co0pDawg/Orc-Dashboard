@@ -39,11 +39,19 @@ test("plainSummary: a leading category is stripped from each text, first letters
   assert.equal(plainSummary(["Code review: Built X.", "Development: built X; PR banner shown"]), "built X; PR banner shown");
 });
 
-test("plainSummary: at most 3 clauses, and at most 160 chars cut on a word boundary", () => {
+test("plainSummary: at most 3 clauses, whole clauses only within 160 chars, the rest dropped", () => {
   assert.equal(plainSummary(["Development: A one; b two; c three; d four"]), "a one; b two; c three");
+  const a = "a".repeat(100), b = "b".repeat(50), c = "c".repeat(5);
+  assert.equal(plainSummary([`${a}; ${b}; ${"c".repeat(10)}`]), `${a}; ${b}`, "a third clause past 160 is dropped, not cut");
+  assert.equal(plainSummary([`${a}; ${"b".repeat(70)}; ${c}`]), a, "a clause that does not fit drops every clause after it");
+  assert.equal(plainSummary([`${a}; ${"b".repeat(58)}`]).length, 160, "exactly 160 fits");
+});
+
+test("plainSummary: only a first clause over 160 chars is cut, on a word boundary, ending with an ellipsis", () => {
+  assert.equal(plainSummary(["Development: " + "x".repeat(150) + " tail and more words; b two"]), "x".repeat(150) + " tail and…");
   const long = plainSummary(["Development: " + "word ".repeat(40)]);
-  assert.ok(long.length <= 160 && long.endsWith("word"), long);
-  assert.equal(plainSummary(["Development: " + "x".repeat(150) + " tail and more words"]), "x".repeat(150) + " tail and");
+  assert.ok(long.length <= 160 && long.endsWith("word…"), long);
+  assert.equal(plainSummary(["x".repeat(150) + " abcdefghijkl more"]), "x".repeat(150) + "…", "a word across the limit is dropped whole");
 });
 
 test("scrub: hashes, PR numbers, counts, model names, arrows and the empty brackets they leave are removed", () => {
