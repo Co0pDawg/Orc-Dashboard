@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {dayHtml, entriesHtml, emptyHtml, withReview, weekHtml, monthHtml, scrumHtml} from "../js/time/render.js";
+import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, withReview, weekHtml, monthHtml, scrumHtml} from "../js/time/render.js";
 import {scrumText} from "../js/time/scrum.js";
 
 const D = "2026-10-19", L = hm => new Date(`${D}T${hm}:00`).toISOString();
@@ -199,4 +199,12 @@ test("a waiting-only entry is tagged and the header adds the waiting total", () 
   assert.equal(count(h, /class="waiting"/g), 1);
   assert.ok(h.includes("1h entered · 30m driven · 30m waiting"));
   assert.ok(!entriesHtml(result, {date: D}).includes("waiting"));
+});
+
+test("the Entries pane folds: a Collapse arrow leads its header, and the strip carries the Expand arrow", () => {
+  const open = entriesHtml(result, {date: D});
+  assert.ok(open.includes('<div class="ent-head"><button type="button" class="btn ent-fold" data-entfold aria-expanded="true" aria-label="Collapse entries"'));
+  const strip = entriesStripHtml();
+  assert.ok(strip.includes('class="entries folded"') && strip.includes('aria-expanded="false" aria-label="Expand entries"') && strip.includes(">Entries</span>"));
+  assert.ok(!strip.includes("ent-list"));
 });

@@ -1,13 +1,13 @@
 // The Time page: subscribes to timeline/<date> docs and the cards collection, computes each day with the pure
 // js/time modules, renders Day, Week or Month into #time-body, and opens the scrum dialog. Read-only: nothing here writes the db.
 import {state} from "../state.js";
-import {saveEntryLine} from "../prefs.js";
+import {saveEntryLine, saveEntriesFold} from "../prefs.js";
 import {$, say} from "../board.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
 import {entryNotes} from "./notes.js";
 import {scrumSummary, ticketTitles} from "./scrum.js";
-import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
+import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
 const T = {view: "day", date: ymd(Date.now()), docs: new Map(), key: "", stop: null, cards: [], cardsOn: false, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: "", restoring: false};
@@ -51,7 +51,7 @@ function dayView(){
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: T.cards});
-  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${entriesHtml(result, {date: T.date, notes, flags})}</div>`;
+  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml() : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
 }
 
 function weekView(){
@@ -186,6 +186,10 @@ export function initTime(){
     if (T.pending) setTimeout(renderTime, 0);
     // The tip sits inside the Marker button so the pointer can rest on it (WCAG 1.4.13); a click on the tip is not a press.
     if (e.target.closest(".tip-t")) return;
+    if (e.target.closest("[data-entfold]")){
+      state.entriesFold = !state.entriesFold; saveEntriesFold(state.entriesFold);
+      say(`Entries ${state.entriesFold ? "collapsed" : "expanded"}.`); renderTime(); body.querySelector("[data-entfold]")?.focus(); return;
+    }
     if (e.target.closest("[data-marker]")){
       state.entryLine = !state.entryLine; saveEntryLine(state.entryLine);
       say(`Entry marker ${state.entryLine ? "on" : "off"}.`); renderTime(); return;
