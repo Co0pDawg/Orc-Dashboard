@@ -275,5 +275,8 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
   #chooser,.leet #chooser .status{flex-wrap:nowrap;align-items:flex-start}
   #chooser > *,.leet .status > *{flex:none}
   .leet #chooser > .status{flex:1 1 100%;min-width:0}
+  /* One row height for every fixed item, its content centred, so the name, date and buttons share a centre line. */
+  #chooser > :not(.chip-slot):not(.status),.leet .status > :not(.chip-slot){display:flex;align-items:center;min-height:var(--bar-row,36px)}
+  .leet{--bar-row:26px}
   #chooser .chip-slot,.leet .status .chip-slot{display:block;flex:1 1 auto;min-width:0}
 }
