@@ -118,3 +118,7 @@ Credits (colors taken from each scheme's official palette file):
 - Dracula and Alucard, MIT: https://github.com/dracula/dracula-theme
 - Nord, MIT: https://github.com/nordtheme/nord (the light Snow Storm variant is ours, not official)
 - Rosé Pine, MIT: https://github.com/rose-pine/rose-pine-palette (no green in the palette, so done is teal)
+
+## Contributing
+
+Teammates: push a branch and open a pull request against `main`. `main` is protected: a PR needs one approving review from the code owner (`CODEOWNERS`), and the owner pushes directly. Run `npm test` and `npm run check` before opening it. Report bugs and ideas in [Issues](https://github.com/Co0pDawg/Orc-Dashboard/issues).
