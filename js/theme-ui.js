@@ -32,7 +32,7 @@ const ed = () => $("theme-ed");
 function fillBase(){
   const opt = t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`;
   $("theme-base").innerHTML = `<optgroup label="Built-in">${BUILTINS.map(opt).join("")}</optgroup>` + (state.themes.length ? `<optgroup label="Custom">${state.themes.map(opt).join("")}</optgroup>` : "");
-  $("theme-base").value = draft.id;
+  $("theme-base").value = draft ? draft.id : state.theme;
 }
 function rows(){ ed().querySelector("[data-theme-rows]").innerHTML = rowsHtml(skin(), values()); sync(); }
 // Updates every row in place (a token edit can move others, e.g. Ticket 1 follows Accent), never the field being typed in.
@@ -58,7 +58,7 @@ function open(){ before = state.theme; pick(state.theme); fillBase(); ed().hidde
 function close(revert){
   if (ed().hidden) return;
   if (revert){ state.theme = before; applyTheme(); }
-  ed().hidden = true; draft = null; ask("");
+  ed().hidden = true; draft = null; ask(""); fillBase();
   $("settings-menu").querySelector("[data-theme-edit]").setAttribute("aria-expanded", "false");
 }
 // The inline name field (Save as new, Rename) and the delete confirmation; only one shows at a time.
@@ -103,12 +103,13 @@ function act(a, say){
 
 /** Binds the theme editor; applies the saved theme first, so it is in place before first paint. */
 export function initTheme(say){
-  applyTheme();
+  applyTheme(); fillBase();
   const menu = $("settings-menu");
   menu.querySelector("[data-theme-edit]").addEventListener("click", () => { if (ed().hidden) open(); else close(true); });
   // Closing the menu with unsaved edits drops them, the same as Cancel.
   menu.addEventListener("toggle", () => { if (!menu.open) close(true); });
-  $("theme-base").addEventListener("change", e => { pick(e.target.value); rows(); });
+  // Collapsed, the select is the theme picker (applies and saves); expanded, it picks the base the edits start from.
+  $("theme-base").addEventListener("change", e => { if (ed().hidden){ select(e.target.value); say(`Colors: ${e.target.selectedOptions[0]?.text || "Board default"}.`); } else { pick(e.target.value); rows(); } });
   ed().addEventListener("click", e => { const b = e.target.closest("[data-th]"); if (b) act(b.dataset.th, say); });
   $("theme-name").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); act("name-ok", say); } else if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); ask(""); } });
   ed().addEventListener("input", e => {
