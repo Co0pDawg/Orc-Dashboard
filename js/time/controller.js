@@ -5,6 +5,7 @@ import {saveEntryLine} from "../prefs.js";
 import {$, say} from "../board.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
+import {entryNotes} from "./notes.js";
 import {scrumSummary, ticketTitles} from "./scrum.js";
 import {dayHtml, entriesHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
@@ -49,7 +50,8 @@ function dayView(){
   // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
-  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${entriesHtml(result, {date: T.date, notes: d.doc.notes, flags})}</div>`;
+  const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: T.cards});
+  return `<div class="day"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, T.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${entriesHtml(result, {date: T.date, notes, flags})}</div>`;
 }
 
 function weekView(){
