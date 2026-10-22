@@ -160,3 +160,12 @@
 .leet .ent-top .waiting{color:var(--t-dim)}
 .leet .ent-strip{color:var(--t-dim);font-family:var(--t-mono)}
 .leet .sched b{color:var(--t-amber)}
+.leet .search-pop{grid-template-columns:auto minmax(0,1fr);align-items:center;background:var(--t-pane);border:1px solid var(--t-bar);border-radius:var(--t-r)}
+.leet .search-pop .search-list{grid-column:1 / -1}
+.leet .search-btn{color:var(--t-bar);background:none;border:1px solid var(--t-faint);border-radius:var(--t-r)}
+.leet .search .find{color:var(--t-bar);font-weight:700}
+.leet .search input{font-family:var(--t-mono);background:transparent;color:var(--t-ink);border:0;border-bottom:1px solid var(--t-faint);border-radius:0;padding:0 2px}
+.leet .search input:focus-visible{outline:none;border-bottom-color:var(--t-bar)}
+.leet .search-list li{color:var(--t-ink)}
+.leet .search-list li[aria-selected="true"],.leet .search-list li[role="option"]:hover{background:color-mix(in srgb,var(--t-bar) 14%,transparent);color:var(--t-bar)}
+.leet .search-list .m,.leet .search-list .note{color:var(--t-dim)}

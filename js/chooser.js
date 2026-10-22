@@ -4,7 +4,8 @@ import {state} from "./state.js";
 import {saveShown, saveShowDone} from "./prefs.js";
 import {sessionTitle} from "./render/shared.js";
 import {$, chooser, say, visible, liveNow, render, tick, doneNow, doneOnDay, setDay, today} from "./board.js";
-import {addDays} from "./time/render.js";
+import {addDays, ymd} from "./time/render.js";
+import {searchSessions, lastTouched} from "./search.js";
 
 function chipsHtml(){
   const skin = state.skin, showDone = state.showDone;
@@ -21,6 +22,43 @@ function chipsHtml(){
 }
 // The day control: the chips show the sessions touched on this day. It lives in the shell, so a snapshot never closes its date picker.
 const dayNav = leet => `<span class="tnav day-nav" role="group" aria-label="Day"><button type="button" class="btn" data-dnav="-1" aria-label="Previous day" title="Previous day">◀</button><input type="date" data-dday aria-label="Go to date"><button type="button" class="btn" data-dnav="1" aria-label="Next day" title="Next day">▶</button><button type="button" class="btn" data-dnav="0" title="Back to today">${leet ? "today" : "Today"}</button></span>`;
+// The search icon and its popover live in the shell, so a snapshot re-renders only the results list, never the input.
+const searchBox = leet => `<span class="search"><button type="button" class="btn search-btn" data-search-toggle aria-label="Search sessions" title="Search sessions (/)" aria-expanded="false" aria-controls="search-pop"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button><div class="search-pop" id="search-pop" hidden>${leet ? `<span class="find" aria-hidden="true">find:</span>` : ""}<input type="search" data-search role="combobox" aria-expanded="false" aria-controls="search-list" aria-autocomplete="list" aria-label="Search sessions" placeholder="Search sessions" autocomplete="off" spellcheck="false"><ul id="search-list" class="search-list" role="listbox" aria-label="Sessions found" hidden></ul></div></span>`;
+let active = -1, hits = [];
+const box = () => chooser.querySelector("[data-search]"), list = () => $("search-list"), pop = () => $("search-pop"), icon = () => chooser.querySelector("[data-search-toggle]");
+/** Opens the search popover under its icon and focuses the field. */
+export function openSearch(){ pop().hidden = false; icon().setAttribute("aria-expanded", "true"); box().focus(); }
+// Closing clears the field; refocus returns focus to the icon (Esc, a click on nothing focusable).
+function closeSearch(refocus){
+  if (pop().hidden) return;
+  box().value = ""; closeList(); pop().hidden = true; icon().setAttribute("aria-expanded", "false");
+  if (refocus) icon().focus();
+}
+function closeList(){ const b = box(); list().hidden = true; b.setAttribute("aria-expanded", "false"); b.removeAttribute("aria-activedescendant"); active = -1; }
+/** Re-renders the search results for the box's current text; an empty box closes the list. */
+function renderList(){
+  const b = box(), q = b.value.trim();
+  if (!q){ closeList(); return; }
+  const r = searchSessions(state.sessions, state.cards, q);
+  hits = r.hits; if (active >= hits.length) active = hits.length - 1;
+  list().innerHTML = hits.length ? hits.map((h, i) => {
+    const d = h.s.data, day = h.last ? fmtDay(ymd(h.last)) : "";
+    return `<li role="option" id="search-opt-${i}" data-open="${esc(h.s.id)}" aria-selected="${i === active}"><span class="t">${esc(d.title || h.s.id)}</span><span>${doneNow(h.s) ? "Done" : "Open"}</span><span class="m">${d.ticket ? esc(d.ticket) + " · " : ""}${esc(day)}</span></li>`;
+  }).join("") + (r.more ? `<li class="note">${r.more} more, refine your search</li>` : "") : `<li class="note">No sessions match</li>`;
+  list().hidden = false; b.setAttribute("aria-expanded", "true");
+  if (active >= 0) b.setAttribute("aria-activedescendant", "search-opt-" + active); else b.removeAttribute("aria-activedescendant");
+}
+// Opening a result moves the shared day to its last touch and shows it alone, the same as a plain chip click there.
+function openResult(sid){
+  const s = state.sessions.find(x => x.id === sid); if (!s) return;
+  const last = lastTouched(s, state.cards), d = last ? ymd(last) : today();
+  setDay(d); state.dayPicked = true; state.opened = sid;
+  try { location.hash = pageHash("board", d, today()); } catch {}
+  closeSearch(false);
+  setShown([sid], sid);
+  const el = state.views.get(sid)?.el; if (el){ el.tabIndex = -1; el.focus({preventScroll: true}); }
+  say(`Opened ${sessionTitle(sid)}, ${fmtDay(d)}.`);
+}
 // The bar shell is built once per skin and only the chips re-render, so live data never closes an open color picker.
 /** Renders the chooser bar and its chips, restoring chip focus. */
 export function renderChooser(){
@@ -32,12 +70,13 @@ export function renderChooser(){
     gear.remove();
     chooser.dataset.skin = skin;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span><div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span></nav>`
-      : `<span class="brand">Orchestration Board</span><div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>`;
+      ? `<nav class="status" aria-label="Board status"><span class="tag">[orch]</span>${searchBox(true)}<div class="chip-slot" id="chip-slot"></div>${dayNav(true)}<span class="clock" id="clock"></span></nav>`
+      : `<span class="brand">Orchestration Board</span>${searchBox(false)}<div class="chip-slot" id="chip-slot"></div>${dayNav(false)}<span class="clock" id="clock"></span>`;
     $("clock").after(gear);
     focused?.focus();
   }
   $("chip-slot").innerHTML = chipsHtml();
+  if (!list().hidden) renderList();
   const input = chooser.querySelector("[data-dday]");
   if (document.activeElement !== input) input.value = state.day;
   chooser.querySelector('[data-dnav="0"]').setAttribute("aria-pressed", String(state.day === today()));
@@ -58,7 +97,7 @@ function toggleShown(sid){
 }
 // Same as Time's go(): the hash records the day, and the board renders directly in case the host swallows hashchange.
 function pickDay(d){
-  setDay(d);
+  setDay(d); state.opened = null;
   try { location.hash = pageHash("board", d, today()); } catch {}
   renderChooser(); render();
   say(`Showing sessions touched on ${fmtDay(d)}.`);
@@ -66,6 +105,22 @@ function pickDay(d){
 
 /** Binds the chooser's handlers (chips, stacking, Show finished, the day control). */
 export function initChooser(){
+  chooser.addEventListener("input", e => { if (e.target.matches("[data-search]")){ active = -1; renderList(); } });
+  chooser.addEventListener("keydown", e => {
+    if (!e.target.matches("[data-search]")) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp"){
+      e.preventDefault();
+      if (list().hidden){ renderList(); return; }
+      if (hits.length) active = e.key === "ArrowDown" ? (active + 1) % hits.length : active <= 0 ? hits.length - 1 : active - 1;
+      renderList();
+    } else if (e.key === "Enter"){ if (!list().hidden && hits[active]){ e.preventDefault(); openResult(hits[active].s.id); } }
+    else if (e.key === "Escape"){ e.preventDefault(); if (!list().hidden) closeList(); else closeSearch(true); }
+  });
+  // A click outside closes the popover and returns focus to the icon (a focusable target then takes focus as usual).
+  document.addEventListener("mousedown", e => { if (!pop().hidden && !e.target.closest?.(".search")) closeSearch(true); });
+  // Tab out closes it too; focus stays where it went, or returns to the icon when it went nowhere.
+  document.addEventListener("focusout", e => { if (e.target.closest?.(".search-pop") && !e.relatedTarget?.closest?.(".search-pop")) setTimeout(() => closeSearch(document.activeElement === document.body), 0); });
+  chooser.addEventListener("mousedown", e => { if (e.target.closest(".search-list")) e.preventDefault(); });
   chooser.addEventListener("change", e => { if (e.target.matches("[data-dday]") && e.target.value) pickDay(e.target.value); });
   chooser.addEventListener("click", e => {
     const nav = e.target.closest("[data-dnav]");
@@ -76,6 +131,9 @@ export function initChooser(){
       say(state.showDone ? "Showing finished sessions." : "Finished sessions hidden.");
       return;
     }
+    if (e.target.closest("[data-search-toggle]")){ if (pop().hidden) openSearch(); else closeSearch(true); return; }
+    const o = e.target.closest("[data-open]");
+    if (o){ openResult(o.dataset.open); return; }
     const t = e.target.closest("[data-toggle]");
     if (t){ state.chipFocus = {id: t.dataset.toggle, kind: "toggle"}; toggleShown(t.dataset.toggle); return; }
     const b = e.target.closest("[data-id]"); if (!b) return;
