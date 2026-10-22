@@ -46,3 +46,19 @@ test("editor rows: one per token of the skin, values escaped", () => {
   assert.ok(html.includes('data-tok="--t-bar"'));
   assert.ok(!rowsHtml("sleek", {"--bg": '"><x'}).includes('"><x'));
 });
+
+test("contrast warnings: each checked pair on its own, and one token failing two pairs lists both", () => {
+  const ok = {"--ink": "#000000", "--muted": "#000000", "--bg": "#ffffff", "--surface": "#eeeeee"};
+  assert.deepEqual(warnings("sleek", ok), {});
+  // Text on background alone (surface dark so text passes there).
+  assert.deepEqual(Object.keys(warnings("sleek", {...ok, "--ink": "#bbbbbb", "--surface": "#000000"})), ["--ink"]);
+  assert.match(warnings("sleek", {...ok, "--ink": "#bbbbbb", "--surface": "#000000"})["--ink"], /^[\d.]+:1 on Background$/);
+  // Muted on background alone.
+  assert.match(warnings("sleek", {...ok, "--muted": "#cccccc"})["--muted"], /on Background$/);
+  // Text on surface alone (bg stays light, surface turns dark).
+  assert.match(warnings("sleek", {...ok, "--ink": "#000000", "--surface": "#111111"})["--ink"], /^[\d.]+:1 on Surface$/);
+  // One token failing both its pairs reports both, joined.
+  assert.match(warnings("sleek", {...ok, "--ink": "#f0f0f0", "--surface": "#ffffff"})["--ink"], /on Background, .* on Surface$/);
+  // 1337 ink on background.
+  assert.match(warnings("leet", {"--t-ink": "#101010", "--t-bg": "#000000"})["--t-ink"], /on Background$/);
+});
