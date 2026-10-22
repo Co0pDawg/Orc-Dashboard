@@ -20,7 +20,7 @@ export function scrub(s){
     .trim().replace(/^[\s,;:.-]+|[\s,;:-]+$/g, "");
 }
 
-/** Up to 3 plain "what the work was" clauses from roll-up texts, in order, joined with "; " and cut at 160 chars on a word. */
+/** Up to 3 plain "what the work was" clauses from roll-up texts, in order, joined with "; " as whole clauses within 160 chars; only an over-long first clause is cut on a word, with "…". */
 export function plainSummary(texts = []){
   const out = [];
   for (const text of texts) for (const raw of String(text ?? "").replace(/^[A-Z][a-z]+(?: [a-z]+)?:\s+/, "").split(";")) {
@@ -29,8 +29,12 @@ export function plainSummary(texts = []){
     const c = scrub(raw).replace(/\.$/, "").replace(/^[A-Z](?![A-Z])/, m => m.toLowerCase());
     if (c && !out.includes(c)) out.push(c);
   }
-  const s = out.slice(0, 3).join("; ");
-  return s.length <= 160 ? s : s.slice(0, 161).replace(/\s+\S*$/, "").replace(/[\s,;:]+$/, "");
+  const [first = "", ...rest] = out.slice(0, 3);
+  // Whole clauses only: a later clause that would pass 160 chars is dropped with everything after it, never cut.
+  if (first.length > 160) { const cut = first.lastIndexOf(" ", 159); return first.slice(0, cut > 0 ? cut : 159).replace(/[\s,;:]+$/, "") + "…"; }
+  let s = first;
+  for (const c of rest) { if (s.length + 2 + c.length > 160) break; s += "; " + c; }
+  return s;
 }
 
 /** Titles by ticket: a session whose ticket it is, else the earliest card (session start, then order) whose cardTicket it is. */
