@@ -177,3 +177,5 @@
 .leet .tour-n{color:var(--t-green);font-weight:700}
 .leet .tour-pop h2{font-size:13px;color:var(--t-ink)}
 .leet .tour-btns .btn{min-height:24px}
+/* Today wears the header's own color (the bar border token), so it follows the theme like the bar does. */
+.leet .status .day-nav [data-dnav="0"][aria-pressed="true"]{background:var(--t-bar);border-color:var(--t-bar);color:var(--t-bg)}
