@@ -52,7 +52,7 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
   - A ticket ending in `*` marks explicit evidence.
   - `sessions.map` holds per-session ticket overrides.
   - History goes back to 2026-09-22.
-- **The board database** (artifact `GJS9SUHY6eiX4bp32G65z1`, `db` capability, private to Cooper). It holds `sessions/*` and `cards/*`.
+- **The board database** (the board artifact, `db` capability, private to its owner). It holds `sessions/*` and `cards/*`.
   - Dispatch events name their `card`.
   - Report events follow them.
   - Cards carry agent `progress[]` lines with times.
