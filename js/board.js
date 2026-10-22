@@ -3,7 +3,7 @@ import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId
 import {ago, esc} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
-import {paneName, sessionTitle, editChrome, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
+import {paneName, sessionTitle, editChrome, editBtn, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
 import {ymd} from "./time/render.js";
@@ -131,11 +131,15 @@ function renderTiles(v, sess){
         : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
     } catch (err){
       console.error("Orchestration Board: pane", id, err);
-      body = `<p class="note">This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
+      body = `<p class="note">${editBtn(id, paneName(id), skin === "leet")} This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
     }
     // A log that fills its column takes no saved height, so its edit bar drops the height controls and the corner.
     const {bar, corner} = editChrome(id, log && fills);
+    // A live snapshot rewrites the pane, so a focused control inside it (the ✎, an edit button, a toggle) gets focus back.
+    const f = el.contains(document.activeElement) && document.activeElement, key = f && ["edit", "act", "cardfold", "subs"].find(k => f.dataset?.[k] !== undefined);
+    const sel = key && `[data-${key}="${CSS.escape(f.dataset[key])}"]`;
     el.innerHTML = bar + body + corner;
+    if (sel) el.querySelector(sel)?.focus({preventScroll: true});
     applySize(el);
   });
   fillLog(tiles);
