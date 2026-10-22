@@ -39,23 +39,23 @@ test("touchedOn: another day, a bad date and the local-midnight edges", () => {
 test("visibleSessions by day: today keeps finished behind Show finished; a past day always shows them", () => {
   const sessions = [sess("live", {updated: at(D)}), sess("fin", {completed: at(D), updated: at(D)}), sess("old", {updated: at("2026-10-14")}), sess("oldfin", {completed: at("2026-10-14")})];
   const on = s => touchedOn(s, D);
-  assert.deepEqual(visibleSessions(sessions, false, "fable", on).map(s => s.id), ["live"], "today, finished hidden");
-  assert.deepEqual(visibleSessions(sessions, true, "fable", on).map(s => s.id), ["live", "fin"], "today, finished shown");
-  assert.deepEqual(visibleSessions(sessions, false, "fable", on, true).map(s => s.id), ["live", "fin"], "past day shows finished");
-  assert.deepEqual(visibleSessions(sessions, false, "fable", s => touchedOn(s, "2026-10-16"), true), [], "nothing touched");
+  assert.deepEqual(visibleSessions(sessions, false, "orchestrator", on).map(s => s.id), ["live"], "today, finished hidden");
+  assert.deepEqual(visibleSessions(sessions, true, "orchestrator", on).map(s => s.id), ["live", "fin"], "today, finished shown");
+  assert.deepEqual(visibleSessions(sessions, false, "orchestrator", on, true).map(s => s.id), ["live", "fin"], "past day shows finished");
+  assert.deepEqual(visibleSessions(sessions, false, "orchestrator", s => touchedOn(s, "2026-10-16"), true), [], "nothing touched");
 });
 
 test("doneCount: the day's finished sessions only, and 0 on a past day", () => {
   const sessions = [sess("fin", {completed: at(D)}), sess("fin2", {status: "Done", updated: at(D)}), sess("oldfin", {completed: at("2026-10-14")}), sess("live", {updated: at(D)})];
   const on = s => touchedOn(s, D);
-  assert.equal(doneCount(sessions, "fable", on), 2);
-  assert.equal(doneCount(sessions, "fable", on, true), 0);
-  assert.equal(doneCount(sessions, "fable"), 3, "no day filter counts every finished session");
+  assert.equal(doneCount(sessions, "orchestrator", on), 2);
+  assert.equal(doneCount(sessions, "orchestrator", on, true), 0);
+  assert.equal(doneCount(sessions, "orchestrator"), 3, "no day filter counts every finished session");
 });
 
 test("liveIds on a day: the saved list filtered to the day's chips, else the newest touched", () => {
   const sessions = [sess("a", {updated: at(D)}), sess("b", {updated: at(D)}), sess("x", {updated: at("2026-10-14")})];
-  const vis = visibleSessions(sessions, false, "fable", s => touchedOn(s, D));
+  const vis = visibleSessions(sessions, false, "orchestrator", s => touchedOn(s, D));
   assert.deepEqual(liveIds(["x", "b"], vis), ["b"]);
   assert.deepEqual(liveIds(["x"], vis), ["a"]);
   assert.deepEqual(liveIds(["x"], []), []);
