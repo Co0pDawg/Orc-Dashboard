@@ -5,9 +5,12 @@
 .wrap{max-width:1800px;margin:0 auto;padding-block:14px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* top: session chooser + date, with the Settings gear after the clock */
+/* top: two rows. Row 1 is the name, the Board | Time tabs, then clock, gear and ?; row 2 is the day, search and chips. */
 .top{display:grid;gap:6px;min-width:0}
-#chooser{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-width:0}
+#chooser{display:grid;gap:6px;min-width:0}
+.bar-row1,.bar-row2{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;min-width:0}
+/* Row 2 is opt-in per page: only the pages listed here show it, so a new page gets no day control, search or chips. */
+body:not([data-view="board"]) .bar-row2{display:none}
 .clock{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);font-size:13px}
 .skin{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
 .skin input{appearance:none;-webkit-appearance:none;margin:0;width:40px;height:22px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background .2s}
@@ -30,15 +33,31 @@
 .settings .menu{min-width:280px;max-width:min(340px,calc(100vw - 32px));padding:12px;gap:14px}
 .gear{font-size:15px;line-height:1;padding:3px 8px}
 .opt-h{font-weight:600}
-.opt.bar-color,.opt.pick{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.opt.pick{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .opt select{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 8px;min-height:28px}
-.bar-pick{display:inline-flex;align-items:center;gap:8px}
-.bar-pick .btn{font-size:12px;padding:2px 8px}
-.bar-pick .btn:disabled{opacity:.45;cursor:default}
-.bar-color input{width:32px;height:22px;padding:0;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}
-.bar-color input::-webkit-color-swatch-wrapper{padding:0}
-.bar-color input::-webkit-color-swatch{border:0;border-radius:2px}
-.bar-color input::-moz-color-swatch{border:0;border-radius:2px}
+/* Settings sections: General on every page; a [data-page] section only on its own page */
+.opt-sec{display:grid;gap:12px}
+.opt-sec + .opt-sec{border-top:1px solid var(--line);padding-top:12px}
+.opt-sec-h{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+body:not([data-view="board"]) .settings [data-page="board"],body:not([data-view="time"]) .settings [data-page="time"]{display:none}
+/* the theme editor: a row per token (swatch, picker, R G B), scrolling inside the menu */
+.settings .menu{max-height:calc(100vh - 80px);overflow-y:auto}
+.theme-ed{display:grid;gap:10px}
+.theme-ed[hidden],.th-name[hidden],.th-acts [hidden]{display:none}
+.th-group{border:0;margin:0;padding:0;display:grid;gap:4px}
+.th-group legend{font-weight:600;font-size:12px;margin-bottom:4px}
+.th-row{display:grid;grid-template-columns:18px minmax(0,1fr) 32px auto;gap:2px 6px;align-items:center;font-size:12.5px}
+.th-sw{width:18px;height:18px;border-radius:4px;border:1px solid var(--line)}
+.th-row input[type="color"]{width:32px;height:24px;padding:0;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}
+.th-row input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+.th-row input[type="color"]::-webkit-color-swatch{border:0;border-radius:2px}
+.th-rgb{display:inline-flex;gap:2px}
+.th-rgb input{width:4.2em;min-height:24px;font:inherit;font-size:12px;padding:0 2px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px}
+.th-warn{grid-column:2 / -1;color:var(--bad-text);font-size:12px}
+.th-warn:empty{display:none}
+.th-acts,.th-name{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.th-name input{flex:1 1 120px;min-width:0;min-height:24px;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+.th-acts .btn:disabled{opacity:.45;cursor:default}
 .sess .fold{min-width:32px;font-size:15px}
 .opt{border:0;margin:0;padding:0;display:grid;gap:8px;font-size:13px}
 .opt legend{font-weight:600;padding:0;margin-bottom:6px}
@@ -103,7 +122,7 @@
 
 /* ---------- Board | Time pages: one shell, the body's data-view picks which one shows ---------- */
 .views{display:flex;gap:6px}
-body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="time"] .chip-slot,[data-view="time"] .day-nav,[data-view="time"] .search{display:none}
+body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 .time-view{display:grid;gap:14px;min-width:0}
 .time-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .tabs,.tnav{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
@@ -261,6 +280,8 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .search-list .m{grid-column:1 / -1;font-size:12px;font-variant-numeric:tabular-nums}
 /* On a phone the popover spans the bar instead of hanging off the icon, so it never scrolls the page sideways. */
 @media (max-width:560px){#chooser{position:relative}.search{position:static}.search-pop{left:0;right:0;width:auto}}
+/* The gear can wrap to the left on a phone, so its menu spans the screen instead of hanging left of it. */
+@media (max-width:560px){.settings .menu{position:fixed;top:auto;left:16px;right:16px;max-width:none;max-height:calc(100vh - 120px)}}
 /* the guided tour (js/tour-ui.js): a ring that dims everything around its target, and a popover that stays on screen */
 .tour-ring{position:fixed;z-index:60;pointer-events:none;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
 .tour-pop{position:fixed;z-index:61;width:min(320px,calc(100vw - 16px));padding:12px 14px;display:grid;gap:6px}
@@ -269,14 +290,13 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack,[data-view="ti
 .tour-btns{display:flex;gap:6px;justify-content:flex-end}
 .tour-btns [hidden]{display:none}
 @media (prefers-reduced-motion: no-preference){.tour-ring,.tour-pop{transition:top .15s,left .15s,width .15s,height .15s}}
-/* The top row is anchored: name, day control and search on the left, clock, gear and ? on the right, all on line one.
-   Only the chips grow: their slot takes the middle and wraps inside itself, so a long session list never moves the rest. */
+/* Row 2 is anchored: day control and search on the left of line one; only the chips grow, taking the rest of the row
+   and wrapping inside their own slot, so a long session list never moves the rest. */
 @media (min-width:561px){
-  #chooser,.leet #chooser .status{flex-wrap:nowrap;align-items:flex-start}
-  #chooser > *,.leet .status > *{flex:none}
-  .leet #chooser > .status{flex:1 1 100%;min-width:0}
+  .bar-row2{flex-wrap:nowrap;align-items:flex-start}
+  .bar-row2 > *{flex:none}
   /* One row height for every fixed item, its content centred, so the name, date and buttons share a centre line. */
-  #chooser > :not(.chip-slot):not(.status),.leet .status > :not(.chip-slot){display:flex;align-items:center;min-height:var(--bar-row,36px)}
+  .bar-row1 > *,.bar-row2 > :not(.chip-slot){display:flex;align-items:center;min-height:var(--bar-row,36px)}
   .leet{--bar-row:26px}
-  #chooser .chip-slot,.leet .status .chip-slot{display:block;flex:1 1 auto;min-width:0}
+  .bar-row2 .chip-slot{display:block;flex:1 1 auto;min-width:0}
 }

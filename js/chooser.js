@@ -66,14 +66,18 @@ const helpBtn = `<button type="button" class="btn tour-help" data-tour aria-labe
 export function renderChooser(){
   const skin = state.skin;
   if (chooser.dataset.skin !== skin){
-    // The gear is one permanent element (its open state, radios and color picker must survive a skin switch made
-    // from inside it), so take it out before the shell is rebuilt, put it back after the clock, and restore focus.
-    const gear = $("settings-menu"), focused = gear.contains(document.activeElement) ? document.activeElement : null;
-    gear.remove();
+    // The gear and the Board | Time tabs are permanent elements (the gear's open state, radios and editor must survive a
+    // skin switch made from inside it), so take them out before the shell is rebuilt, put them back, and restore focus.
+    const gear = $("settings-menu"), views = document.querySelector(".views"), focused = gear.contains(document.activeElement) ? document.activeElement : null;
+    gear.remove(); views.remove();
     chooser.dataset.skin = skin;
+    // Row 1: name, tabs, then clock, gear and ? on the right. Row 2 (day, search, chips) shows only on pages that opt in (css/base.css).
+    const row2 = `<div class="bar-row2">${dayNav(skin === "leet")}${searchBox(skin === "leet")}<div class="chip-slot" id="chip-slot"></div></div>`;
+    const row1 = name => `<div class="bar-row1">${name}<span class="clock" id="clock"></span>${helpBtn}</div>`;
     chooser.innerHTML = skin === "leet"
-      ? `<nav class="status" aria-label="Board status"><span class="tag">[orc]</span>${dayNav(true)}${searchBox(true)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}</nav>`
-      : `<span class="brand">Orc-istrator</span>${dayNav(false)}${searchBox(false)}<div class="chip-slot" id="chip-slot"></div><span class="clock" id="clock"></span>${helpBtn}`;
+      ? `<nav class="status" aria-label="Board status">${row1(`<span class="tag">[orc]</span>`)}${row2}</nav>`
+      : row1(`<span class="brand">Orc-istrator</span>`) + row2;
+    chooser.querySelector(".bar-row1").firstElementChild.after(views);
     $("clock").after(gear);
     focused?.focus();
   }

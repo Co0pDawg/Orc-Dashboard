@@ -8,10 +8,13 @@
 .leet a{color:inherit}
 .leet a:focus-visible,.leet button:focus-visible,.leet summary:focus-visible,.leet .skin input:focus-visible{outline:1px solid var(--t-lime);outline-offset:2px}
 .leet .clock{color:inherit;font-size:inherit}
-.leet .status{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;background:var(--t-bg);color:var(--t-ink);border:1px solid var(--t-bar);border-radius:var(--t-r);padding:3px 10px;font-weight:500;min-width:0}
+.leet .status{display:grid;gap:4px;background:var(--t-bg);color:var(--t-ink);border:1px solid var(--t-bar);border-radius:var(--t-r);padding:3px 10px;font-weight:500;min-width:0}
 .leet .status .tag{font-weight:700;color:var(--t-bar)}
 .leet .status .clock{color:var(--t-dim)}
-.leet .bar-color input{border-color:var(--t-faint);border-radius:2px}
+.leet .th-row input,.leet .th-name input,.leet .th-sw{font-family:var(--t-mono);background:var(--t-pane);color:var(--t-ink);border-color:var(--t-faint);border-radius:2px}
+.leet .opt-sec + .opt-sec{border-top-color:var(--t-faint)}
+.leet .opt-sec-h{color:var(--t-dim)}
+.leet .th-warn{color:var(--t-red)}
 .leet .opt select{font-family:var(--t-mono);background:var(--t-pane);color:var(--t-ink);border-color:var(--t-faint);border-radius:var(--t-r)}
 .leet .status .gear{min-height:24px;padding:0 6px}
 .leet .status .day-nav .btn,.leet .status .day-nav input{min-height:24px;padding:0 6px}
