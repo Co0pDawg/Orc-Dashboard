@@ -3,7 +3,7 @@ import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId
 import {ago, esc, untilText} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
-import {paneName, sessionTitle, editChrome, editBtn, emptyHtml, sessMover, hideDoneText} from "./render/shared.js";
+import {paneName, sessionTitle, editChrome, editBtn, emptyHtml, sessMover, hideDoneText, isEditing} from "./render/shared.js";
 import {sleekCard, sleekLog, sleekHead} from "./render/sleek.js";
 import {leetCard, leetLog, leetHead} from "./render/leet.js";
 import {ymd} from "./time/render.js";
@@ -125,7 +125,7 @@ function renderTiles(v, sess){
     place(tiles, el, i);
     const log = isLog(id), c = log ? null : cards.find(x => x._id === id);
     const st = c ? cardState(c) : "", min = !log && !!state.cardFold[id];
-    el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (state.editing.has(id) ? " editing" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
+    el.className = "slot" + (log ? " log" : "") + (min ? " min" : "") + (isEditing(id) ? " editing" : "") + (skin === "leet" ? ` pane ${st}` : (st ? ` is-${st}` : ""));
     el.setAttribute("aria-label", paneName(id));
     // One unreadable doc must not stop the rest of the board, so a pane that throws shows why and logs the error.
     let body;
@@ -206,11 +206,11 @@ export function render(){
     v.el.classList.toggle("folded", f);
     v.fold.setAttribute("aria-expanded", String(!f));
     v.fold.setAttribute("aria-label", `${f ? "Expand" : "Minimize"} ${t}`);
-    // A session's ✎ only reorders, so it shows only while there is another session to move past.
+    // A session's ✎ opens every pane in it for editing, and also shows the session mover when there is another to move past.
     const sEdit = state.editSess.has(sess.id);
-    v.sedit.hidden = live.length < 2;
+    v.sedit.hidden = f;
     v.sedit.setAttribute("aria-pressed", String(sEdit));
-    v.sedit.setAttribute("aria-label", `Edit position of ${t}`);
+    v.sedit.setAttribute("aria-label", `Edit layout of ${t}`);
     v.sedit.textContent = state.skin === "leet" ? "[✎]" : "✎";
     v.mover.innerHTML = sEdit && live.length > 1 ? sessMover(sess.id, t, i, live.length) : "";
     v.fold.textContent = state.skin === "leet" ? (f ? "[+]" : "[-]") : (f ? "+" : "−");
@@ -227,7 +227,7 @@ export function render(){
   });
   // A pane or session that left the screen (Hide done, a day change, a hidden session) leaves edit mode.
   for (const id of state.editing) if (!slotEl(id)) state.editing.delete(id);
-  for (const sid of state.editSess) if (live.length < 2 || !state.views.has(sid)) state.editSess.delete(sid);
+  for (const sid of state.editSess) if (!state.views.has(sid)) state.editSess.delete(sid);
   if (state.refocus){ slotEl(state.refocus.id)?.querySelector(`[data-act="${state.refocus.act}"]`)?.focus(); state.refocus = null; }
   if (state.sessFocus){
     const s = stack.querySelector(`[data-sact="${state.sessFocus.act}"][data-sid="${CSS.escape(state.sessFocus.sid)}"]`);
