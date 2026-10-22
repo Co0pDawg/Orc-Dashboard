@@ -39,7 +39,7 @@ export function subToggle(key, count, open, leet){
   const n = `${count} update${count > 1 ? "s" : ""}`;
   return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
 }
-// The session's PR, written by Fable when it opens the PR and refreshed at the start of later orchestrated tasks.
+// The session's PR, written by the orchestrator when it opens the PR and refreshed at the start of later orchestrated tasks.
 // Only an Azure DevOps link is used as a link; anything else shows as plain text.
 /** The header fact for a session's pull request, or "". */
 export function prHtml(pr, leet){

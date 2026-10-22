@@ -1,6 +1,6 @@
 # Orchestration Board
 
-A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1, `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; Fable and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
+A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1, `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; the orchestrator and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
 
 ## Files
 
@@ -35,7 +35,7 @@ A private claude.ai Artifact (https://claude.ai/artifact/GJS9SUHY6eiX4bp32G65z1,
 - Times are ISO with offset.
 - `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, titles:{<ticket>:ADO title}, blocks:[{start, end, ticket, text}], flags:{<ticket>:{unplanned:true}}}`. `ticket` is `PET-NNNNN` or null (no ticket); events carry no prompt text. `blocks` are the worklog roll-up's time blocks (model-written descriptions, ISO times with offset); an entry's Note joins the same-ticket blocks it overlaps, a waiting-only entry's Note names the agent runs it covers (card title, else dispatch text), and `notes[ticket]` is the fallback (js/time/notes.js entryNotes). `titles` labels the scrum's Yesterday lines (an older doc without it falls back to the board's session or card title). The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
 
-## Writing protocol (Fable and its agents)
+## Writing protocol (the orchestrator and its agents)
 
 The single source for when the board is written. `~/.claude/CLAUDE.md` says to follow it, so keep it accurate.
 
@@ -45,7 +45,7 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 |---|---|
 | **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line], plus `ado` when the repo's work items are not in Cosairus/Petsoft) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
 | **Dispatch** | The card's stage turns `active` with `started`; set `agent`. Append an event `{at, text: "<agent> dispatched on #<task>", card: "<card id>"}`. Update `now` and `status`. The brief carries `BOARD: <board URL> card <card id>` (marching orders item 10). |
-| **Check-in** (Fable reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
+| **Check-in** (the orchestrator reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
 | **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |
 | **Report** | The stage turns `done` or `rework` (a rework stage gets a fresh `started`). Set `tokens` and `note`. Append the outcome as a top-level event that names the card, `{at, text, card}` ("refuter ACCEPT", "builder done: 40 tests pass"); the Time page ends that agent's span at this event. |
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
@@ -62,9 +62,9 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
  "stages": [{"label": "Build", "state": "pending"}, {"label": "Refute", "state": "pending"}, {"label": "Commit", "state": "pending"}]}
 ```
 
-Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with Fable's writes. A subagent write needs no permission prompt (probed 2026-10-19).
+Agents write only their own card's `progress[]` (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, so they cannot collide with the orchestrator's writes. A subagent write needs no permission prompt (probed 2026-10-19).
 
-Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`fable` or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off), `board.logFull` (the activity log spans every row its cards use; default on; it grows a row at a time and stops above a card that can never sit beside it, such as a full-width one, so no row is left empty; in its edit mode the log then has no height controls), `board.hideDone` ({session id: true}, set by a session's Hide done button), `board.entriesFold` (the Day Entries pane folded to a side strip). The selected day is never stored: it lives in the hash and the page load.
+Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`orchestrator`, the default, which an older saved `fable` also reads as; or `pr`), `board.barColor`, `board.palette`, `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off), `board.logFull` (the activity log spans every row its cards use; default on; it grows a row at a time and stops above a card that can never sit beside it, such as a full-width one, so no row is left empty; in its edit mode the log then has no height controls), `board.hideDone` ({session id: true}, set by a session's Hide done button), `board.entriesFold` (the Day Entries pane folded to a side strip). The selected day is never stored: it lives in the hash and the page load.
 
 ## Layout editing
 

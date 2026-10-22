@@ -50,14 +50,14 @@ export function progress(cards){
   const all = cards.flatMap(stagesOf);
   return {all: all.length, done: all.filter(x => x.state === "done" || x.state === "skipped").length, tickets: cards.length, ticketsDone: cards.filter(c => cardState(c) === "done").length};
 }
-// Fable finishes a session by writing `completed` (or status Done). With the "pr" setting a finished session whose
+// The orchestrator finishes a session by writing `completed` (or status Done). With the "pr" setting a finished session whose
 // pull request is still open (draft or active) is not done yet; a session that never recorded a PR finishes as before.
-/** True when Fable has marked the session finished. */
-export const fableDone = s => !!s.data.completed || /^(done|complete|completed|finished)$/i.test(s.data.status || "");
+/** True when the orchestrator has marked the session finished. */
+export const orchestratorDone = s => !!s.data.completed || /^(done|complete|completed|finished)$/i.test(s.data.status || "");
 /** True when a PR status is final (completed or abandoned). */
 export const prFinal = status => /^(completed|merged|abandoned)$/i.test(String(status || ""));
-/** True when a session is finished under the viewer's setting: "fable" (default) or "pr". */
-export const isDone = (s, mode = "fable") => fableDone(s) && (mode !== "pr" || !s.data.pr || !s.data.pr.id || prFinal(s.data.pr.status));
+/** True when a session is finished under the viewer's setting: "orchestrator" (default) or "pr". */
+export const isDone = (s, mode = "orchestrator") => orchestratorDone(s) && (mode !== "pr" || !s.data.pr || !s.data.pr.id || prFinal(s.data.pr.status));
 /** A card's agent-posted progress lines, or []. */
 export const progressOf = c => Array.isArray(c.progress) ? c.progress : [];
 // A dispatch event that names its `card` also nests that card's agent-posted progress from its time until the next

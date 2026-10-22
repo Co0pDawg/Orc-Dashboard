@@ -21,7 +21,7 @@ Rules for every change to the Orchestration Board. A change that breaks one eith
 ## State and storage
 
 - All per-viewer storage goes through `prefs.js`, every access wrapped in try/catch; the board must work with storage empty or throwing.
-- The page never writes to the db. It is a read-only viewer; Fable and agents write through ArtifactData.
+- The page never writes to the db. It is a read-only viewer; the orchestrator and agents write through ArtifactData.
 - The page renders its empty state before `window.claude.use("db")` resolves.
 
 ## Rendering

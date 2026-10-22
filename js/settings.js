@@ -52,7 +52,7 @@ export function initSettings(){
   menu.addEventListener("change", e => {
     if (e.target.name !== "done-when") return;
     state.doneWhen = e.target.value; saveDoneWhen(state.doneWhen);
-    say(state.doneWhen === "pr" ? "Sessions now finish when their pull request is completed." : "Sessions now finish when Fable marks them Done.");
+    say(state.doneWhen === "pr" ? "Sessions now finish when their pull request is completed." : "Sessions now finish when the orchestrator marks them Done.");
     renderChooser(); render();
   });
   document.addEventListener("click", e => { if (menu.open && !menu.contains(e.target)) menu.open = false; });

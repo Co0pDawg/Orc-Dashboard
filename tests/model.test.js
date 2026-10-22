@@ -111,11 +111,11 @@ test("isDone with the pr setting: a finished session waits for a final PR status
   assert.equal(isDone(sess({...done, pr: {id: 6240, status: "completed"}}), "pr"), true);
   assert.equal(isDone(sess({...done, pr: {id: 6240, status: "Abandoned"}}), "pr"), true);
   assert.equal(isDone(sess({...done}), "pr"), true, "no recorded PR finishes as before");
-  assert.equal(isDone(sess({status: "Building", pr: {id: 1, status: "completed"}}), "pr"), false, "Fable still owns finishing");
+  assert.equal(isDone(sess({status: "Building", pr: {id: 1, status: "completed"}}), "pr"), false, "the orchestrator still owns finishing");
   assert.equal(prFinal("merged"), true);
   const list = [sess({...done, pr: {id: 1, status: "active"}})];
   assert.equal(visibleSessions(list, false, "pr").length, 1, "an awaiting session stays on the chips");
-  assert.equal(visibleSessions(list, false, "fable").length, 0);
+  assert.equal(visibleSessions(list, false, "orchestrator").length, 0);
 });
 
 test("mergeOrder: ids a reorder did not see go back after the id they followed", () => {
