@@ -1,22 +1,19 @@
-// Customize mode: per-pane move/resize buttons, grip arrow keys, corner drag, the reset menu and its undo toast.
+// Per-pane edit mode (each pane's ✎): move/resize buttons, grip arrow keys, corner drag, Esc to leave; session reorder;
+// the Settings > Layout resets and their undo toast.
 import {clamp} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveCardFold, saveShown} from "./prefs.js";
 import {paneName, sessionTitle} from "./render/shared.js";
-import {$, stack, resetMenu, customize, say, render, slotEl, setOrder, liveNow} from "./board.js";
+import {$, stack, say, render, slotEl, setOrder, liveNow} from "./board.js";
 
 const RMAX = 6; // tallest pane, in grid rows
 
-function setEditing(on){
-  state.editing = on;
-  customize.setAttribute("aria-pressed", String(on));
-  customize.textContent = on ? "Done" : "Customize layout";
-  resetMenu.hidden = !on; resetMenu.open = false;
-  document.body.classList.toggle("editing", on);
-  for (const v of state.views.values()) v.sortable?.option("disabled", !on);
-  state.stackSortable?.option("disabled", !on);
-  say(on ? "Customizing layout. Use the buttons on each pane, or drag the grip and the corner." : "Layout saved.");
+// The ✎ is re-rendered with its pane, so focus goes back to the new one.
+function setPaneEdit(id, on){
+  if (on) state.editing.add(id); else state.editing.delete(id);
+  say(on ? `Editing layout of ${paneName(id)}` : `Done editing ${paneName(id)}`);
   render();
+  slotEl(id)?.querySelector("[data-edit]")?.focus();
 }
 function showToast(msg){
   $("toast-msg").textContent = msg; $("toast").hidden = false; say(msg + ". Undo available.");
@@ -61,12 +58,12 @@ function moveSession(sid, delta){
   say(`${sessionTitle(sid)}, session ${j + 1} of ${live.length}`);
 }
 
-/** Binds the customize, undo, reset-menu, document and stack (click, keydown, pointerdown) handlers. */
+/** Binds the undo, Settings > Layout reset and stack (click, keydown, pointerdown) handlers. */
 export function initLayoutEdit(){
-  customize.addEventListener("click", () => setEditing(!state.editing));
   // Session blocks drag by their own grip; pane grips belong to each session's tiles Sortable, so the two never mix.
+  // Enabled always: only a session whose ✎ is on renders a .sgrip.
   if (window.Sortable) state.stackSortable = Sortable.create(stack, {
-    handle: ".sgrip", draggable: ".sess", group: "sessions", animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: "ghost", disabled: true,
+    handle: ".sgrip", draggable: ".sess", group: "sessions", animation: 150, delay: 150, delayOnTouchOnly: true, ghostClass: "ghost",
     onStart(){ state.busy = true; },
     onEnd(evt){
       state.busy = false;
@@ -80,22 +77,30 @@ export function initLayoutEdit(){
     state.layout = JSON.parse(state.undoLayout); state.undoLayout = null; saveLayout(state.layout);
     $("toast").hidden = true; say("Layout restored."); render();
   });
-  resetMenu.addEventListener("click", e => {
+  $("settings-menu").addEventListener("click", e => {
     const b = e.target.closest("[data-reset]"); if (!b) return;
     state.undoLayout = JSON.stringify(state.layout);
     const what = b.dataset.reset;
     if (what !== "size") state.layout.order = [];
     if (what !== "order") state.layout.size = {};
-    saveLayout(state.layout); resetMenu.open = false;
+    saveLayout(state.layout);
     showToast({order: "Order reset", size: "Sizes reset", all: "Layout reset"}[what]);
     render();
   });
-  document.addEventListener("click", e => { if (resetMenu.open && !resetMenu.contains(e.target)) resetMenu.open = false; });
 
   stack.addEventListener("click", e => {
+    const pe = e.target.closest("[data-edit]");
+    if (pe){ setPaneEdit(pe.dataset.edit, !state.editing.has(pe.dataset.edit)); return; }
+    const se = e.target.closest("[data-sedit]");
+    if (se){
+      const sid = se.dataset.sedit, on = !state.editSess.has(sid);
+      if (on) state.editSess.add(sid); else state.editSess.delete(sid);
+      say(on ? `Editing position of ${sessionTitle(sid)}` : `Done editing ${sessionTitle(sid)}`); render();
+      return;
+    }
     const sb = e.target.closest("[data-sact]");
     if (sb){
-      if (!state.editing || sb.dataset.sact === "grip") return;
+      if (!state.editSess.has(sb.dataset.sid) || sb.dataset.sact === "grip") return;
       moveSession(sb.dataset.sid, sb.dataset.sact === "up" ? -1 : 1);
       state.sessFocus = {sid: sb.dataset.sid, act: sb.dataset.sact}; render();
       return;
@@ -117,8 +122,9 @@ export function initLayoutEdit(){
       stack.querySelector(`[data-subs="${CSS.escape(key)}"]`)?.focus();
       return;
     }
-    const b = e.target.closest("[data-act]"); if (!b || !state.editing) return;
+    const b = e.target.closest("[data-act]"); if (!b) return;
     const id = b.closest(".slot").dataset.id, act = b.dataset.act;
+    if (!state.editing.has(id)) return;
     if (act === "left") move(id, -1);
     else if (act === "right") move(id, 1);
     else if (act === "w-") resize(id, -1, 0);
@@ -131,23 +137,25 @@ export function initLayoutEdit(){
     render();
   });
   stack.addEventListener("keydown", e => {
+    const pane = e.target.closest(".slot");
+    if (e.key === "Escape" && pane && state.editing.has(pane.dataset.id)){ e.preventDefault(); setPaneEdit(pane.dataset.id, false); return; }
     const sg = e.target.closest(".sgrip");
-    if (sg && state.editing){
+    if (sg && state.editSess.has(sg.dataset.sid)){
       const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
       e.preventDefault();
       moveSession(sg.dataset.sid, d); state.sessFocus = {sid: sg.dataset.sid, act: "grip"}; render();
       return;
     }
-    const g = e.target.closest(".grip"); if (!g || !state.editing) return;
+    const g = e.target.closest(".grip"); if (!g || !state.editing.has(pane.dataset.id)) return;
     const d = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key]; if (!d) return;
     e.preventDefault();
-    const id = g.closest(".slot").dataset.id;
+    const id = pane.dataset.id;
     move(id, d); state.refocus = {id, act: "grip"}; render();
   });
 
   /* corner grip: width snaps to columns, height to whole grid rows */
   stack.addEventListener("pointerdown", e => {
-    const g = e.target.closest(".corner"); if (!g || !state.editing) return;
+    const g = e.target.closest(".corner"); if (!g || !state.editing.has(g.closest(".slot").dataset.id)) return;
     e.preventDefault();
     const el = g.closest(".slot"), id = el.dataset.id, tiles = el.parentElement;
     const r = el.getBoundingClientRect(), tr = tiles.getBoundingClientRect();
