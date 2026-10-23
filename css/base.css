@@ -200,7 +200,7 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
   .ent-strip{writing-mode:horizontal-tb}
 }
 .ent-tot{font-variant-numeric:tabular-nums}
-.ent-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.ent-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;align-content:start}
 .entry{display:grid;gap:4px;padding:10px 12px;border-left:4px solid var(--tk);min-width:0}
 .ent-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;font-variant-numeric:tabular-nums}
 .fld{display:grid;grid-template-columns:11ch minmax(0,1fr);gap:6px;align-items:center;min-height:28px}
