@@ -4,6 +4,8 @@ The orchestration board (the name keeps the repo family's spelling: Orc-istratio
 
 A private claude.ai Artifact (your own, published from this repo; its URL lives in `~/.claude/board.local.md`; `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; the orchestrator and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
 
+Viewing works anywhere you can open claude.ai, the chat app included, once the owner shares the board. Publishing the board and writing to it need Claude Code (terminal, IDE extension or the desktop app's Code tab) signed in to the board owner's account. The Time page also needs the worklog hooks from [Orc-istration](https://github.com/Co0pDawg/Orc-istration#which-claude-do-i-need).
+
 ## Screenshots
 
 All of these use made-up demo data.
