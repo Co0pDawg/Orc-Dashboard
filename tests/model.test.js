@@ -14,6 +14,14 @@ test("cardState: rework beats active beats done; skipped counts as done; else pe
   assert.equal(cardState({}), "pending");
 });
 
+test("cardState: a pending PR stage does not hold Done; an active one or other pending stages still do", () => {
+  const card = (...s) => ({stages: s.map(([label, state]) => ({label, state}))});
+  assert.equal(cardState(card(["Build", "done"], ["Refute", "done"], ["PR", "pending"])), "done");
+  assert.equal(cardState(card(["Build", "done"], ["Commit", "pending"], ["PR", "pending"])), "pending");
+  assert.equal(cardState(card(["Build", "done"], ["PR", "active"])), "active");
+  assert.deepEqual(progress([card(["Build", "done"], ["PR", "pending"])]), {all: 2, done: 2, tickets: 1, ticketsDone: 1});
+});
+
 test("stageSince: rework stage first, its started over the card's updated", () => {
   const c = {updated: "2026-10-19T10:00:00Z", stages: [
     {state: "active", started: "2026-10-19T09:00:00Z"},
