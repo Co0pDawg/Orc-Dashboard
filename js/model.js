@@ -16,12 +16,15 @@ export function stagesOf(c){
   if (st && typeof st === "object") return Object.entries(st).map(([k, v]) => v && typeof v === "object" ? {label: cap(k), ...v} : {label: cap(k), state: String(v)});
   return [];
 }
-/** A card's overall state: rework beats active beats done (skipped counts as done); otherwise pending. */
+// A PR stage still pending does not hold a card back: a branch's tickets often share one PR opened later.
+/** True when a stage counts as finished: done, skipped, or a PR stage still pending. */
+const settled = s => s.state === "done" || s.state === "skipped" || (s.state === "pending" && /^pr$/i.test(s.label || ""));
+/** A card's overall state: rework beats active beats done (skipped and a pending PR count as done); otherwise pending. */
 export function cardState(c){
   const st = stagesOf(c);
   if (st.some(s => s.state === "rework")) return "rework";
   if (st.some(s => s.state === "active")) return "active";
-  if (st.length && st.every(s => s.state === "done" || s.state === "skipped")) return "done";
+  if (st.length && st.every(settled)) return "done";
   return "pending";
 }
 /** Sleek pill text for a card. */
@@ -48,7 +51,7 @@ export function tone(text){
 /** Stage and ticket counts across a session's cards. */
 export function progress(cards){
   const all = cards.flatMap(stagesOf);
-  return {all: all.length, done: all.filter(x => x.state === "done" || x.state === "skipped").length, tickets: cards.length, ticketsDone: cards.filter(c => cardState(c) === "done").length};
+  return {all: all.length, done: all.filter(settled).length, tickets: cards.length, ticketsDone: cards.filter(c => cardState(c) === "done").length};
 }
 // The orchestrator finishes a session by writing `completed` (or status Done). With the "pr" setting a finished session whose
 // pull request is still open (draft or active) is not done yet; a session that never recorded a PR finishes as before.
