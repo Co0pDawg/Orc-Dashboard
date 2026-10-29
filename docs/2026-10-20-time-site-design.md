@@ -2,9 +2,9 @@
 
 ## Intent
 
-Cooper enters his hours in the Cosairus portal (portal.cosairus.com/Work, one "Work Detail" form per entry). Today the worklog roll-up (`C:\Development\worklog\worklog.ps1`) turns hook events into portal lines. The lines are text, they are guessed into 15-minute blocks, and they hide what actually happened. Several Claude sessions and their agents run at once, and he cannot see that.
+Hours go into a time-entry portal, one "Work Detail" form per entry. Today the worklog roll-up (`C:\Development\worklog\worklog.ps1`) turns hook events into portal lines. The lines are text, they are guessed into 15-minute blocks, and they hide what actually happened. Several Claude sessions and their agents run at once, and none of that is visible.
 
-He wants a visual model of his day and week that shows real session time, plus entries he can copy into the Work Detail form quickly.
+The goal is a visual model of the day and week that shows real session time, plus entries that copy into the Work Detail form quickly.
 
 The rule that governs every entry: the portal records **hours worked**. Parallel work must never be entered twice. If two tickets ran in parallel for two hours, entering both would record four hours worked. The pre-AI portal cannot express parallel work.
 
