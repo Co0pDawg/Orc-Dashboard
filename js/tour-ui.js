@@ -1,5 +1,5 @@
 // The tour controller: a spotlight ring and a non-modal popover over the live controls. Steps and copy live in tour.js.
-import {STEPS, stepsToShow, placePop} from "./tour.js";
+import {stepsFor, stepsToShow, placePop} from "./tour.js";
 import {loadToured, saveToured} from "./prefs.js";
 import {state} from "./state.js";
 
@@ -40,7 +40,8 @@ export function endTour(){
 /** Starts the tour at its first step whose target is on the page. */
 export function startTour(isAuto = false, from = document.activeElement, noFlag = false){
   endTour();
-  list = stepsToShow(STEPS, STEPS.map(s => s.sel).filter(shown));
+  const steps = stepsFor(matchMedia("(hover:none)").matches);
+  list = stepsToShow(steps, steps.map(s => s.sel).filter(shown));
   if (!list.length) return;
   auto = isAuto; back = from; keep = noFlag;
   ring = document.createElement("div"); ring.className = "tour-ring";

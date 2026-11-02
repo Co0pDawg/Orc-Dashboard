@@ -12,6 +12,8 @@ import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, weekHtml, monthHtml, 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
 // The date is the board's shared day (state.day), so a Time step moves the Board's chips and the Board's control moves Time.
 const T = {view: "day", get date(){ return state.day; }, set date(d){ setDay(d); }, docs: new Map(), key: "", stop: null, notes: new Map(), pending: false, opener: null, html: "", down: false, tlKey: "", restoring: false};
+// The phone layouts' breakpoint, the same 640px as css/base.css.
+const PHONE = matchMedia("(max-width:640px)");
 const monthOf = date => date.slice(0, 7);
 const lastOfMonth = date => { const [y, m] = date.split("-").map(Number); return ymd(new Date(y, m, 0)); };
 /** The first and last date the current view shows. */
@@ -48,12 +50,12 @@ function dayView(){
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards});
-  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, state.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml() : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
+  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, state.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml(result) : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
 }
 
 function weekView(){
-  const [from] = span(), days = [0, 1, 2, 3, 4, 5, 6].map(i => { const d = dayInfo(addDays(from, i)); return {...d, missing: !d.doc}; });
-  return days.some(d => d.doc) ? weekHtml(days) : emptyHtml(T.date);
+  const [from] = span(), days = [0, 1, 2, 3, 4, 5, 6].map(i => { const d = dayInfo(addDays(from, i)); return {...d, missing: !d.doc, tickets: {...ticketTitles(state.sessions, state.cards, d.driven), ...d.doc?.titles}}; });
+  return days.some(d => d.doc) ? weekHtml(days, ymd(Date.now())) : emptyHtml(T.date);
 }
 function monthView(){
   const days = [...T.docs.keys()].filter(d => d.startsWith(monthOf(T.date))).sort().map(dayInfo);
@@ -72,6 +74,17 @@ function renderBar(){
   if (document.activeElement !== dateIn) dateIn.value = T.date;
 }
 
+// On a phone a note shows whole, with no inner scroll: its height follows its text. Measured here rather than with
+// field-sizing, which Firefox and older iOS lack. Collapsing to measure may clamp the page's scroll, so that is put back.
+/** Sizes the given notes (default all) to their text at phone width; does nothing wider, where rows="2" and the drag handle apply. */
+function fitNotes(notes = body.querySelectorAll("textarea[data-note]")){
+  if (!PHONE.matches) return;
+  const y = scrollY, list = [...notes];
+  list.forEach(ta => { ta.style.height = "0"; });
+  list.map(ta => ta.scrollHeight + ta.offsetHeight - ta.clientHeight).forEach((h, i) => { list[i].style.height = h + "px"; });
+  if (scrollY !== y) scrollTo(0, y);
+}
+
 // A live update must not wipe a note being typed, so it waits until the textarea loses focus.
 /** Renders the Time page from the loaded docs; deferred while a note is being edited. */
 export function renderTime(){
@@ -81,7 +94,8 @@ export function renderTime(){
   renderBar();
   const html = T.view === "week" ? weekView() : T.view === "month" ? monthView() : dayView();
   // Card progress arrives often and rarely changes this view: skip identical output, else keep focus and scroll.
-  if (html === T.html) return;
+  // A skin switch lands here too and changes the note's font, so the notes are measured again.
+  if (html === T.html){ fitNotes(); return; }
   const ctl = () => [...body.querySelectorAll("button,textarea")], f = ctl().indexOf(document.activeElement), old = body.querySelector(".tl"), sx = old?.scrollLeft, sy = old?.scrollTop, ey = body.querySelector(".ent-list")?.scrollTop;
   T.html = html; body.innerHTML = html;
   if (f >= 0) ctl()[f]?.focus({preventScroll: true});
@@ -93,6 +107,7 @@ export function renderTime(){
   syncMarker(false);
   // Note edits are never saved, but they survive a re-render on this page load.
   body.querySelectorAll("textarea[data-note]").forEach(ta => { if (T.notes.has(ta.dataset.note)) ta.value = T.notes.get(ta.dataset.note); });
+  fitNotes();
 }
 
 /** Shows the Time page on a view ("day", "week" or "month") and date (yyyy-MM-dd, default the current one). */
@@ -172,7 +187,19 @@ export function initTime(){
   // Scroll does not bubble: listen in the capture phase for the Entries list, one marker update per frame.
   let raf = 0;
   body.addEventListener("scroll", e => { if (e.target.classList?.contains("ent-list") && !T.restoring && !raf) raf = requestAnimationFrame(() => { raf = 0; syncMarker(true); }); }, true);
-  window.addEventListener("resize", () => syncMarker(false));
+  // A phone's address bar fires resize as it slides but rewraps nothing, so notes are measured again only when the width changes.
+  let fitW = innerWidth;
+  window.addEventListener("resize", () => { syncMarker(false); if (innerWidth !== fitW){ fitW = innerWidth; fitNotes(); } });
+  // Crossing the breakpoint touches no markup: notes take or give back their phone height, and a Week calendar that was hidden scrolls to its first activity.
+  PHONE.addEventListener("change", () => {
+    if (PHONE.matches){ fitNotes(); return; }
+    body.querySelectorAll("textarea[data-note]").forEach(ta => { ta.style.height = ""; });
+    const wk = body.querySelector(".tl.wk");
+    if (wk && !wk.scrollTop) wk.scrollTop = Number(wk.dataset.first) * wk.querySelector(".tl-track").offsetHeight;
+    syncMarker(false);
+  });
+  // A web font arriving late rewraps the notes.
+  document.fonts?.ready.then(() => fitNotes());
   // WCAG 1.4.13: Esc hides the Marker tip until the pointer leaves the button or focus moves off it.
   // Only while the tip shows: a stray Esc (closing the Scrum dialog) must not leave it hidden for the next hover or focus.
   document.addEventListener("keydown", e => { const t = body.querySelector(".tip"); if (e.key === "Escape" && t?.matches(":hover, :focus-visible")) t.classList.add("tip-off"); });
@@ -208,12 +235,14 @@ export function initTime(){
     else if (e.target.closest("#scrum-close")) dlg.close();
   });
   // A live re-render may have replaced the Scrum button while the dialog was open; focus its successor then.
+  // Week renders each Scrum button twice (columns, phone cards), so the one taking focus is the one showing.
   dlg.addEventListener("close", () => {
     const o = T.opener; T.opener = null; if (!o) return;
-    (o.btn.isConnected ? o.btn : body.querySelector(`[data-scrum="${CSS.escape(o.date)}"]`))?.focus();
+    const showing = b => b.isConnected && b.getClientRects().length > 0;
+    (showing(o.btn) ? o.btn : [...body.querySelectorAll(`[data-scrum="${CSS.escape(o.date)}"]`)].find(showing))?.focus();
   });
   dateIn.addEventListener("change", () => { if (dateIn.value) go(T.view, dateIn.value); });
-  body.addEventListener("input", e => { if (e.target.dataset.note != null) T.notes.set(e.target.dataset.note, e.target.value); });
+  body.addEventListener("input", e => { if (e.target.dataset.note != null){ T.notes.set(e.target.dataset.note, e.target.value); fitNotes([e.target]); } });
   // Leaving a note for a control in the Time body (a press or Tab onto Copy) waits for that click; elsewhere renders now.
   body.addEventListener("pointerdown", () => { T.down = true; });
   for (const type of ["pointerup", "pointercancel"]) document.addEventListener(type, () => { if (!T.down) return; T.down = false; if (T.pending) setTimeout(renderTime, 50); });

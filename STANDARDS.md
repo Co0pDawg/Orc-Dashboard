@@ -35,6 +35,7 @@ Rules for every change to Orc-istrator, the orchestration board. A change that b
 - Announcements go through the `#sr` live region (`say()`).
 - Respect `prefers-reduced-motion`.
 - Targets are at least 24px. The exception is the 1337 log's inline `[+N]` toggle (`.leet .more`, 20px), which sits inside a 13px text line with nothing near it to hit by mistake.
+- At phone width (640px and under), every real control is at least 44px wide and tall, in both skins, with no exception for the 1337 toggle; a checkbox or radio may take that from its label row. `input`, `select` and `textarea` use 16px text there, so iOS Safari does not zoom on focus.
 
 ## Comments
 

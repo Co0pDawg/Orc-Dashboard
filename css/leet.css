@@ -179,3 +179,19 @@
 .leet .tour-btns .btn{min-height:24px}
 /* Today wears the header's own color (the bar border token), so it follows the theme like the bar does. */
 .leet .status .day-nav [data-dnav="0"][aria-pressed="true"]{background:var(--t-bar);border-color:var(--t-bar);color:var(--t-bg)}
+/* Phones (css/base.css has the layouts): the sizes this skin sets itself, at 44px. */
+@media (max-width:640px){
+  .leet .more,.leet .cfold,.leet .pedit,.leet .chip .chip-x,.leet .status .gear,.leet .views .btn,.leet .tour-btns .btn,.leet .status .day-nav .btn{min-width:44px;min-height:44px}
+  .leet .chip button,.leet .status .day-nav input{min-height:44px}
+  .leet .status .day-nav input{padding:6px 10px}
+  .leet .ph .id,.leet .facts a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+  .leet .tl-h,.leet .ent-strip{font-family:inherit;font-size:13.5px;font-weight:700;color:var(--t-ink);letter-spacing:0}
+  .leet .ent-head h2{font-size:13.5px}
+  .leet .tl-h::before,.leet .ent-strip::before{content:"## ";color:var(--t-dim)}
+  .leet .wk-card{background:var(--t-pane);border-color:var(--t-faint);border-radius:var(--t-r)}
+  .leet .wk-now{border-color:var(--t-bar)}
+  .leet .wk-card-top .tl-tot,.leet .wk-t,.leet .wk-dur{color:var(--t-dim)}
+  .leet .wk-id{font-family:var(--t-mono);color:var(--tk)}
+  .leet .wk-dot{border-radius:1px}
+  .leet .dlg [data-copy]{background:var(--t-green);border-color:var(--t-green);color:var(--t-on-green)}
+}

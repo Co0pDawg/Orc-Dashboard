@@ -119,7 +119,7 @@ test("week: seven day columns, Monday first, each with its driven total and a Sc
   days[2].spans = [{ticket: "PET-18004", card: "c7", agent: "builder dispatched", start: Ld(dates[2], "13:10"), end: Ld(dates[2], "14:00")}];
   const h = weekHtml(days);
   assert.equal(count(h, /class="wk-col /g), 7);
-  assert.deepEqual([...h.matchAll(/data-scrum="([^"]+)"/g)].map(m => m[1]), dates);
+  assert.deepEqual([...h.split('class="wk-list"')[0].matchAll(/data-scrum="([^"]+)"/g)].map(m => m[1]), dates);
   assert.match(h.split('class="wk-col ')[1], /data-day="2026-10-12"[\s\S]*1h 30m/);
   assert.match(h.split('class="wk-col ')[3], /45m/);
   assert.match(h, /2h 15m driven/);
@@ -207,4 +207,30 @@ test("the Entries pane folds: a Collapse arrow leads its header, and the strip c
   const strip = entriesStripHtml();
   assert.ok(strip.includes('class="entries folded"') && strip.includes('aria-expanded="false" aria-label="Expand entries"') && strip.includes(">Entries</span>"));
   assert.ok(!strip.includes("ent-list"));
+});
+
+test("the phone Week list: a card per day, a bar and longest-first ticket lines, a compact not-synced row, the accent on today", () => {
+  const seg = (ticket, a, b) => ({session: "s", ticket, start: L(a), end: L(b)});
+  const dates = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"];
+  const days = dates.map((date, i) => ({date, spans: [], missing: i > 0, segments: i ? [] : [seg("PET-17001", "09:00", "09:30"), seg("PET-17002", "10:00", "12:00"), seg("-", "13:00", "13:15")], tickets: i ? {} : {"PET-17002": "<b>Long</b> title"}}));
+  const list = weekHtml(days, "2026-10-20").split('class="wk-list"')[1];
+  const cards = list.split('<section class="wk-card').slice(1);
+  assert.equal(cards.length, 7);
+  assert.ok(cards.every((c, i) => c.includes(`data-day="${dates[i]}"`) && c.includes(`data-scrum="${dates[i]}"`) && c.includes('class="wk-date"')));
+  assert.deepEqual([...cards[0].matchAll(/wk-id">([^<]+)/g)].map(m => m[1]), ["PET-17002", "PET-17001", "No ticket"]);
+  assert.match(cards[0], /&lt;b&gt;Long&lt;\/b&gt; title<\/span><span class="wk-dur">2h</);
+  assert.match(cards[0], /tl-tot">2h 45m</);
+  assert.equal(count(cards[0], /<i class="tk-/g), 3);
+  assert.match(cards[1], /^ missing wk-now"/);
+  assert.match(cards[1], /not synced/);
+  assert.doesNotMatch(cards[1], /mo-bar|wk-tks/);
+  assert.doesNotMatch(cards[0], /^[^"]*wk-now"/);
+});
+
+test("the Day timeline carries the phone heading, and the folded strip the phone total", () => {
+  const seg = [{session: "s1", ticket: "PET-17983", start: L("10:00"), end: L("11:00")}];
+  assert.match(dayHtml({date: D, segments: seg, skin: "sleek"}), /<h2 class="tl-h">Timeline<\/h2><div class="tl"/);
+  assert.doesNotMatch(dayHtml({date: D, segments: [], skin: "sleek"}), /tl-h/);
+  assert.match(entriesStripHtml({entries: [{minutes: 45}, {minutes: 30}]}), /ent-strip-tot">1h 15m entered</);
+  assert.doesNotMatch(entriesStripHtml(), /ent-strip-tot/);
 });

@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {STEPS, stepsToShow, placePop} from "../js/tour.js";
+import {STEPS, stepsFor, stepsToShow, placePop} from "../js/tour.js";
 
 test("every tour step has a target, a title and one or two short sentences", () => {
   assert.equal(STEPS.length, 9);
@@ -10,6 +10,20 @@ test("every tour step has a target, a title and one or two short sentences", () 
     assert.ok(sentences.length >= 1 && sentences.length <= 2, s.title);
     for (const x of sentences) assert.ok(x.split(/\s+/).length < 25, x);
   }
+});
+
+test("touch wording says tap and drops Shift-click, / and click-to-copy; mouse wording is untouched", () => {
+  const touch = stepsFor(true);
+  assert.deepEqual(touch.map(s => s.sel), STEPS.map(s => s.sel));
+  for (const s of touch){
+    assert.doesNotMatch(s.text, /click|press \//i, s.title);
+    const sentences = s.text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    assert.ok(sentences.length >= 1 && sentences.length <= 2, s.title);
+    for (const x of sentences) assert.ok(x.split(/\s+/).length < 25, x);
+  }
+  assert.equal(touch[0].text, "Each chip is a session touched on the selected day. Tap one to show it, or tap its + to stack several.");
+  assert.deepEqual(stepsFor(false), STEPS);
+  assert.match(STEPS[0].text, /Shift-click/);
 });
 
 test("a step whose target is missing is skipped, order kept", () => {
