@@ -16,6 +16,7 @@ Rules for every change to Orc-istrator, the orchestration board. A change that b
 - Every value that comes from the db or from storage goes through `esc()` before it lands in HTML, attributes and URLs included (`esc(adoUrl(id))`). Numbers the code computes (counts, percentages) and its own constants (state class names, labels) need no escaping. URLs are built only by helpers (`adoUrl`).
 - Colors come only from tokens in `css/tokens.css` and the generated `css/palettes.css` (edit `dev/palettes.json`, then `npm run palettes`). The exceptions are translucent shadows, overlays and scanlines written as raw `rgba()` (`base.css`, `leet.css`), which stay neutral in either theme.
 - Skin rules live only in their skin file and start with `.sleek` or `.leet`; `base.css` holds nothing skin-specific. The exception is `body.leet` in `tokens.css`, the 1337 page base, which sits beside the tokens it sets.
+- A control a layout renders twice, with CSS showing one, is found by what is visible: a query for it filters to the shown one (focus return on the Week Scrum button), and the two copies never share an id.
 - Naming: camelCase functions, kebab-case CSS classes. New JS hooks use `data-*` attributes; the existing id hooks (`#undo`, `#toast`, …) and class hooks (`.grip`, `.corner`, `.slot`) stay as they are.
 
 ## State and storage
