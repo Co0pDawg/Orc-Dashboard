@@ -1,16 +1,19 @@
 // The new-viewer tour's copy and its pure rules. Edit a step's title or text here; the controller is js/tour-ui.js.
-/** Tour steps in order: the control each points at (a CSS selector), a title and one or two sentences. */
+/** Tour steps in order: the control each points at (a CSS selector), a title, one or two sentences and, where the mouse wording does not fit a touch screen, a `touch` version. */
 export const STEPS = [
-  {sel: "#chip-slot .chips", title: "Session chips", text: "Each chip is a session touched on the selected day. Click one to show it, or Shift-click to stack several."},
+  {sel: "#chip-slot .chips", title: "Session chips", text: "Each chip is a session touched on the selected day. Click one to show it, or Shift-click to stack several.", touch: "Each chip is a session touched on the selected day. Tap one to show it, or tap its + to stack several."},
   {sel: ".day-nav", title: "The day", text: "Pick the day to show with the arrows, the date or Today. The Board and the Time page share it."},
-  {sel: "[data-search-toggle]", title: "Session search", text: "Click the magnifier (or press /) to find any session on any day, by title, ticket, branch or card."},
+  {sel: "[data-search-toggle]", title: "Session search", text: "Click the magnifier (or press /) to find any session on any day, by title, ticket, branch or card.", touch: "Tap the magnifier to find any session on any day, by title, ticket, branch or card."},
   {sel: ".sess .shead", title: "A session", text: "The header shows the ticket, branch, progress and what is happening now. The ▾ button minimizes the session."},
   {sel: ".sess .slot.log", title: "Activity log", text: "What happened in this session, newest first. Each dispatch's agent progress is nested under it."},
   {sel: ".sess .slot:not(.log)", title: "A ticket card", text: "Its stages, live timer and agent progress lines. The ✎ edits this card's size and place."},
   {sel: ".sess .hide-done", title: "Hide done", text: "Hides this session's finished cards, so only open work is left."},
-  {sel: '[data-go="time"]', title: "Time", text: "This tab beside the name opens time worked per ticket by day, week or month. Work Detail entries copy on click, with the Marker and Scrum there too."},
+  {sel: '[data-go="time"]', title: "Time", text: "This tab beside the name opens time worked per ticket by day, week or month. Work Detail entries copy on click, with the Marker and Scrum there too.", touch: "This tab beside the name opens time worked per ticket by day, week or month. Each day lists its entries and notes, with Scrum there too."},
   {sel: "#settings-menu > summary", title: "Settings", text: "Theme and colors for every page, then this page's own settings. Take the tour again from here."}
 ];
+
+/** The steps with the wording for this device: touch (no hover) or mouse. */
+export const stepsFor = touch => touch ? STEPS.map(s => ({...s, text: s.touch || s.text})) : STEPS;
 
 /** The steps whose target is on the page, given the selectors that are present. */
 export const stepsToShow = (steps, present) => steps.filter(s => present.includes(s.sel));

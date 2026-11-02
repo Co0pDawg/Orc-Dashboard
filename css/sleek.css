@@ -110,3 +110,18 @@
 .sleek .tour-pop{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .sleek .tour-n{font-size:12px;color:var(--muted)}
 .sleek .tour-pop h2{font-family:var(--f-display)}
+/* Phones (css/base.css has the layouts): the sizes this skin sets itself, at 44px. */
+@media (max-width:640px){
+  .sleek .more,.sleek .cfold,.sleek .pedit{min-width:44px;min-height:44px}
+  .sleek .tid{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
+  .sleek .meta{align-items:center}
+  .sleek .views .btn{padding:3px 10px}
+  .sleek .chip button{font-size:14px}
+  .sleek .chip .chip-x{padding:0}
+  .sleek .sess,.sleek .time-view{padding:12px}
+  .sleek .time-label{font-size:21px}
+  .sleek .tl-h,.sleek .ent-strip{font-family:var(--f-display);font-weight:600}
+  .sleek .wk-card{background:var(--bg)}
+  .sleek .wk-card-top .tl-tot,.sleek .wk-t,.sleek .wk-dur{color:var(--muted)}
+  .sleek .wk-date{font-size:15px}
+}

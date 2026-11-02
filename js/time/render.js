@@ -93,7 +93,7 @@ export function dayHtml({date, segments = [], spans = [], markers = [], entries,
     return `<div class="tl-col ${tkClass(c.t)}"><div class="tl-colhead"><b>${esc(name)}</b>${title ? `<span class="tl-title" title="${esc(title)}">${esc(title)}</span>` : ""}<span class="tl-tot">${dur(minutes(c.segs))} driven${c.spans.length ? ` · ${dur(minutes(c.spans))} agents` : ""}</span></div><div class="tl-track">${blocks}</div></div>`;
   }).join("");
   // data-a/data-b and the hidden .tl-now let the controller draw the entry marker where the Entries list is centered.
-  return `${head}<div class="tl" style="--hours:${ax.hours}" data-first="${firstAt(ax, Math.min(...times))}" data-a="${ax.a}" data-b="${ax.b}"><i class="tl-now" aria-hidden="true" hidden></i>${axisHtml(ax)}${colsHtml}</div>`;
+  return `${head}<h2 class="tl-h">Timeline</h2><div class="tl" style="--hours:${ax.hours}" data-first="${firstAt(ax, Math.min(...times))}" data-a="${ax.a}" data-b="${ax.b}"><i class="tl-now" aria-hidden="true" hidden></i>${axisHtml(ax)}${colsHtml}</div>`;
 }
 
 // A value is its own copy button; a missing value (a needs-a-ticket Ticket) is plain text, not clickable.
@@ -103,8 +103,8 @@ const field = (k, v, extra = "") => `<div class="fld"><span class="k">${k}</span
 // The pane's fold toggle: the side pop-out arrow, pointing the way the pane will move.
 const foldBtn = folded => `<button type="button" class="btn ent-fold" data-entfold aria-expanded="${!folded}" aria-label="${folded ? "Expand" : "Collapse"} entries" title="${folded ? "Expand" : "Collapse"} entries">${folded ? "‹" : "›"}</button>`;
 
-/** The Entries panel folded to a side strip: the expand arrow and a vertical label. */
-export const entriesStripHtml = () => `<section class="entries folded" aria-label="Entries">${foldBtn(true)}<span class="ent-strip" aria-hidden="true">Entries</span></section>`;
+/** The Entries panel folded to a side strip: the expand arrow, a vertical label and, shown on a phone only, the total entered. */
+export const entriesStripHtml = result => `<section class="entries folded" aria-label="Entries">${foldBtn(true)}<span class="ent-strip" aria-hidden="true">Entries</span>${result ? `<span class="ent-tot ent-strip-tot">${dur(result.entries.reduce((n, e) => n + e.minutes, 0))} entered</span>` : ""}</section>`;
 
 export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
@@ -147,8 +147,26 @@ function bandsHtml(segments, spans, shift, ax){
   }).join("");
 }
 
-/** The Week tab: seven day columns, Monday first, on one time-of-day axis; each column opens its day. */
-export function weekHtml(days){
+// Driven minutes per ticket, longest first.
+function perTicket(segments){
+  const per = new Map();
+  segments.forEach(s => { const t = normTicket(s.ticket); per.set(t, (per.get(t) || 0) + (ms(s.end) - ms(s.start)) / MIN); });
+  return [...per].sort((a, b) => b[1] - a[1]);
+}
+// Widths in hundredths, the last one taking the remainder so the bar always adds up to exactly 100%.
+function barHtml(parts, min){
+  let used = 0;
+  return parts.map(([t, n], k) => { const w = k === parts.length - 1 ? +(100 - used).toFixed(2) : +(n / min * 100).toFixed(2); used += w; return `<i class="${tkClass(t)}" style="width:${w}%" title="${esc(label(t))} ${dur(n)}"></i>`; }).join("");
+}
+// One phone Week card: date, driven total, Scrum, then a bar and a line per ticket; a not-synced day is just its top row.
+function weekCard(d, i, today){
+  const min = minutes(d.segments), parts = perTicket(d.segments), titles = d.tickets || {};
+  const lines = parts.map(([t, n]) => `<li class="${tkClass(t)}"><i class="wk-dot"></i><b class="wk-id">${esc(label(t))}</b><span class="wk-t">${t && titles[t] ? esc(titles[t]) : ""}</span><span class="wk-dur">${dur(n)}</span></li>`).join("");
+  return `<section class="wk-card${d.missing ? " missing" : ""}${d.date === today ? " wk-now" : ""}" data-day="${esc(d.date)}" aria-label="${DOW[i]} ${md(d.date)}"><div class="wk-card-top"><button type="button" class="wk-date" aria-label="Open ${esc(d.date)}">${DOW[i]} ${md(d.date)}</button><span class="tl-tot">${d.missing ? "not synced" : dur(min)}</span>${scrumBtn(d.date)}</div>${min ? `<span class="mo-bar" aria-hidden="true">${barHtml(parts, min)}</span><ul class="wk-tks">${lines}</ul>` : ""}</section>`;
+}
+
+/** The Week tab: seven day columns, Monday first, on one time-of-day axis, each opening its day; CSS swaps them for a card list on a phone. */
+export function weekHtml(days, today){
   const ref = dayStartMs(days[0].date);
   // Every day is laid on the first day's clock, so 9 AM lines up across the week.
   const shiftOf = d => ref - dayStartMs(d.date);
@@ -158,7 +176,7 @@ export function weekHtml(days){
   const cols = days.map((d, i) => `<div class="wk-col tl-col${d.missing ? " missing" : ""}" data-day="${esc(d.date)}">
     <div class="tl-colhead wk-head"><button type="button" class="wk-date" aria-label="Open ${esc(d.date)}">${DOW[i]} ${md(d.date)}</button><span class="tl-tot">${d.missing ? "not synced" : dur(minutes(d.segments))}</span>${scrumBtn(d.date)}</div>
     <div class="tl-track">${bandsHtml(d.segments, d.spans, shiftOf(d), ax)}</div></div>`).join("");
-  return `<div class="wk-sum">Week total <b>${dur(total)} driven</b></div><div class="tl wk" style="--hours:${ax.hours}" data-first="${firstAt(ax, times.length ? Math.min(...times) : null)}">${axisHtml(ax)}${cols}</div>`;
+  return `<div class="wk-sum">Week total <b>${dur(total)} driven</b></div><div class="tl wk" style="--hours:${ax.hours}" data-first="${firstAt(ax, times.length ? Math.min(...times) : null)}">${axisHtml(ax)}${cols}</div><div class="wk-list">${days.map((d, i) => weekCard(d, i, today)).join("")}</div>`;
 }
 
 /** The Month tab: Monday-first weeks of day cells (total, ticket bar, agent mark, Scrum), week totals at row ends. */
@@ -173,13 +191,8 @@ export function monthHtml(month, days){
       if (!date.startsWith(month)){ rows += `<div class="mo-cell blank"></div>`; continue; }
       const num = Number(date.slice(8)), top = mark => `<div class="mo-top"><button type="button" class="mo-date" aria-label="Open ${esc(date)}"><span class="mo-dow-s">${DOW[i]} </span>${num}</button>${mark}</div>`;
       if (!x){ rows += `<div class="mo-cell" data-day="${esc(date)}">${top("")}</div>`; continue; }
-      const min = minutes(x.segments), per = new Map();
+      const min = minutes(x.segments), bar = barHtml(perTicket(x.segments), min);
       wk += min;
-      x.segments.forEach(s => { const t = normTicket(s.ticket); per.set(t, (per.get(t) || 0) + (ms(s.end) - ms(s.start)) / MIN); });
-      // Widths in hundredths, the last one taking the remainder so the bar always adds up to exactly 100%.
-      const parts = [...per].sort((a, b) => b[1] - a[1]);
-      let used = 0;
-      const bar = parts.map(([t, n], k) => { const w = k === parts.length - 1 ? +(100 - used).toFixed(2) : +(n / min * 100).toFixed(2); used += w; return `<i class="${tkClass(t)}" style="width:${w}%" title="${esc(label(t))} ${dur(n)}"></i>`; }).join("");
       const agents = x.spans.length ? `<span class="mo-agent" role="img" aria-label="Agents ran" title="Agents ran">◆</span>` : "";
       rows += `<div class="mo-cell has" data-day="${esc(date)}">${top(agents)}<span class="mo-tot">${dur(min)}</span>${min ? `<span class="mo-bar">${bar}</span>` : ""}${scrumBtn(date)}</div>`;
     }

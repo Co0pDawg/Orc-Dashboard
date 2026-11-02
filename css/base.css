@@ -145,6 +145,8 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 /* The ring in the track's own background keeps the line apart from a driving block of a similar color. */
 .tl-now{position:absolute;left:0;height:2px;margin-top:-1px;z-index:1;pointer-events:none;background:var(--ink);box-shadow:0 0 0 1px var(--tl-bg,var(--surface))}
 .tl-now[hidden]{display:none}
+/* Only the phone layouts (the block at the end of this file) show these. */
+.tl-h,.wk-list,.ent-strip-tot{display:none}
 /* margin-left:auto keeps the buttons at the panel's right edge when they wrap onto their own line (phones). */
 .day-acts{position:relative;display:flex;gap:6px;align-items:center;margin-left:auto}
 /* A tooltip (.tip-t child) on hover or keyboard focus. It hangs from the right edge of .day-acts, which is always the
@@ -279,9 +281,9 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 .search-list .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .search-list .m{grid-column:1 / -1;font-size:12px;font-variant-numeric:tabular-nums}
 /* On a phone the popover spans the bar instead of hanging off the icon, so it never scrolls the page sideways. */
-@media (max-width:560px){#chooser{position:relative}.search{position:static}.search-pop{left:0;right:0;width:auto}}
+@media (max-width:640px){#chooser{position:relative}.search{position:static}.search-pop{left:0;right:0;width:auto}}
 /* The gear can wrap to the left on a phone, so its menu spans the screen instead of hanging left of it. */
-@media (max-width:560px){.settings .menu{position:fixed;top:auto;left:16px;right:16px;max-width:none;max-height:calc(100vh - 120px)}}
+@media (max-width:640px){.settings .menu{position:fixed;top:auto;left:16px;right:16px;max-width:none;max-height:calc(100vh - 120px)}}
 /* the guided tour (js/tour-ui.js): a ring that dims everything around its target, and a popover that stays on screen */
 .tour-ring{position:fixed;z-index:60;pointer-events:none;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
 .tour-pop{position:fixed;z-index:61;width:min(320px,calc(100vw - 16px));padding:12px 14px;display:grid;gap:6px}
@@ -292,7 +294,7 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 @media (prefers-reduced-motion: no-preference){.tour-ring,.tour-pop{transition:top .15s,left .15s,width .15s,height .15s}}
 /* Row 2 is anchored: day control and search on the left of line one; only the chips grow, taking the rest of the row
    and wrapping inside their own slot, so a long session list never moves the rest. */
-@media (min-width:561px){
+@media (min-width:641px){
   .bar-row2{flex-wrap:nowrap;align-items:flex-start}
   .bar-row2 > *{flex:none}
   /* One row height for every fixed item, its content centred, so the name, date and buttons share a centre line. */
@@ -313,3 +315,102 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
 .th-hex{width:100%;min-width:0;font-family:var(--f-mono,monospace);font-size:12px;padding:2px 4px}
 .th-hex[aria-invalid]{outline:2px solid var(--bad,#e5484d);outline-offset:-1px}
 .settings .menu:has(#theme-ed:not([hidden])){min-width:min(520px,calc(100vw - 32px));max-width:min(540px,calc(100vw - 32px))}
+
+/* ---------- Phones: nothing outside this block sizes these layouts. Reading a day needs no tapping (STANDARDS: Accessibility has the 44px rule). ---------- */
+@media (max-width:640px){
+  /* 44px controls. A skin rule that sets its own size is overridden in that skin's phone block. */
+  .btn,.more,.scrum,.ent-fold,.pedit,.search-btn,.wk-date,.mo-date,.chip-main,.chip-x,.sess .fold{min-width:44px;min-height:44px}
+  .btn,.scrum,.cp{font-size:14px}
+  .btn{box-sizing:border-box}
+  .scrum{padding:6px 12px}
+  .gear{font-size:18px}
+  .chip button,.opt label,.skin,.opt select,.tnav input,.search-pop input,.th-name input,.th-rgb input,.th-hex,.search-list li{min-height:44px;box-sizing:border-box}
+  .search-list li{align-content:center}
+  .corner{width:44px;height:44px}
+  .th-row input[type="color"]{width:44px;height:44px}
+  /* 16px, or iOS Safari zooms the page on focus. */
+  .wrap input,.wrap select,.wrap textarea{font-size:16px}
+
+  /* Bar: one row of name, tabs, gear and ?; the clock gives up its place. */
+  .clock{display:none}
+  .bar-row1{gap:6px}
+  .bar-row1 > :first-child{margin-right:auto}
+  .bar-row2{gap:6px;align-items:flex-start}
+  .tnav{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 100%;min-width:0}
+  .tnav input{flex:1 1 130px;min-width:0;padding:6px 10px}
+  .bar-row2 .tnav{flex:1 1 0}
+  .chip-slot{flex:1 1 100%;min-width:0}
+
+  /* Theme editor: name and color on one line, hex and R G B on the next. */
+  .th-row{grid-template-columns:18px minmax(0,1fr) 44px;gap:4px 8px}
+  .th-row > :nth-child(n+4){grid-column:1 / -1}
+  .th-rgb{display:flex;gap:4px}
+  .th-rgb input{flex:1 1 0;width:auto;min-width:0}
+  .settings .menu:has(#theme-ed:not([hidden])){min-width:0;max-width:none}
+  .settings .menu{min-width:0}
+
+  /* Time: the bar and, on Day, the body dissolve into one wrapping flex, so Scrum shares the heading's row and Entries can lead the timeline. */
+  .time-view{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .time-bar,.time-body:has(.day-head),.day,.day-main,.day-head{display:contents}
+  .tabs{display:flex;flex:1 1 100%;gap:6px}
+  .tabs .btn{flex:1 1 0}
+  .time-label{flex:1 1 0;order:1}
+  .tabs,.tnav{order:0}
+  /* The not-synced state has its Scrum button loose in .day-head, with no .day-acts round it. */
+  .day-acts,.day-head > .scrum{flex:none;order:1}
+  .day-head .facts{flex:1 1 100%;order:2}
+  .day-head .facts:empty{display:none}
+  .time-body{flex:1 1 100%;order:3}
+  .time-body .empty,.day > .entries{flex:1 1 100%;min-width:0;box-sizing:border-box;order:3}
+  .tl-h{display:block;margin:6px 0 0;font-size:16px;flex:1 1 100%;order:4}
+  .day-main > .tl{flex:1 1 100%;order:5;--slot-h:36px;max-height:max(360px,60vh)}
+  .tl-col:not(.wk-col){flex:1 0 130px}
+
+  /* Entries: the arrow turns to point up and down, folding to this header line with the timeline still below. */
+  .ent-fold{rotate:-90deg;font-size:20px}
+  .ent-head{align-items:center;gap:4px 10px}
+  .ent-head h2{font-size:16px}
+  .entries.folded{align-items:center;padding-top:0}
+  .ent-strip{font-size:16px;color:var(--ink)}
+  .ent-strip-tot{display:inline;margin-left:auto}
+  .entry{gap:6px;padding:10px 10px 10px 12px}
+  /* .ent-top already says ticket, time and duration; only the "needs a ticket" line stays. */
+  .fld:not(.note):not(:has(.needs)){display:none}
+  .fld:has(.needs){display:block;min-height:0}
+  .fld:has(.needs) .k{display:none}
+  /* The Note's label stays for screen readers, like .sr. */
+  .fld.note .k{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .fld.note{grid-template-columns:minmax(0,1fr) auto}
+  /* The height comes from fitNotes (js/time/controller.js); with it, nothing is cut off. */
+  .fld textarea{resize:none;overflow:hidden;min-height:44px;padding:8px 10px;line-height:1.45}
+
+  /* Week: the phone card list replaces the seven columns. */
+  .tl.wk{display:none}
+  .wk-list{display:grid;gap:10px}
+  .wk-card{display:grid;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;min-width:0}
+  .wk-now{border-color:var(--accent)}
+  .wk-card-top{display:flex;align-items:center;gap:10px}
+  .wk-card-top .tl-tot{margin-right:auto;font-size:13px}
+  .wk-card.missing .tl-tot{font-style:italic}
+  .wk-card .mo-bar{height:12px}
+  .wk-tks{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:13px}
+  .wk-tks li{display:flex;align-items:center;gap:8px;min-width:0}
+  .wk-dot{flex:none;width:10px;height:10px;border-radius:3px;background:var(--tk)}
+  .wk-id{flex:none;font-family:var(--f-mono)}
+  .wk-t{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wk-dur{flex:none;margin-left:auto;font-variant-numeric:tabular-nums}
+
+  /* Month: the list keeps its columns and its width at 320px with the larger buttons. */
+  .mo-cell{grid-template-columns:auto 6ch minmax(24px,1fr) auto;gap:4px 8px;padding:2px 6px}
+
+  /* Scrum dialog: fits the screen; a long update scrolls in the text box only. */
+  .dlg{width:calc(100vw - 24px);max-width:none;max-height:calc(100dvh - 24px);padding:14px}
+  .dlg[open]{display:flex;flex-direction:column}
+  .dlg-head h2{font-size:20px}
+  #scrum-body{display:flex;flex-direction:column;gap:12px;min-height:0}
+  .scrum-text{margin:0;flex:0 1 auto;min-height:0;max-height:none;font-size:14px}
+  .dlg [data-copy]{flex:none;width:100%;background:var(--accent);border-color:var(--accent);color:var(--surface)}
+
+  /* Tour: wider targets may sit wider than the popover's old row. */
+  .tour-btns{flex-wrap:wrap}
+}
