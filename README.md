@@ -74,6 +74,8 @@ Writes go through the ArtifactData tool (load it with ToolSearch `select:Artifac
 | **Timeline upload**: at the Start of every orchestrated task, and when Cooper says "sync my timeline" | For each file in `~/.claude/timeline-sync/pending/` (`timeline-<date>.json`, built every 15 minutes by the worklog's scheduled sync), `get` `timeline/<date>`, then `set` it with `file_path` = that file, pinned to `if_version` when the doc exists, and delete the file after the write succeeds. A session with only `db_write` cannot send a file: inline a doc under 64 KB, otherwise leave the file pending for a session with ArtifactData and tell Cooper. See the worklog README, "Uploading". |
 | **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not `completed` or `abandoned`, read the PR (AcmeApp: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
 
+`tokens` and `note` are card fields. The page never shows them inside a stage entry.
+
 A card at Start, exactly in this shape (stages is an array in plan order, never an object):
 
 ```json
