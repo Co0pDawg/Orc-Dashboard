@@ -76,7 +76,7 @@ test("plainSummary: a clause with 60% or more of its non-stopword words in the t
 
 test("yesterday: a board fallback title loses its PR framing; an ADO title is kept as it is", () => {
   const sg = [seg("a", "APP-1", "08:00", "09:00"), seg("b", "APP-2", "09:00", "09:50"), seg("c", "APP-3", "10:00", "10:40"), seg("d", "APP-4", "11:00", "11:30"), seg("e", "APP-5", "12:00", "12:20")];
-  const ss = [["a", "1", "PR 6243 feedback: Rows layout + Cards/Rows toggle"], ["b", "2", "Peer review PR 6218 (Sam,Admin Org Search hotfix)"],
+  const ss = [["a", "1", "PR 6243 feedback: Rows layout + Cards/Rows toggle"], ["b", "2", "Peer review PR 6218 (Sam, Admin Org Search hotfix)"],
     ["c", "3", "Shared customer + guest avatars (PR 1 of 2)"], ["d", "4", "PR: move the dashboard sort to a cookie"], ["e", "5", "Board title"]]
     .map(([id, ticket, title]) => ({id, data: {ticket, title, events: []}}));
   const bl = [blk("12:00", "APP-5", "Development: Updated the ADO title; added the export")];
