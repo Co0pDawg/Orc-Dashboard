@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, withReview, weekHtml, monthHtml, scrumHtml} from "../js/time/render.js";
+import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, withReview, weekHtml, monthHtml, scrumHtml, rollupMin} from "../js/time/render.js";
 import {scrumText} from "../js/time/scrum.js";
 
 const D = "2026-10-19", L = hm => new Date(`${D}T${hm}:00`).toISOString();
@@ -29,6 +29,15 @@ test("every Work Detail value is its own click-to-copy button, with portal-shape
   // 9:15 PM EDT is the next day in UTC; the Start Date must stay the local day.
   assert.equal(count(h, /data-copy="10\/19\/2026"/g), 3);
   assert.match(h, /data-copy="9:15 PM"/);
+});
+
+test("the roll-up total shows beside driven when the doc has blocks, and not without", () => {
+  const rollup = rollupMin({blocks: [{start: L("10:00"), end: L("11:15")}, {start: L("15:00"), end: L("15:15")}]});
+  assert.equal(rollup, 90);
+  assert.equal(rollupMin({blocks: []}), null);
+  assert.match(entriesHtml(result, {date: D, rollup}), /1h 30m roll-up · 2h entered/);
+  assert.match(dayHtml({date: D, entries: result, rollup}), /Roll-up <b>1h 30m<\/b>/);
+  assert.doesNotMatch(entriesHtml(result, {date: D}) + dayHtml({date: D, entries: result}), /roll-up/i);
 });
 
 test("a needsTicket entry says it needs a ticket in the Ticket field, not as a button", () => {
