@@ -7,7 +7,7 @@ import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} 
 import {buildEntries} from "./entries.js";
 import {entryNotes} from "./notes.js";
 import {scrumSummary, ticketTitles} from "./scrum.js";
-import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
+import {dayHtml, entriesHtml, entriesStripHtml, emptyHtml, weekHtml, monthHtml, scrumHtml, withReview, rollupMin, dayStartMs, ymd, addDays, mondayOf} from "./render.js";
 
 const view = $("time-view"), body = $("time-body"), dateIn = $("time-date"), dlg = $("scrum-dialog");
 // The date is the board's shared day (state.day), so a Time step moves the Board's chips and the Board's control moves Time.
@@ -49,8 +49,8 @@ function dayView(){
   // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
-  const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards});
-  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, state.cards, d.driven), skin: state.skin, marker: state.entryLine})}</div>${state.entriesFold ? entriesStripHtml(result) : entriesHtml(result, {date: T.date, notes, flags})}</div>`;
+  const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards}), rollup = rollupMin(d.doc);
+  return `<div class="day${state.entriesFold ? " folded" : ""}"><div class="day-main">${dayHtml({...d, entries: result, tickets: ticketTitles(state.sessions, state.cards, d.driven), skin: state.skin, marker: state.entryLine, rollup})}</div>${state.entriesFold ? entriesStripHtml(result) : entriesHtml(result, {date: T.date, notes, flags, rollup})}</div>`;
 }
 
 function weekView(){

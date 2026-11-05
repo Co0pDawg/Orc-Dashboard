@@ -24,6 +24,9 @@ const hm12 = iso => { const d = new Date(iso), h = d.getHours(); return `${h % 1
 /** "2h 45m", "2h" or "45m". */
 export const dur = total => { const m = Math.round(total), h = Math.floor(m / 60); return h && m % 60 ? `${h}h ${m % 60}m` : h ? `${h}h` : `${m % 60}m`; };
 const minutes = list => list.reduce((n, x) => n + (ms(x.end) - ms(x.start)) / MIN, 0);
+/** The worklog roll-up's billed minutes: its blocks, which carry slot rounding, .map fixes and ADO actions; null with none. */
+export const rollupMin = doc => doc && Array.isArray(doc.blocks) && doc.blocks.length ? minutes(doc.blocks) : null;
+const rollupFact = min => min == null ? "" : `<span title="The worklog roll-up's billed total">Roll-up <b>${dur(min)}</b></span>`;
 // ponytail: color by ticket number mod 6, so a ticket keeps its color in every view and day; two tickets can share one.
 /** The ticket color class: tk-1..tk-6, or tk-none for No ticket. */
 export const tkClass = t => t ? "tk-" + (Number(t.slice(4)) % 6 + 1) : "tk-none";
@@ -72,10 +75,10 @@ const markerBtn = on => `<button type="button" class="btn scrum tip" data-marker
 const scrumBtn = date => `<button type="button" class="btn scrum" data-scrum="${esc(date)}" aria-label="Scrum summary for ${esc(date)}">Scrum</button>`;
 
 /** The Day tab's timeline: totals, a Scrum button, then the hour axis and one column per ticket. */
-export function dayHtml({date, segments = [], spans = [], markers = [], entries, tickets = {}, skin, marker = true}){
+export function dayHtml({date, segments = [], spans = [], markers = [], entries, tickets = {}, skin, marker = true, rollup = null}){
   const leet = skin === "leet";
   const drivenMin = minutes(segments), agentMin = minutes(spans);
-  const head = `<div class="day-head"><span class="facts"><span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span><span class="day-acts">${entries && entries.entries.length ? markerBtn(marker) : ""}${scrumBtn(date)}</span></div>`;
+  const head = `<div class="day-head"><span class="facts">${rollupFact(rollup)}<span>Driven <b>${dur(drivenMin)}</b></span>${entries ? `<span>Entries <b>${dur(entries.entries.reduce((n, e) => n + e.minutes, 0))}</b></span>` : ""}<span>Agents <b>${dur(agentMin)}</b></span></span><span class="day-acts">${entries && entries.entries.length ? markerBtn(marker) : ""}${scrumBtn(date)}</span></div>`;
   const times = [...segments.flatMap(s => [ms(s.start), ms(s.end)]), ...spans.flatMap(s => [ms(s.start), ms(s.end)]), ...markers.map(m => ms(m.at))].filter(t => !isNaN(t));
   if (!times.length) return `${head}<div class="empty"><b>${leet ? `$ nothing logged on ${esc(date)}_` : `Nothing logged on ${esc(date)}`}</b>No prompts were recorded this day.</div>`;
   const ax = axis(date);
@@ -106,7 +109,7 @@ const foldBtn = folded => `<button type="button" class="btn ent-fold" data-entfo
 /** The Entries panel folded to a side strip: the expand arrow, a vertical label and, shown on a phone only, the total entered. */
 export const entriesStripHtml = result => `<section class="entries folded" aria-label="Entries">${foldBtn(true)}<span class="ent-strip" aria-hidden="true">Entries</span>${result ? `<span class="ent-tot ent-strip-tot">${dur(result.entries.reduce((n, e) => n + e.minutes, 0))} entered</span>` : ""}</section>`;
 
-export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
+export function entriesHtml(result, {date, notes = [], flags = {}, rollup = null} = {}){
   const list = (result && result.entries) || [], entered = list.reduce((n, e) => n + e.minutes, 0);
   const rows = list.map((e, i) => {
     const f = (e.ticket && flags && flags[e.ticket]) || {}, note = (notes && notes[i]) || "", id = `note-${esc(date)}-${i}`;
@@ -122,7 +125,7 @@ export function entriesHtml(result, {date, notes = [], flags = {}} = {}){
   }).join("");
   const drivenMin = result ? result.drivenMin : 0, waitingMin = (result && result.waitingMin) || 0, notEntered = result ? result.notEntered : 0;
   return `<section class="entries" aria-label="Entries">
-    <div class="ent-head">${foldBtn(false)}<h2>Entries</h2><span class="ent-tot">${dur(entered)} entered · ${dur(drivenMin)} driven${waitingMin ? ` · ${dur(waitingMin)} waiting` : ""}</span></div>
+    <div class="ent-head">${foldBtn(false)}<h2>Entries</h2><span class="ent-tot">${rollup == null ? "" : `${dur(rollup)} roll-up · `}${dur(entered)} entered · ${dur(drivenMin)} driven${waitingMin ? ` · ${dur(waitingMin)} waiting` : ""}</span></div>
     ${rows ? `<ol class="ent-list">${rows}</ol>` : `<p class="note">No entries for this day.</p>`}
     ${notEntered ? `<p class="not-entered">Not entered: ${notEntered} min</p>` : ""}
   </section>`;
