@@ -392,6 +392,37 @@
         "redBg": "#382434",
         "edge": "#e0def4"
       }
+    },
+    {
+      "id": "neoncyberpunk",
+      "name": "Neon Cyberpunk",
+      "licence": "MIT",
+      "source": "https://github.com/aiyu-ayaan/Neon-Cyberpunk",
+      "dark": {
+        "bg": "#080a0e",
+        "surface": "#0d1117",
+        "ink": "#e5e7eb",
+        "muted": "#4b5563",
+        "line": "#374151",
+        "accent": "#ec4899",
+        "ok": "#34d399",
+        "run": "#fbbf24",
+        "bad": "#f87171"
+      },
+      "leet": {
+        "bg": "#0d1117",
+        "pane": "#0a1929",
+        "ink": "#22d3ee",
+        "dim": "#4b5563",
+        "faint": "#374151",
+        "green": "#00ff88",
+        "lime": "#c084fc",
+        "amber": "#fbbf24",
+        "red": "#ff006e",
+        "edge": "#ec4899",
+        "redBg": "#310e24"
+      },
+      "note": "Dark only: the VS Code theme ships no light variant, so light mode uses the dark colours."
     }
   ]
 }
