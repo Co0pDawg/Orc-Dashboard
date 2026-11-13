@@ -10,7 +10,7 @@ const day = {dayStart: at("00:00"), dayEnd: `${D}T23:59:59`};
 const span = segs => segs.map(s => `${s.session} ${s.ticket} ${hm(s.start)}-${hm(s.end)}`);
 const noOverlap = segs => segs.every((s, i) => i === 0 || Date.parse(segs[i - 1].end) <= Date.parse(s.start));
 
-test("normTicket: every spelling of a APP ticket joins, everything else is null", () => {
+test("normTicket: every spelling of an APP ticket joins, everything else is null", () => {
   for (const t of ["APP-17619*", "17619", "#17619", 17619, "APP-17619", "app-17619"]) assert.equal(normTicket(t), "APP-17619", String(t));
   for (const t of ["UNKNOWN", "PR-6243", "-", "", null, undefined, "APP-"]) assert.equal(normTicket(t), null, String(t));
 });
