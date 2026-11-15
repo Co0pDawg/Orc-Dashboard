@@ -1,10 +1,8 @@
 # Orc-istrator
 
-The orchestration board (the name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board).
+Orc-istrator is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
 
-A private claude.ai Artifact (your own, published from this repo; its URL lives in `~/.claude/board.local.md`; `db` capability) that shows orchestration sessions live: one block per session with an activity log pane and one pane per ticket card moving through its stages. Two skins: Sleek (light and dark cards) and 1337 (a terminal screen). The page only reads the db; the orchestrator and its agents write it through ArtifactData. Code rules are in [STANDARDS.md](STANDARDS.md).
-
-Viewing works anywhere you can open claude.ai, the chat app included, once the owner shares the board. Publishing the board and writing to it need Claude Code (terminal, IDE extension or the desktop app's Code tab) signed in to the board owner's account. The Time page also needs the worklog hooks from [Orc-istration](https://github.com/Co0pDawg/Orc-istration#which-claude-do-i-need).
+It exists so the person running the agents can see what each one is doing, how long it has been quiet and what it reported, without reading transcripts. It is the board half of [Orc-istration](https://github.com/Co0pDawg/Orc-istration), the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
 
 ## Screenshots
 
@@ -17,6 +15,33 @@ All of these use made-up demo data.
 | ![Session search popover listing matching sessions](docs/screenshots/search.png) | ![Theme editor with a row per colour: picker, pasteable value and RGB](docs/screenshots/theme.png) |
 | **Time, Day**: time per ticket, Work Detail entries that copy on click, the entry marker | **Time, Week**: one column per day, each with its own Scrum button |
 | ![Time page Day view with ticket columns and the Entries panel](docs/screenshots/time-day.png) | ![Time page Week view](docs/screenshots/time-week.png) |
+
+## Two ways to run it
+
+- **As a private claude.ai artifact.** Publish the page from Claude Code under your own account and put its URL in `~/.claude/board.local.md`. Only Claude Code can write to it; anyone the owner shares it with can view it. See "Publish" below.
+- **Locally.** `node local/board.js serve` runs the same page and data contract at http://localhost:8377/, stored as JSON files. Any agent tool that can run a shell command writes to it through the CLI.
+
+## Local quick start
+
+```
+node local/board.js serve                     # foreground server on http://localhost:8377/
+node local/board.js url                       # print the board URL
+node local/board.js list sessions             # read every session doc
+echo '{"at":"2026-01-01T09:00:00-05:00","text":"build green"}' | node local/board.js append cards/c1 progress --stdin
+node local/board.js get cards/c1
+```
+
+More on the board, its data model and when it is written: the [wiki page](https://github.com/Co0pDawg/Orc-istration/wiki/The-Board).
+
+## How it is built
+
+Static ES modules loaded straight by the page: no build step and no dependencies. Pure logic (card state, search, time entries) is kept apart from rendering so it can be tested; `npm test` runs 176 `node:test` tests. The code rules (structure, styles, state and storage, rendering, accessibility, comments) are in [STANDARDS.md](STANDARDS.md).
+
+---
+
+## Reference
+
+The sections below are read by agents at run time; their headings are linked by name from other files.
 
 ## Files
 
@@ -215,4 +240,4 @@ Credits (colors taken from each scheme's official palette file):
 
 ## Contributing
 
-Teammates: push a branch and open a pull request against `main`. `main` is protected: a PR needs one approving review from the code owner (`CODEOWNERS`), and the owner pushes directly. Run `npm test` and `npm run check` before opening it. Report bugs and ideas in [Issues](https://github.com/Co0pDawg/Orc-Dashboard/issues).
+Teammates: push a branch and open a pull request against `main`. Run `npm test` and `npm run check` before opening it. Report bugs and ideas in [Issues](https://github.com/Co0pDawg/Orc-Dashboard/issues).
