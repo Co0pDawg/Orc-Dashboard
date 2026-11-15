@@ -2,8 +2,9 @@
 // over the file store, and Server-Sent Events. Binds 127.0.0.1 only; the page reads, only the CLI writes.
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
-import {extname, join, normalize, sep} from "node:path";
-import {fileURLToPath, pathToFileURL} from "node:url";
+import {realpathSync} from "node:fs";
+import {extname, join, normalize, resolve, sep} from "node:path";
+import {fileURLToPath} from "node:url";
 import {openStore, StoreError, defaultDataDir} from "./store.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
@@ -34,7 +35,6 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
   const send = (res, status, body) => res.writeHead(status, {"content-type": "application/json", "cache-control": "no-store"}).end(JSON.stringify(body));
 
   async function readJson(req){
-    if (!/^application\/json\b/i.test(req.headers["content-type"] || "")) throw new HttpError(403, "content-type must be application/json");
     const chunks = []; let size = 0;
     for await (const c of req){ size += c.length; if (size > MAX_BODY) throw new HttpError(413, "body over 2 MiB"); chunks.push(c); }
     try { const v = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); if (v === null || typeof v !== "object" || Array.isArray(v)) throw 0; return v; }
@@ -68,7 +68,7 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
       const page = await readFile(join(root, "orchestration-board.html"), "utf8");
       return res.writeHead(200, {"content-type": types[".html"], "cache-control": "no-store"}).end(skeleton(page));
     }
-    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid});
+    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid, dataDir: resolve(dataDir)});
     if (req.method === "GET" && path === "/api/events"){
       res.writeHead(200, {"content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive"});
       res.write(": connected\n\n");
@@ -119,7 +119,7 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
   const server = createServer((req, res) => {
     handle(req, res, server.address().port).catch(e => {
       if (res.headersSent) return res.end();
-      if (e instanceof StoreError) return send(res, {conflict: 409, notfound: 404}[e.code] || 400, e.code === "conflict" ? {error: "conflict", version: e.version, message: e.message} : {error: e.message});
+      if (e instanceof StoreError) return send(res, {conflict: 409, notfound: 404, corrupt: 500}[e.code] || 400, e.code === "conflict" ? {error: "conflict", version: e.version, message: e.message} : {error: e.message});
       if (e instanceof HttpError) return send(res, e.status, {error: e.message});
       send(res, 500, {error: String(e?.message || e)});
     });
@@ -131,13 +131,19 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
 /** The port from --port, else ORC_BOARD_PORT, else DEFAULT_PORT; throws on a value that is not a port, so a typo never lands on the default. */
 export function portFrom(argv = process.argv.slice(2)){
   const i = argv.indexOf("--port"), raw = i >= 0 ? argv[i + 1] : process.env.ORC_BOARD_PORT;
+  if (i >= 0 && (raw === undefined || raw.startsWith("--"))) throw new Error("--port needs a value");
   if (raw === undefined || raw === "") return DEFAULT_PORT;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`invalid port: ${JSON.stringify(raw)}`);
   return n;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
+/** True when the module at moduleUrl is the entry script; compares real paths so a junction or symlink still counts. */
+export function isMain(moduleUrl){
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(moduleUrl)); } catch { return false; }
+}
+
+if (isMain(import.meta.url)){
   try {
     const server = await start({port: portFrom()});
     console.log(`orc-board: http://localhost:${server.address().port}/ (data: ${defaultDataDir()})`);

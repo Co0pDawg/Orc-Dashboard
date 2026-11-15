@@ -3,8 +3,10 @@
 // The CLI never adds fields such as timestamps or `updated`: callers pass their own.
 import {spawn} from "node:child_process";
 import {readFileSync, writeFileSync} from "node:fs";
-import {fileURLToPath, pathToFileURL} from "node:url";
-import {portFrom, start} from "./server.js";
+import {homedir} from "node:os";
+import {resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {isMain, portFrom, start} from "./server.js";
 
 const USAGE = `usage: node local/board.js <command> [--no-start] [--port N]
   serve | url | get <col>/<id> | list <col>
@@ -50,18 +52,26 @@ async function health(base){
   catch { return null; }
 }
 
+// A server already running on another data dir would take the writes meant for ORC_BOARD_DATA; refuse instead.
+function sameData(h){
+  const want = process.env.ORC_BOARD_DATA;
+  if (!want) return;
+  const norm = p => process.platform === "win32" ? resolve(p).toLowerCase() : resolve(p);
+  if (!h.dataDir || norm(h.dataDir) !== norm(want)) throw new CliError(`the board server on this port uses data dir ${h.dataDir || "(unknown: an older server, restart it)"}, not ORC_BOARD_DATA=${want}; stop it or set ORC_BOARD_PORT to another port`);
+}
+
 // Starts the server detached when nothing answers on the port, so agents never have to manage it.
 async function ensureServer(base, port, noStart){
   let h = await health(base);
   if (h && h.app !== "orc-board") throw new CliError(`port ${port} answers but is not the orc board; set ORC_BOARD_PORT to a free port`);
-  if (h) return;
+  if (h) return sameData(h);
   if (noStart) throw new CliError(`no board server on ${base} (started with --no-start); run: node local/board.js serve`);
   const server = fileURLToPath(new URL("./server.js", import.meta.url));
-  spawn(process.execPath, [server, "--port", String(port)], {detached: true, stdio: "ignore", windowsHide: true, env: process.env}).unref();
+  spawn(process.execPath, [server, "--port", String(port)], {detached: true, stdio: "ignore", windowsHide: true, env: process.env, cwd: homedir()}).unref();
   for (const until = Date.now() + 5000; Date.now() < until;){
     await new Promise(r => setTimeout(r, 150));
     h = await health(base);
-    if (h?.app === "orc-board") return;
+    if (h?.app === "orc-board") return sameData(h);
   }
   throw new CliError(`started the board server but ${base} did not answer within 5 s`);
 }
@@ -69,7 +79,7 @@ async function ensureServer(base, port, noStart){
 async function call(base, method, path, body){
   const r = await fetch(base + path, {method, headers: {"x-orc-board": "1", "content-type": "application/json"}, body: body === undefined ? undefined : JSON.stringify(body)});
   const out = await r.json().catch(() => ({}));
-  if (r.status === 409) throw new CliError(`conflict: current version is ${out.version}`, 2);
+  if (r.status === 409) throw new CliError(`conflict: current version is ${out.version}${out.message ? ` (${out.message})` : ""}`, 2);
   if (!r.ok) throw new CliError(`${method} ${path}: ${r.status} ${out.error || ""}`.trim());
   return out;
 }
@@ -122,7 +132,7 @@ export async function run(argv){
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
+if (isMain(import.meta.url)){
   try {
     const out = await run(process.argv.slice(2));
     if (out !== undefined) console.log(typeof out === "string" ? out : JSON.stringify(out, null, 2));

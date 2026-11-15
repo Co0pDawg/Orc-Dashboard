@@ -6,7 +6,7 @@ import {join} from "node:path";
 
 const ID = /^[A-Za-z0-9_.~:@+-]{1,200}$/;
 
-/** A typed store error: code is "invalid", "conflict" or "notfound"; a conflict carries the current version. */
+/** A typed store error: code is "invalid", "conflict", "notfound" or "corrupt" (an unreadable doc file); a conflict carries the current version. */
 export class StoreError extends Error {
   constructor(code, message, version){ super(message); this.code = code; if (version !== undefined) this.version = version; }
 }
@@ -16,7 +16,7 @@ export const defaultDataDir = () => process.env.ORC_BOARD_DATA || join(homedir()
 
 /** Throws unless name is a valid collection or doc id (checked before any path is built, so no traversal). */
 export function checkId(name, what = "id"){
-  if (typeof name !== "string" || !ID.test(name) || name === "." || name === "..") throw new StoreError("invalid", `invalid ${what}: ${JSON.stringify(name)}`);
+  if (typeof name !== "string" || !ID.test(name) || name === "." || name === ".." || name === "__proto__") throw new StoreError("invalid", `invalid ${what}: ${JSON.stringify(name)}`);
   // Escapes lengthen the file name (":" and capitals); past 200 it would no longer fit a 255-character file name with its suffixes.
   if (toFile(name).length > 200) throw new StoreError("invalid", `${what} too long once encoded as a file name: ${JSON.stringify(name)}`);
 }
@@ -34,7 +34,17 @@ const sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 export function openStore(dir = defaultDataDir()){
   const colDir = c => join(dir, toFile(c));
   const docPath = (c, id) => join(colDir(c), toFile(id) + ".json");
-  const read = (c, id) => { try { return JSON.parse(readFileSync(docPath(c, id), "utf8")); } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
+  const raw = p => { try { return readFileSync(p, "utf8"); } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
+  function read(c, id){
+    const text = raw(docPath(c, id));
+    if (text === null) return null;
+    let f;
+    try { f = JSON.parse(text); } catch { f = null; }
+    if (!isObj(f) || !Number.isInteger(f.version) || !isObj(f.data)) throw new StoreError("corrupt", `${c}/${id}: the doc file is not a valid {version, data} record`);
+    return f;
+  }
+  // Names that do not decode to a valid id (stray files, hand edits) are skipped, never fatal to a whole listing.
+  const decoded = name => { try { const id = fromFile(name); checkId(id); return id; } catch { return null; } };
   const out = (id, f) => f ? {id, version: f.version, data: f.data} : null;
 
   function write(c, id, file){
@@ -91,12 +101,14 @@ export function openStore(dir = defaultDataDir()){
   return {
     dir,
     /** Every collection name. */
-    collections: () => existsSync(dir) ? readdirSync(dir, {withFileTypes: true}).filter(e => e.isDirectory()).map(e => fromFile(e.name)) : [],
+    collections: () => existsSync(dir) ? readdirSync(dir, {withFileTypes: true}).filter(e => e.isDirectory()).map(e => decoded(e.name)).filter(Boolean) : [],
     get(c, id){ checkId(c, "collection"); checkId(id); return out(id, read(c, id)); },
     list(c){
       checkId(c, "collection");
       if (!existsSync(colDir(c))) return [];
-      return readdirSync(colDir(c)).filter(f => f.endsWith(".json")).map(f => fromFile(f.slice(0, -5))).sort().map(id => out(id, read(c, id))).filter(Boolean);
+      // One unreadable doc must not blank the page, so it is left out here; a direct get still reports it.
+      return readdirSync(colDir(c)).filter(f => f.endsWith(".json")).map(f => decoded(f.slice(0, -5))).filter(Boolean).sort()
+        .map(id => { try { return out(id, read(c, id)); } catch { return null; } }).filter(Boolean);
     },
     set: (collection, id, data, {ifVersion} = {}) => one({op: "set", collection, id, data, ifVersion}),
     update: (collection, id, data, {ifVersion} = {}) => one({op: "update", collection, id, data, ifVersion}),
@@ -115,7 +127,16 @@ export function openStore(dir = defaultDataDir()){
           return f ? out(w.id, f) : {id: w.id, deleted: true};
         } catch (e) { if (e instanceof StoreError) e.message = `entry ${i + 1}: ${e.message}`; throw e; }
       });
-      for (const [k, f] of overlay){ const [c, id] = k.split("\u0000"); write(c, id, f); }
+      // Keep each target's previous bytes so a failed write (disk, lock) can put back the ones already written.
+      const targets = [...overlay].map(([k, f]) => { const [c, id] = k.split("\u0000"); return {c, id, f, before: raw(docPath(c, id))}; });
+      const done = [];
+      try { for (const t of targets){ write(t.c, t.id, t.f); done.push(t); } }
+      catch (e) {
+        for (const t of done.reverse()){
+          try { if (t.before === null) rmSync(docPath(t.c, t.id), {force: true}); else writeFileSync(docPath(t.c, t.id), t.before); } catch { /* best effort */ }
+        }
+        throw e;
+      }
       return results;
     },
   };

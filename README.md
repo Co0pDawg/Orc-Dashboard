@@ -134,6 +134,8 @@ bash:
 echo "{\"at\":\"$(date -Iseconds)\",\"text\":\"build green\"}" | node local/board.js append cards/c1 progress --stdin
 ```
 
+After updating the repo, restart the server so it runs the new code: `/api/health` gives its `pid` and `dataDir`. A CLI call with `ORC_BOARD_DATA` set fails when the running server uses another data dir.
+
 For a headless screenshot, use the Preview command with `--timeout=6000` in place of `--virtual-time-budget=6000`: the page's open event stream keeps virtual time from ever finishing.
 
 To move data between backends, `export` from one and `import` into the other (from the artifact, save each collection's docs into that shape first).
