@@ -44,6 +44,11 @@ All of these use made-up demo data.
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
 | `tests/search.test.js` | `node:test` suite for `search.js` |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
+| `local/store.js` | Local backend: the file-backed document store (`<data dir>/<collection>/<id>.json`) |
+| `local/server.js` | Local backend: the localhost server (page, `/api/db`, `/api/events`); never published |
+| `local/db-shim.js`, `local/query.js` | Local backend: the browser stand-in for `window.claude.use("db")` and its filter/sort logic |
+| `local/board.js` | Local backend: the CLI agents write with |
+| `tests/local-*.test.js` | `node:test` suites for `local/` |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
 
 ## Data contract (what the page reads)
@@ -59,7 +64,10 @@ All of these use made-up demo data.
 
 The single source for when the board is written. `~/.claude/CLAUDE.md` says to follow it, so keep it accurate.
 
-Writes go through the ArtifactData tool (load it with ToolSearch `select:ArtifactData`) against the board URL. If ToolSearch finds no `ArtifactData`, use `mcp__claude-artifacts__db_get`/`db_write` instead: resolve the board URL to its UUID slug with `get_artifact` first (the short id in the URL returns 400), and pass `ifVersion` on every write to an existing doc. (Learned 2026-10-29, PR 6324: ArtifactData was absent and the builder skipped its card.) Writing more than one doc uses `batch`, and every write to an existing doc pins `if_version` to the version last read; on a conflict, re-get and redo. Take times from `date -Iseconds` so they carry an offset. Bump the session's `updated` on every write so it sorts first. Never republish the page for data.
+Two backends take the same data. Which one a machine uses: `~/.claude/board.local.md` holds either a `claude.ai/artifact/...` URL (artifact) or a `http://localhost:<port>` URL (local). The table below says WHEN to write and holds for both.
+
+- **Artifact backend.** Writes go through the ArtifactData tool (load it with ToolSearch `select:ArtifactData`) against the board URL. If ToolSearch finds no `ArtifactData`, use `mcp__claude-artifacts__db_get`/`db_write` instead: resolve the board URL to its UUID slug with `get_artifact` first (the short id in the URL returns 400), and pass `ifVersion` on every write to an existing doc. (Learned 2026-10-29, PR 6324: ArtifactData was absent and the builder skipped its card.) Writing more than one doc uses `batch`, and every write to an existing doc pins `if_version` to the version last read; on a conflict, re-get and redo. Take times from `date -Iseconds` so they carry an offset. Bump the session's `updated` on every write so it sorts first. Never republish the page for data.
+- **Local backend.** Writes go through the CLI, `node <board repo>/local/board.js` (see "Local board"). Use `batch` for the Start write, `append` for progress lines and events (atomic in the server, so no pin is needed), and `update` for fields. Pins (`--if-version`) are optional; a conflict exits 2. The CLI adds no fields, so pass `updated` and every time yourself (`date -Iseconds`).
 
 | When | Write |
 |---|---|
@@ -87,6 +95,48 @@ A card at Start, exactly in this shape (stages is an array in plan order, never 
 Agents write only their own card's `progress[]`, `note` and the one stage their brief names, leaving the other stages as read (rules in `~/.claude/agents/builder.md` and `refuter.md`), never the session doc, where several agents would collide. The orchestrator writes the same card (`agent`, `tokens`, `commit`), so every card write is pinned. A subagent write needs no permission prompt (probed 2026-10-19).
 
 Per-viewer state lives in localStorage: `board.skin`, `board.layout`, `board.shown` (older `board.session`), `board.fold` (older `board.folded`), `board.cardFold` (minimized cards), `board.showDone`, `board.doneWhen` (`orchestrator`, the default, which an older saved `fable` also reads as; or `pr`), `board.theme` (the selected theme: a palette id, "" for the board's own colors, or a custom theme's id), `board.themes` (custom themes `[{id, name, base, colors: {token: "#rrggbb"}}]`; the older `board.palette` and `board.barColor` are migrated into these once and removed, a saved bar color becoming the custom theme "My theme"), `board.rounding` (Time entries: 1, 5, 10, 15 or 30 minutes; default 15), `board.entryLine` (the Day entry marker; "0" turns it off), `board.logFull` (the activity log spans every row its cards use; default on; it grows a row at a time and stops above a card that can never sit beside it, such as a full-width one, so no row is left empty; in its edit mode the log then has no height controls), `board.hideDone` ({session id: true}, set by a session's Hide done button), `board.entriesFold` (the Day Entries pane folded to a side strip). The selected day is never stored: it lives in the hash and the page load.
+
+## Local board
+
+A localhost backend for agent tools that cannot call ArtifactData: the same page and data contract, stored as files.
+
+```
+npm run board                      # or: node local/server.js [--port N]
+```
+
+Open http://localhost:8377/. The CLI starts the server by itself (detached) when nothing answers; `--no-start` turns that off.
+
+- Data dir: `ORC_BOARD_DATA`, else `~/.orc-board/data`, one file per doc: `<collection>/<id>.json` = `{"version", "data"}`.
+- Port: `--port`, else `ORC_BOARD_PORT`, else 8377.
+
+CLI (`node local/board.js <command>`; JSON on stdout, errors on stderr, exit 1, a conflict exits 2):
+
+| Command | Does |
+|---|---|
+| `serve [--port N]`, `url` | Run the server in the foreground; print the board URL |
+| `get <col>/<id>`, `list <col>` | Read one doc or a collection |
+| `set <col>/<id> (--data <json> \| --file <path> \| --stdin) [--if-version N]` | Replace a doc |
+| `update <col>/<id> (...) [--if-version N]` | Merge top-level fields; `{"__delete__": true}` removes one |
+| `append <col>/<id> <field> (...) [--if-version N]` | Push the JSON value onto the array `field` (creating it) |
+| `delete <col>/<id> [--if-version N]` | Delete a doc |
+| `batch (--file \| --stdin)` | `{"writes": [{op: "set"\|"update"\|"append"\|"delete", collection, id, data \| field + value, ifVersion?}]}`, all or nothing |
+| `export [--out <file>]`, `import <file>` | `{"<collection>": {"<id>": <data>}}` for every doc; import sets each doc in one batch |
+
+Quoting JSON on a PowerShell command line is unreliable, so pipe it through `--stdin`. A progress line, PowerShell:
+
+```powershell
+'{"at":"' + (Get-Date -Format o) + '","text":"build green"}' | node local/board.js append cards/c1 progress --stdin
+```
+
+bash:
+
+```bash
+echo "{\"at\":\"$(date -Iseconds)\",\"text\":\"build green\"}" | node local/board.js append cards/c1 progress --stdin
+```
+
+To move data between backends, `export` from one and `import` into the other (from the artifact, save each collection's docs into that shape first).
+
+Security: the server binds 127.0.0.1 and rejects any `Host` other than `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding). Every write needs the header `x-orc-board: 1`, `content-type: application/json` and no foreign `Origin`, and no CORS headers are sent, so another web page cannot write. The page only reads.
 
 ## Layout editing
 
@@ -131,7 +181,7 @@ No dependencies; Node 22 or later.
 
 ## Publish
 
-The page is `orchestration-board.html`; the Artifact skeleton wraps it, so it has no doctype and its `<title>` stays in the first 8 KB. The supporting files go up through the Artifact `files` map with paths relative to this folder (`css/tokens.css`, `css/base.css`, `css/sleek.css`, `css/leet.css`, `js/**/*.js`), which is why every URL in the page is a plain relative path. `dev/`, `tests/`, `package.json` and the docs are not published. Data changes never need a republish.
+The page is `orchestration-board.html`; the Artifact skeleton wraps it, so it has no doctype and its `<title>` stays in the first 8 KB. The supporting files go up through the Artifact `files` map with paths relative to this folder (`css/tokens.css`, `css/base.css`, `css/sleek.css`, `css/leet.css`, `js/**/*.js`), which is why every URL in the page is a plain relative path. `dev/`, `local/`, `tests/`, `package.json` and the docs are not published. Data changes never need a republish.
 
 The Artifact tool reads `files` sources only from a session working directory, not from this folder. So copy `orchestration-board.html`, `css/` and `js/` into a working-dir folder first, publish with that folder as `root` and `url` set to the board, then confirm the 16 published paths with `action: list, scope: files`. The page is served as `index.html`.
 
