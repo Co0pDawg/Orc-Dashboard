@@ -134,6 +134,8 @@ bash:
 echo "{\"at\":\"$(date -Iseconds)\",\"text\":\"build green\"}" | node local/board.js append cards/c1 progress --stdin
 ```
 
+For a headless screenshot, use the Preview command with `--timeout=6000` in place of `--virtual-time-budget=6000`: the page's open event stream keeps virtual time from ever finishing.
+
 To move data between backends, `export` from one and `import` into the other (from the artifact, save each collection's docs into that shape first).
 
 Security: the server binds 127.0.0.1 and rejects any `Host` other than `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding). Every write needs the header `x-orc-board: 1`, `content-type: application/json` and no foreign `Origin`, and no CORS headers are sent, so another web page cannot write. The page only reads.
