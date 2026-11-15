@@ -78,6 +78,28 @@ test("store: ids with ':' and reserved Windows names round-trip", () => {
   assert.deepEqual(s.list("timeline").map(d => d.id).sort(), ["2026-10-19T08:05:00-04:00", "a@b+c~d", "con", "end.", "nul.txt"]);
 });
 
+test("store: ids and collections that differ only in case stay separate (file names ignore case on Windows)", () => {
+  const s = fresh();
+  s.set("t", "A", {x: 1}); s.set("t", "a", {x: 2}); s.set("T", "a", {x: 3}); s.set("t", "CON", {x: 4}); s.set("t", "A:b", {x: 5});
+  assert.deepEqual(s.get("t", "A"), {id: "A", version: 1, data: {x: 1}});
+  assert.deepEqual(s.get("t", "a"), {id: "a", version: 1, data: {x: 2}});
+  assert.deepEqual(s.get("T", "a").data, {x: 3});
+  assert.deepEqual(s.list("t").map(d => d.id).sort(), ["A", "A:b", "CON", "a"]);
+  assert.deepEqual(s.collections().sort(), ["T", "t"]);
+  const names = readdirSync(join(s.dir, readdirSync(s.dir).find(n => n === "t")));
+  assert.equal(new Set(names.map(n => n.toLowerCase())).size, names.length);
+});
+
+test("store: an id whose encoded file name is too long, and a __proto__ field, are rejected", () => {
+  const s = fresh();
+  assert.throws(() => s.set("t", "X".repeat(150), {}), e => e.code === "invalid");
+  assert.throws(() => s.set("t", ":".repeat(100), {}), e => e.code === "invalid");
+  assert.equal(s.set("t", "X".repeat(100), {}).version, 1);
+  assert.throws(() => s.update("t", "p", JSON.parse('{"__proto__": {"a": 1}}')), e => e.code === "invalid");
+  assert.throws(() => s.append("t", "p", "__proto__", 1), e => e.code === "invalid");
+  assert.equal(s.get("t", "p"), null);
+});
+
 const docs = [{id: "a", data: {date: "2026-10-01", n: 3, s: "x"}}, {id: "b", data: {date: "2026-10-14", n: 1}}, {id: "c", data: {date: "2026-10-20", n: 2, s: "y"}}];
 const ids = r => r.map(d => d.id);
 

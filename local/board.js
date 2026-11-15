@@ -108,8 +108,15 @@ export async function run(argv){
       let all;
       try { all = JSON.parse(readFileSync(rest[0], "utf8").replace(/^﻿/, "")); } catch (e) { throw new CliError(`cannot read ${rest[0]}: ${e.message}`); }
       const writes = Object.entries(all).flatMap(([collection, docs]) => Object.entries(docs).map(([id, data]) => ({op: "set", collection, id, data})));
-      if (!writes.length) return {imported: 0};
-      await call(base, "POST", "/api/batch", {writes});
+      // The server caps a request at 2 MiB, so a large export goes up in batches of about 1 MiB (each batch all or nothing).
+      let chunk = [], size = 0;
+      const flush = async () => { if (chunk.length) await call(base, "POST", "/api/batch", {writes: chunk}); chunk = []; size = 0; };
+      for (const w of writes){
+        const n = Buffer.byteLength(JSON.stringify(w));
+        if (size + n > 1024 * 1024) await flush();
+        chunk.push(w); size += n;
+      }
+      await flush();
       return {imported: writes.length};
     }
   }

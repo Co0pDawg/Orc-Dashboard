@@ -128,13 +128,18 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
   return new Promise((ok, fail) => { server.once("error", fail); server.listen(port, "127.0.0.1", () => ok(server)); });
 }
 
-/** The port from --port, else ORC_BOARD_PORT, else DEFAULT_PORT. */
+/** The port from --port, else ORC_BOARD_PORT, else DEFAULT_PORT; throws on a value that is not a port, so a typo never lands on the default. */
 export function portFrom(argv = process.argv.slice(2)){
-  const i = argv.indexOf("--port");
-  return Number(i >= 0 ? argv[i + 1] : process.env.ORC_BOARD_PORT) || DEFAULT_PORT;
+  const i = argv.indexOf("--port"), raw = i >= 0 ? argv[i + 1] : process.env.ORC_BOARD_PORT;
+  if (raw === undefined || raw === "") return DEFAULT_PORT;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`invalid port: ${JSON.stringify(raw)}`);
+  return n;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){
-  const server = await start({port: portFrom()});
-  console.log(`orc-board: http://localhost:${server.address().port}/ (data: ${defaultDataDir()})`);
+  try {
+    const server = await start({port: portFrom()});
+    console.log(`orc-board: http://localhost:${server.address().port}/ (data: ${defaultDataDir()})`);
+  } catch (e) { console.error(`orc-board: ${e.message}`); process.exitCode = 1; }
 }

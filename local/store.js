@@ -17,11 +17,16 @@ export const defaultDataDir = () => process.env.ORC_BOARD_DATA || join(homedir()
 /** Throws unless name is a valid collection or doc id (checked before any path is built, so no traversal). */
 export function checkId(name, what = "id"){
   if (typeof name !== "string" || !ID.test(name) || name === "." || name === "..") throw new StoreError("invalid", `invalid ${what}: ${JSON.stringify(name)}`);
+  // Escapes lengthen the file name (":" and capitals); past 200 it would no longer fit a 255-character file name with its suffixes.
+  if (toFile(name).length > 200) throw new StoreError("invalid", `${what} too long once encoded as a file name: ${JSON.stringify(name)}`);
 }
 
 // Windows forbids ":" and reserved device names and drops trailing dots, so file names are percent-encoded; decoding restores the id.
-const toFile = id => encodeURIComponent(id).replace(/\.$/, "%2E").replace(/^(con|prn|aux|nul|com\d|lpt\d)(?=\.|$)/i, m => "%" + m.charCodeAt(0).toString(16).toUpperCase() + m.slice(1));
-const fromFile = f => decodeURIComponent(f);
+// Windows and macOS also ignore case in file names, so every capital (hex digits of an escape included) is written as "^" + lowercase:
+// ids "A" and "a" stay two files. The reserved-name escape runs last and uses lowercase hex, so it adds no capital.
+const toFile = id => encodeURIComponent(id).replace(/\.$/, "%2E").replace(/[A-Z]/g, m => "^" + m.toLowerCase())
+  .replace(/^(con|prn|aux|nul|com\d|lpt\d)(?=\.|$)/, m => "%" + m.charCodeAt(0).toString(16) + m.slice(1));
+const fromFile = f => decodeURIComponent(f.replace(/\^([a-z])/g, (m, c) => c.toUpperCase()));
 const isObj = v => v !== null && typeof v === "object" && !Array.isArray(v);
 const sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
@@ -61,11 +66,13 @@ export function openStore(dir = defaultDataDir()){
       case "update": {
         if (!isObj(w.data)) throw new StoreError("invalid", "data must be a JSON object");
         const data = {...(cur ? cur.data : {})};
+        // Assigning "__proto__" would set the prototype and silently drop the field.
+        if (Object.hasOwn(w.data, "__proto__")) throw new StoreError("invalid", "field name __proto__ is not allowed");
         for (const [k, v] of Object.entries(w.data)) if (isObj(v) && v.__delete__ === true) delete data[k]; else data[k] = v;
         return {version, data};
       }
       case "append": {
-        if (typeof w.field !== "string" || !w.field) throw new StoreError("invalid", "field must be a non-empty string");
+        if (typeof w.field !== "string" || !w.field || w.field === "__proto__") throw new StoreError("invalid", "field must be a non-empty string other than __proto__");
         if (w.value === undefined) throw new StoreError("invalid", "value is required");
         const data = {...(cur ? cur.data : {})}, arr = data[w.field] ?? [];
         if (!Array.isArray(arr)) throw new StoreError("invalid", `field ${w.field} is not an array`);

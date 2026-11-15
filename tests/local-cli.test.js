@@ -63,6 +63,16 @@ test("cli: export/import round-trips real-shaped docs (batch, nested arrays, tim
   } finally { s2.closeAllConnections(); s2.close(); }
 });
 
+test("cli: import splits an export larger than the server's 2 MiB request cap", async () => {
+  const file = join(tmp(), "big.json"), big = {};
+  for (let i = 0; i < 6; i++) big["d" + i] = {text: "x".repeat(600 * 1024)};
+  writeFileSync(file, JSON.stringify({bulk: big}));
+  const r = await run(["import", file]);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.json.imported, 6);
+  assert.equal((await run(["list", "bulk"])).json.docs.length, 6);
+});
+
 test("cli: --no-start fails clearly; auto-start starts a server on a free port", async () => {
   const port = await new Promise(ok => { const s = createServer().listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => ok(p)); }); });
   const e = {...process.env, ORC_BOARD_PORT: String(port), ORC_BOARD_DATA: tmp()};

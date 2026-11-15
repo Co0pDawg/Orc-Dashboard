@@ -120,7 +120,7 @@ CLI (`node local/board.js <command>`; JSON on stdout, errors on stderr, exit 1, 
 | `append <col>/<id> <field> (...) [--if-version N]` | Push the JSON value onto the array `field` (creating it) |
 | `delete <col>/<id> [--if-version N]` | Delete a doc |
 | `batch (--file \| --stdin)` | `{"writes": [{op: "set"\|"update"\|"append"\|"delete", collection, id, data \| field + value, ifVersion?}]}`, all or nothing |
-| `export [--out <file>]`, `import <file>` | `{"<collection>": {"<id>": <data>}}` for every doc; import sets each doc in one batch |
+| `export [--out <file>]`, `import <file>` | `{"<collection>": {"<id>": <data>}}` for every doc; import sets each doc, in batches of about 1 MiB |
 
 Quoting JSON on a PowerShell command line is unreliable, so pipe it through `--stdin`. A progress line, PowerShell:
 
