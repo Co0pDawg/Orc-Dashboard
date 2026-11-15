@@ -2,7 +2,7 @@
 
 Orc-istrator is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
 
-It exists so the person running the agents can see what each one is doing, how long it has been quiet and what it reported, without reading transcripts. It is the board half of [Orc-istration](https://github.com/Co0pDawg/Orc-istration), the method and toolkit that defines when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
+It exists so the person running the agents can see what each one is doing, how long it has been quiet and what it reported, without reading transcripts. It is the board half of [Orc-istration](https://github.com/Co0pDawg/Orc-istration), the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
 
 ## Screenshots
 
