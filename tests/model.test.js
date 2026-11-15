@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal, mergeOrder} from "../js/model.js";
-import {ago, esc, adoUrl} from "../js/util.js";
+import {ago, esc, ticketUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
 const minsAgo = m => new Date(Date.now() - m * 60000).toISOString();
@@ -89,12 +89,12 @@ test("esc: escapes the five HTML characters and nullish input", () => {
   assert.equal(esc(0), "0");
 });
 
-test("adoUrl: AcmeApp by default, the session's org/project when given, default when malformed", () => {
-  assert.equal(adoUrl(17983), "https://dev.azure.com/contoso/AcmeApp/_workitems/edit/17983");
-  assert.equal(adoUrl("18001", "contoso/Contoso Payments"), "https://dev.azure.com/contoso/Contoso%20Payments/_workitems/edit/18001");
-  assert.equal(adoUrl(1, "no-slash"), "https://dev.azure.com/contoso/AcmeApp/_workitems/edit/1");
-  assert.equal(adoUrl(1, "a/b/c"), "https://dev.azure.com/contoso/AcmeApp/_workitems/edit/1");
-  assert.equal(adoUrl(`1" onmouseover="x`), "https://dev.azure.com/contoso/AcmeApp/_workitems/edit/1%22%20onmouseover%3D%22x");
+test("ticketUrl: the session's org/project when given, no link when missing or malformed", () => {
+  assert.equal(ticketUrl(17983, {}), "");
+  assert.equal(ticketUrl("18001", {ado: "contoso/Contoso Payments"}), "https://dev.azure.com/contoso/Contoso%20Payments/_workitems/edit/18001");
+  assert.equal(ticketUrl(1, {ado: "no-slash"}), "");
+  assert.equal(ticketUrl(1, {ado: "a/b/c"}), "");
+  assert.equal(ticketUrl(`1" onmouseover="x`, {ado: "contoso/AcmeApp"}), "https://dev.azure.com/contoso/AcmeApp/_workitems/edit/1%22%20onmouseover%3D%22x");
 });
 
 test("stagesOf: reads the array contract and the object shape writers have used", () => {

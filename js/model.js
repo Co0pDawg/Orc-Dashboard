@@ -4,6 +4,12 @@
 export const LABEL = {done:"Done", active:"In progress", rework:"Rework", pending:"Queued", skipped:"Skipped"};
 /** 1337 stage-state words. */
 export const WORD = {done:"✓ done", active:"● running", rework:"✗ rework", pending:"· queued", skipped:"– skipped"};
+/** True for a stage state the page knows; any other state shows raw, with a warning style, and never counts as done. */
+export const knownState = st => Object.hasOwn(LABEL, String(st));
+/** x when it is an array, without null and non-object entries; else []. A malformed doc must not stop the board. */
+export const listOf = x => Array.isArray(x) ? x.filter(o => o && typeof o === "object") : [];
+/** A session doc's events, guarded like listOf. */
+export const eventsOf = d => listOf(d && d.events);
 /** The activity log turns amber after this long without an event. */
 export const QUIET_MS = 45 * 60000;
 
@@ -34,6 +40,8 @@ export function stageLabel(c){
   const cur = st.find(x => x.state === "rework") || st.find(x => x.state === "active");
   if (cur) return (s === "rework" ? "Rework: " : "") + cur.label;
   const next = st.find(x => x.state === "pending");
+  const odd = st.find(x => !knownState(x.state));
+  if (odd) return `${odd.label}: ${odd.state}`;
   return st.some(x => x.state === "done") && next ? "Next: " + next.label : "Queued";
 }
 // The stage a card is waiting on (rework first), timed from its `started`, else the card's last update.
@@ -57,31 +65,33 @@ export function progress(cards){
 // pull request is still open (draft or active) is not done yet; a session that never recorded a PR finishes as before.
 /** True when the orchestrator has marked the session finished. */
 export const orchestratorDone = s => !!s.data.completed || /^(done|complete|completed|finished)$/i.test(s.data.status || "");
-/** True when a PR status is final (completed or abandoned). */
-export const prFinal = status => /^(completed|merged|abandoned)$/i.test(String(status || ""));
+/** True when a PR status is final: completed or merged (done), closed or abandoned (dropped). */
+export const prFinal = status => /^(completed|merged|closed|abandoned)$/i.test(String(status || ""));
+/** True when a PR status means it is still in review: draft, active, open or ready. */
+export const prOpen = status => /^(draft|active|open|ready)$/i.test(String(status || ""));
 /** True when a session is finished under the viewer's setting: "orchestrator" (default) or "pr". */
 export const isDone = (s, mode = "orchestrator") => orchestratorDone(s) && (mode !== "pr" || !s.data.pr || !s.data.pr.id || prFinal(s.data.pr.status));
 /** A card's agent-posted progress lines, or []. */
-export const progressOf = c => Array.isArray(c.progress) ? c.progress : [];
+export const progressOf = c => listOf(c && c.progress);
 // A dispatch event that names its `card` also nests that card's agent-posted progress from its time until the next
 // dispatch for the same card, so a builder's milestones sit under "builder dispatched" and a refuter's under its own.
 /** Sub-lines nested under events[i], oldest first. */
 export function subsOf(events, i, cards){
-  const e = events[i], own = Array.isArray(e.sub) ? e.sub : [];
-  const c = e.card && cards.find(x => x._id === e.card);
+  const e = events[i] || {}, own = listOf(e.sub);
+  const c = e.card && cards.find(x => x && x._id === e.card);
   if (!c || !Array.isArray(c.progress)) return own;
-  const from = Date.parse(e.at), next = events.slice(i + 1).find(x => x.card === e.card), to = next ? Date.parse(next.at) : Infinity;
-  return own.concat(c.progress.filter(p => { const t = Date.parse(p.at); return t >= from && t < to; })).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const from = Date.parse(e.at), next = events.slice(i + 1).find(x => x && x.card === e.card), to = next ? Date.parse(next.at) : Infinity;
+  return own.concat(progressOf(c).filter(p => { const t = Date.parse(p.at); return t >= from && t < to; })).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 /** Newest activity, counting sub-events and agent-posted card progress; null when none. */
-export const lastAt = (events, cards = []) => events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]).concat(cards.flatMap(c => progressOf(c).map(x => x.at))).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
+export const lastAt = (events, cards = []) => listOf(events).flatMap(e => [e.at, ...listOf(e.sub).map(x => x.at)]).concat(listOf(cards).flatMap(c => progressOf(c).map(x => x.at))).filter(t => !isNaN(Date.parse(t))).reduce((m, t) => !m || Date.parse(t) > Date.parse(m) ? t : m, null);
 // A session counts on a day when it, an event or sub-event, or one of its cards (update, progress line, stage start)
 // falls between that local midnight and the next, so a session started days ago shows again on each day it was touched.
 /** Every time the session or one of its cards was touched: the sources touchedOn and session search both read. */
 export function touchTimes(s, cards = []){
-  const d = s.data, events = Array.isArray(d.events) ? d.events : [];
-  return [d.started, d.updated, d.completed, ...events.flatMap(e => [e.at, ...(Array.isArray(e.sub) ? e.sub.map(x => x.at) : [])]),
-    ...cards.filter(c => c.session === s.id).flatMap(c => [c.updated, ...progressOf(c).map(p => p.at), ...stagesOf(c).map(x => x.started)])];
+  const d = s.data || {}, events = eventsOf(d);
+  return [d.started, d.updated, d.completed, ...events.flatMap(e => [e.at, ...listOf(e.sub).map(x => x.at)]),
+    ...listOf(cards).filter(c => c.session === s.id).flatMap(c => [c.updated, ...progressOf(c).map(p => p.at), ...stagesOf(c).map(x => x.started)])];
 }
 /** True when the session or one of its cards was touched on the local day date (yyyy-MM-dd). */
 export function touchedOn(s, date, cards = []){

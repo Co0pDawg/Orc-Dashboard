@@ -120,7 +120,7 @@ test("agentSpans: fc-wrapup shape, an unanswered dispatch ends at the session's 
   const sessions = [{id: "fc", data: {ticket: "17994", updated: "2026-10-20T18:03:22", events: [
     {at: at("18:46"), text: "Rerun green. Committed #17999 as 9e7b3d56b."},
     {at: at("18:55"), text: "Pre-PR review (full tier, 7 agents) batch 1 dispatched: code-reviewer", card: "fc-wrapup"},
-    {at: at("19:05"), text: "Cooper: ship it"},
+    {at: at("19:05"), text: "User: ship it"},
     {at: at("19:15"), text: "Pre-PR review done: needs changes, 1 issue / 3 warning"},
     {at: at("19:16"), text: "builder done", card: "other"}]}}];
   const s = agentSpans(sessions, [{_id: "fc-wrapup", ticket: "17994"}], day.dayStart, day.dayEnd);

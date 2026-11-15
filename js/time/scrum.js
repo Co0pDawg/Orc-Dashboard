@@ -1,6 +1,6 @@
 // Pure: builds the morning-meeting summary of one day from segments and the board data. No DOM, no storage, no model.
 import {normTicket, cardTicket} from "./segments.js";
-import {stagesOf, cardState, orchestratorDone} from "../model.js";
+import {stagesOf, cardState, orchestratorDone, prOpen, eventsOf as docEvents} from "../model.js";
 
 const t = e => Date.parse(e.at);
 // Process talk (agents, reviews, commits, PR housekeeping, test runs, reading and filing) is not what the work was.
@@ -12,6 +12,9 @@ const boardTitle = s => scrub(s).replace(/^(?:PR feedback:|PR:|Peer review PR\b:
 // A note that is only the ADO "<Type>: <title>" fallback says nothing the label does not.
 const ADO_NOTE = /^(?:User Story|Task|Bug|Support Item|Feature|Epic): /;
 
+// A model name: a family word, then any version or variant segments (claude-opus-5-5, gemini-3.8-flash-high, gpt-6.1-sol).
+// A family word alone counts too ("ran it on sonnet"); ordinary words that only start with one (Flashlight) are left alone.
+const MODEL = /\b(?:claude|opus|sonnet|haiku|gemini|gpt|codex|flash|llama|mistral|grok|deepseek|qwen)(?:[-.][a-z0-9]+)*\b/gi;
 /** A line with commit hashes, PR numbers, counts, model names, arrows and the brackets they leave empty removed. */
 export function scrub(s){
   return String(s ?? "")
@@ -19,7 +22,7 @@ export function scrub(s){
     .replace(/\b(PR)\s*#?\d{3,}\b/gi, "$1").replace(/(^|[\s(])#\d{3,}\b/g, "$1")
     .replace(/\(\d+(?:\.\d+)?k\)/gi, "").replace(/\b\d+(?:\/\d+)+\b/g, "")
     .replace(/\b\d[\d,]*\s+(?:pass\w*|fail\w*|tests?|findings?|must-fix)\b/gi, "")
-    .replace(/\b(?:opus|sonnet|haiku)\b/gi, "").replace(/->|\u2192/g, "")
+    .replace(MODEL, "").replace(/->|\u2192/g, "")
     .replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+([,.;:)])/g, "$1").replace(/([,;:])[,;:]+/g, "$1").replace(/\s{2,}/g, " ")
     .trim().replace(/^[\s,;:.-]+|[\s,;:-]+$/g, "");
 }
@@ -64,7 +67,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
   const next = new Date(date + "T00:00:00"); next.setDate(next.getDate() + 1);
   const dayEnd = next.getTime();
   const sessionTicket = s => normTicket(s.data.ticket);
-  const eventsOf = s => (Array.isArray(s.data.events) ? s.data.events : []).filter(e => !isNaN(t(e)) && t(e) < dayEnd);
+  const eventsOf = s => docEvents(s.data).filter(e => !isNaN(t(e)) && t(e) < dayEnd);
   const driven = new Map();
   for (const g of segments) driven.set(normTicket(g.ticket), (driven.get(normTicket(g.ticket)) || 0) + (Date.parse(g.end) - Date.parse(g.start)) / 60000);
   const drivenTickets = new Set(driven.keys()), boardTitles = ticketTitles(sessions, cards, drivenTickets);
@@ -81,7 +84,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
   const open = sessions.filter(s => !finished(s) && (!s.data.started || Date.parse(s.data.started) < dayEnd));
   const today = open.map(s => {
     const nextStage = cards.filter(c => c.session === s.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap(stagesOf).find(x => x.state === "pending");
-    const inReview = s.data.pr && s.data.pr.id && /^(draft|active)$/i.test(s.data.pr.status || "");
+    const inReview = s.data.pr && s.data.pr.id && prOpen(s.data.pr.status);
     const head = scrub(s.data.title) || sessionTicket(s) || s.id;
     return head + (nextStage ? ": next up " + nextStage.label.toLowerCase() : "") + (inReview ? "; PR in review" : "");
   });

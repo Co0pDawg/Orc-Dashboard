@@ -3,14 +3,18 @@ const now = Date.now(), iso = m => new Date(now - m*60000).toISOString();
 const st = (...s) => s.map(([label, state, m]) => ({label, state, ...(m ? {started: iso(m)} : {})}));
 const S = {
  sessions: [
-  {id:"2026-10-19-acmeapp-search", title:"Header search card results", ticket:"17983", branch:"feature/17983-rework-the-top-search-bar-card-results", status:"building", started:iso(90), updated:iso(2), now:"Builder on Task 18001: employee and class results",
+  {id:"2026-10-19-acmeapp-search", ado:"contoso/AcmeApp", title:"Header search card results", ticket:"17983", branch:"feature/17983-rework-the-top-search-bar-card-results", status:"building", started:iso(90), updated:iso(2), now:"Builder on Task 18001: employee and class results",
    events:[{at:iso(80),text:"Spec written for 3 tasks"},{at:iso(60),text:"Builder dispatched on Task 18000",sub:[{at:iso(55),text:"Spec read, 6 files in scope"},{at:iso(48),text:"Build green"},{at:iso(40),text:"Filtered tests 18/22 pass"},{at:iso(35),text:"All 22 filtered tests pass"}]},{at:iso(30),text:"Refuter ACCEPT on Task 18000"},{at:iso(50),text:"Committed 581a23a31"},{at:iso(72),text:"Builder dispatched on Task 18001",card:"c2"}]},
-  {id:"2026-10-19-acmeapp-dashboard", title:"Dashboard times", ticket:"17979", branch:"feature/17979-dashboard-times", status:"Done", completed:iso(15), pr:{id:6238, url:"https://dev.azure.com/contoso/AcmeApp/_git/AcmeApp/pullrequest/6238", status:"draft"}, started:iso(300), updated:iso(20), now:"Pre-PR review, light tier",
+  {id:"2026-10-19-acmeapp-dashboard", ado:"contoso/AcmeApp", title:"Dashboard times", ticket:"17979", branch:"feature/17979-dashboard-times", status:"Done", completed:iso(15), pr:{id:6238, url:"https://dev.azure.com/contoso/AcmeApp/_git/AcmeApp/pullrequest/6238", status:"draft"}, started:iso(300), updated:iso(20), now:"Pre-PR review, light tier",
    events:[{at:iso(200),text:"Refuter REWORK: missing AM/PM on tooltip"},{at:iso(100),text:"Builder pushed fix"}]},
   // Absolute dates for the Time page: its dispatches make the agent spans on Oct 14 and Oct 19.
-  {id:"2026-10-14-acmeapp-peer-review", title:"Peer review: fee rounding", ticket:"18004", branch:"review/6250-fix", status:"Done", completed:"2026-10-19T15:00:00-04:00", started:"2026-10-14T09:30:00-04:00", updated:"2026-10-19T15:00:00-04:00", now:"Fixes pushed",
+  {id:"2026-10-14-acmeapp-peer-review", ado:"contoso/AcmeApp", title:"Peer review: fee rounding", ticket:"18004", branch:"review/6250-fix", status:"Done", completed:"2026-10-19T15:00:00-04:00", started:"2026-10-14T09:30:00-04:00", updated:"2026-10-19T15:00:00-04:00", now:"Fixes pushed",
    events:[{at:"2026-10-14T09:40:00-04:00",text:"Builder dispatched on #18004 tests",card:"c7"},{at:"2026-10-14T11:05:00-04:00",text:"Refuter ACCEPT on #18004 tests",card:"c7"},
      {at:"2026-10-19T13:10:00-04:00",text:"Builder dispatched on #18004 fixes",card:"c6"},{at:"2026-10-19T14:50:00-04:00",text:"Refuter ACCEPT on #18004 fixes",card:"c6"},{at:"2026-10-19T15:00:00-04:00",text:"Committed 4be1c2a90"}]}
+ ,
+  // A session on another tracker: `links` builds its ticket links, and its PR is on github.com.
+  {id:"2026-10-19-widgets-export", title:"CSV export for widgets", ticket:"WID-42", links:{ticket:"https://github.com/example/widgets/issues/{id}"}, branch:"feature/wid-42-csv-export", status:"review", started:iso(70), updated:iso(6), pr:{id:318, url:"https://github.com/example/widgets/pull/318", status:"open"},
+   events:[{at:iso(65),text:"Spec written for 1 task"},{at:iso(50),text:"Builder dispatched on WID-42",card:"c8"},{at:iso(12),text:"PR opened"}]}
  ],
  cards: [
   {id:"c1", session:"2026-10-19-acmeapp-search", order:1, ticket:"17983", task:"18000", kind:"Task", title:"Customer results as cards", agent:"builder (opus)", tokens:"182k", commit:"5a7f13d4b", stages:st(["Spec","done"],["Build","done"],["Refute","done"],["Commit","done"]), updated:iso(30)},
@@ -20,6 +24,7 @@ const S = {
   ,{id:"c5", session:"2026-10-19-acmeapp-search", order:4, ticket:"17983", task:"18003", kind:"Bug", title:"Phone search misses extensions", stages:{spec:"done", build:"active", refute:"pending"}, updated:iso(4)}
   ,{id:"c6", session:"2026-10-14-acmeapp-peer-review", order:2, ticket:"18004", kind:"Task", title:"Fee rounding fixes", stages:st(["Build","done"],["Refute","done"]), updated:"2026-10-19T14:50:00-04:00", progress:[{at:"2026-10-19T13:25:00-04:00",text:"spec read, 3 files in scope"},{at:"2026-10-19T14:05:00-04:00",text:"filtered tests 12/12 pass"}]}
   ,{id:"c7", session:"2026-10-14-acmeapp-peer-review", order:1, ticket:"18004", kind:"Task", title:"Fee rounding tests", stages:st(["Build","done"],["Refute","done"]), updated:"2026-10-14T11:05:00-04:00"}
+  ,{id:"c8", session:"2026-10-19-widgets-export", order:1, ticket:"WID-42", kind:"Task", title:"Export widgets as CSV", agent:"builder", stages:st(["Build","done"],["Refute","done"],["PR","active",12]), updated:iso(6), progress:[{at:iso(45),text:"Build green"},{at:iso(30),text:"Filtered tests 12/12 pass"}]}
  ]};
 // timeline/<date> docs as the sync writes them (EDT all October). Oct 19 mirrors the real day: three APP tickets across
 // parallel sessions, an UNKNOWN stretch, a turn with no stop (16:30), an evening turn (UTC next day) and a 23:54 fragment.

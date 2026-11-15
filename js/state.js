@@ -3,7 +3,7 @@ import {loadSkin, loadLayout, loadShown, loadShowDone, loadFold, loadCardFold, l
 
 /** Shared runtime state; per-viewer values start from prefs. */
 export const state = {
-  db: null, sessions: [], cards: [], // cards: every card, for the day filter and the Time page
+  db: null, conn: null, sessions: [], cards: [], // cards: every card, for the day filter and the Time page
   // The selected local day (yyyy-MM-dd), shared by the Board and Time; set by route(), never stored.
   // dayPicked is false while it follows today, which rolls it over at midnight.
   day: "", dayPicked: false,

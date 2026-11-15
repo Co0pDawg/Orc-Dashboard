@@ -414,3 +414,5 @@ body:not([data-view="time"]) .time-view,[data-view="time"] #stack{display:none}
   /* Tour: wider targets may sit wider than the popover's old row. */
   .tour-btns{flex-wrap:wrap}
 }
+.conn{margin:0;flex-basis:100%;color:var(--bad-text);font-size:12px;font-weight:600}
+.conn[hidden]{display:none}

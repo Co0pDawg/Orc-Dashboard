@@ -31,8 +31,8 @@ function subscribe(){
   T.stop?.(); T.key = key;
   T.stop = state.db.collection("timeline").where("date", ">=", from).where("date", "<=", to).onSnapshot(snap => {
     T.docs = new Map(snap.docs.map(d => { const x = d.data(); return [x.date || d.id, x]; }));
-    renderTime();
-  }, () => {});
+    state.conn?.ok(); renderTime();
+  }, () => state.conn?.fail());
 }
 
 /** One day computed from its timeline doc and the board's sessions and cards. */
@@ -46,7 +46,7 @@ function dayInfo(date){
 function dayView(){
   const d = dayInfo(T.date);
   if (!d.doc) return emptyHtml(T.date, true);
-  // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
+  // Agent-only time counts too: the user is viewing and waiting while an agent runs and he is not driving.
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards}), rollup = rollupMin(d.doc);

@@ -1,5 +1,5 @@
 // HTML helpers both skins use. Strings only: nothing here touches the DOM.
-import {esc, t12, ago, fmtDay, untilText} from "../util.js";
+import {esc, t12Or, ago, fmtDay, untilText, httpsUrl, idText} from "../util.js";
 import {QUIET_MS, cardState, progressOf, isLog, prFinal} from "../model.js";
 import {state} from "../state.js";
 
@@ -19,7 +19,14 @@ export const sessionTitle = sid => state.sessions.find(x => x.id === sid)?.data.
 /** The card with this pane id in any open view, or null. */
 export const findCard = id => { for (const v of state.views.values()){ const c = v.cards.find(x => x._id === id); if (c) return c; } return null; };
 /** Accessible name of a pane. */
-export const paneName = id => isLog(id) ? (state.shown.length > 1 ? `Activity log, ${sessionTitle(id.slice(4))}` : "Activity log") : (c => c ? `#${c.task || c.ticket} ${c.title}` : id)(findCard(id));
+export const paneName = id => isLog(id) ? (state.shown.length > 1 ? `Activity log, ${sessionTitle(id.slice(4))}` : "Activity log") : (c => c ? cardName(c) : id)(findCard(id));
+/** A card's accessible name: its task or ticket id and title. */
+export const cardName = c => `${idText(c.task || c.ticket)} ${c.title ?? ""}`.trim();
+/** An id as a link when url is set (from ticketUrl or httpsUrl), else as plain text; bold wraps the id in <b>. */
+export function idLink(id, url, cls = "", bold = false){
+  const t = bold ? `<b>${esc(idText(id))}</b>` : esc(idText(id));
+  return url ? `<a${cls ? ` class="${cls}"` : ""} href="${esc(url)}" target="_blank" rel="noopener">${t}</a>` : t;
+}
 
 // The agent's latest milestones on a running card: the last three lines, the newest with time since it posted.
 /** Progress rows for a running card, or "". */
@@ -28,7 +35,7 @@ export function progHtml(c){
   if (!prog.length || (st !== "active" && st !== "rework")) return "";
   const rows = prog.map((p, k) => {
     const ago = k === prog.length - 1 ? sinceHtml(p.at) : "";
-    return `<li class="${ago ? "latest" : ""}"><time>${esc(t12(p.at))}</time><span>${esc(p.text)}</span>${ago ? `<em>${ago} ago</em>` : ""}</li>`;
+    return `<li class="${ago ? "latest" : ""}"><time>${esc(t12Or(p.at))}</time><span>${esc(p.text)}</span>${ago ? `<em>${ago} ago</em>` : ""}</li>`;
   }).join("");
   return state.skin === "leet"
     ? `<div><div class="lbl">progress</div><ol class="prog">${rows}</ol></div>`
@@ -44,12 +51,11 @@ export function subToggle(key, count, open, leet){
   return `<button type="button" class="more" data-subs="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${n}">${leet ? (open ? "[-]" : `[+${count}]`) : `${open ? "▾" : "▸"} ${n}`}</button>`;
 }
 // The session's PR, written by the orchestrator when it opens the PR and refreshed at the start of later orchestrated tasks.
-// Only an Azure DevOps link is used as a link; anything else shows as plain text.
+// Any https:// URL is a link; anything else shows as plain text.
 /** The header fact for a session's pull request, or "". */
 export function prHtml(pr, leet){
   if (!pr || !pr.id) return "";
-  const url = typeof pr.url === "string" && /^https:\/\/dev\.azure\.com\//.test(pr.url) ? pr.url : "";
-  const st = String(pr.status || "open"), id = `#${esc(pr.id)}`;
+  const st = String(pr.status || "open"), url = httpsUrl(pr.url), id = esc(idText(pr.id));
   const num = url ? `<a${leet ? "" : ' class="tid"'} href="${esc(url)}" target="_blank" rel="noopener">${leet ? `<b>${id}</b>` : id}</a>` : (leet ? `<b>${id}</b>` : id);
   return `<span class="pr${prFinal(st) ? "" : " open"}">${leet ? "pr" : "PR"} ${num} <b>${esc(st)}</b></span>`;
 }
@@ -107,7 +113,10 @@ export function emptyHtml(hidden = 0){
   if (state.sessions.length) return skin === "leet"
     ? `<div class="empty"><b>$ no activity on ${esc(state.day)}_</b>No session or card was touched that day. Step the date in the status bar to look at another.</div>`
     : `<div class="empty"><b>Nothing touched on ${esc(fmtDay(state.day))}</b>No session or card was updated that day. Pick another day at the top.</div>`;
+  // The local backend's shim marks its db, so only there does the empty state name the CLI that writes the board.
+  const cli = state.db && state.db.backend === "local"
+    ? ` To check the board, write a session yourself with <code>node local/board.js batch --stdin</code> (README "Writing protocol").` : "";
   return skin === "leet"
-    ? `<div class="empty"><b>$ waiting for a session_</b>Claude opens a session here when it starts orchestrating a ticket. Each ticket gets a pane that moves through its stages as agents report back.</div>`
-    : `<div class="empty"><b>No sessions yet</b>Claude adds a session here when it starts orchestrating a task, then moves each ticket card through its stages as agents report back.</div>`;
+    ? `<div class="empty"><b>$ waiting for a session_</b>The orchestrator's first board write creates a session here. Each ticket gets a pane that moves through its stages as agents report back.${cli}</div>`
+    : `<div class="empty"><b>No sessions yet</b>The orchestrator's first board write creates a session here, then each ticket card moves through its stages as agents report back.${cli}</div>`;
 }

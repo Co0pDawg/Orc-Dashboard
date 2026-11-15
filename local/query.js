@@ -43,13 +43,17 @@ export function createFeed(load){
         if (key === s.last) continue;
         s.last = key;
         s.onNext({docs: out.map(d => ({id: d.id, data: () => d.data}))});
-      } catch (e) { if (s.onError) s.onError(e); }
+      } catch (e) { report(s, e); }
     }
   }
+  // After an error the next good load is delivered even when unchanged, so the page learns the server is back.
+  function report(s, e){ s.last = null; if (s.onError) s.onError(e); }
   return {
     refresh,
     /** Refreshes every collection that has a live subscription. */
     refreshAll: () => Promise.all([...cols.keys()].map(refresh)),
+    /** Reports err (e.g. a dropped event stream) to every live subscription. */
+    fail: err => { for (const c of cols.values()) for (const s of [...c.subs]) report(s, err); },
     /** Adds a subscription, loads its collection and returns the unsubscribe function. */
     subscribe(name, wheres, order, onNext, onError){
       if (!cols.has(name)) cols.set(name, {gen: 0, subs: new Set()});

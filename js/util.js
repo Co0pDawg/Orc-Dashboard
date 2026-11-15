@@ -1,18 +1,30 @@
 // Pure helpers: no DOM, no storage.
 
-/** Default Azure DevOps "org/project" when a session names none. */
-export const ADO_DEFAULT = "contoso/AcmeApp";
-// A session's optional `ado` ("org/project", e.g. "contoso/Contoso Payments" for Atlas) picks the project
-// its ticket links open in; anything not shaped org/project falls back to the default.
-/** Work item URL in Azure DevOps; the only place a link URL is built. */
-export const adoUrl = (id, project) => {
-  const p = typeof project === "string" && /^[^/]+\/[^/]+$/.test(project.trim()) ? project.trim() : ADO_DEFAULT;
-  return "https://dev.azure.com/" + p.split("/").map(encodeURIComponent).join("/") + "/_workitems/edit/" + encodeURIComponent(id);
-};
+// Ticket and task links: a session's `links` template ({ticket?, task?}, "{id}" replaced by the URL-encoded id; task falls
+// back to ticket), else its `ado` ("org/project"), else no link. Only https:// targets are ever returned.
+/** An https:// URL string as given, else "". */
+export const httpsUrl = u => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/i.test(u.trim()) ? u.trim() : "";
+/** Azure DevOps work item URL for an "org/project", else "". */
+const adoItemUrl = (id, project) => typeof project === "string" && /^[^/]+\/[^/]+$/.test(project.trim())
+  ? "https://dev.azure.com/" + project.trim().split("/").map(encodeURIComponent).join("/") + "/_workitems/edit/" + encodeURIComponent(id) : "";
+/** Link URL for a ticket or task id from its session (`links`, then `ado`), or "" for no link; the only place a link URL is built. */
+export function ticketUrl(id, sess, kind = "ticket"){
+  if (id == null || String(id).trim() === "" || !sess || typeof sess !== "object") return "";
+  const L = sess.links && typeof sess.links === "object" ? sess.links : {}, pick = k => typeof L[k] === "string" && L[k].trim() ? L[k] : "";
+  const tpl = (kind === "task" && pick("task")) || pick("ticket");
+  if (tpl) return httpsUrl(tpl) && httpsUrl(tpl.replace(/\{id\}/g, encodeURIComponent(String(id).trim())));
+  return adoItemUrl(String(id).trim(), sess.ado);
+}
+/** How an id displays: "#" before an all-digit id, any other id as written. */
+export const idText = id => /^\d+$/.test(String(id ?? "").trim()) ? "#" + String(id).trim() : String(id ?? "");
 /** HTML-escapes any value (null/undefined become ""). */
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /** Short date and 12-hour time, or "" for a missing or bad date. */
 export const fmt = iso => { if (!iso) return ""; const d = new Date(iso); if (isNaN(d)) return ""; return d.toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit", hour12:true}); };
+/** fmt, or "no time" for a missing or bad date. */
+export const fmtOr = iso => fmt(iso) || "no time";
+/** t12, or "no time" for a missing or bad date. */
+export const t12Or = iso => (iso && t12(iso)) || "no time";
 /** 12-hour time only, or "" for a bad date. */
 export const t12 = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit", hour12:true}); };
 /** Clamps n into [lo, hi]. */
