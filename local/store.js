@@ -1,6 +1,6 @@
 // File-backed document store for the local board: <dir>/<collection>/<docId>.json, each {"version", "data"}.
 // Pure Node, synchronous, so one write never interleaves with another inside the server process.
-import {mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync} from "node:fs";
+import {mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, existsSync} from "node:fs";
 import {homedir} from "node:os";
 import {join} from "node:path";
 
@@ -34,13 +34,23 @@ const sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 export function openStore(dir = defaultDataDir()){
   const colDir = c => join(dir, toFile(c));
   const docPath = (c, id) => join(colDir(c), toFile(id) + ".json");
-  const raw = p => { try { return readFileSync(p, "utf8"); } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
+  const stats = {reads: 0};
+  const raw = p => { try { stats.reads++; return readFileSync(p, "utf8"); } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
+  // Parsed docs keyed by path, checked against mtime and size on every read so a hand-edited or added file is still seen.
+  // Cached data is shared: callers never mutate what get/list return.
+  const cache = new Map();
   function read(c, id){
-    const text = raw(docPath(c, id));
+    const p = docPath(c, id);
+    let st;
+    try { st = statSync(p); } catch (e) { if (e.code === "ENOENT") { cache.delete(p); return null; } throw e; }
+    const hit = cache.get(p);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.f;
+    const text = raw(p);
     if (text === null) return null;
     let f;
     try { f = JSON.parse(text); } catch { f = null; }
-    if (!isObj(f) || !Number.isInteger(f.version) || !isObj(f.data)) throw new StoreError("corrupt", `${c}/${id}: the doc file is not a valid {version, data} record`);
+    if (!isObj(f) || !Number.isInteger(f.version) || !isObj(f.data)) { cache.delete(p); throw new StoreError("corrupt", `${c}/${id}: the doc file is not a valid {version, data} record`); }
+    cache.set(p, {mtimeMs: st.mtimeMs, size: st.size, f});
     return f;
   }
   // Names that do not decode to a valid id (stray files, hand edits) are skipped, never fatal to a whole listing.
@@ -49,6 +59,7 @@ export function openStore(dir = defaultDataDir()){
 
   function write(c, id, file){
     const p = docPath(c, id);
+    cache.delete(p);
     if (!file){ rmSync(p, {force: true}); return; }
     mkdirSync(colDir(c), {recursive: true});
     const tmp = `${p}.${process.pid}.${Date.now()}.tmp`;
@@ -100,6 +111,8 @@ export function openStore(dir = defaultDataDir()){
 
   return {
     dir,
+    /** Counts actual doc file reads (cache misses), for tests. */
+    stats,
     /** Every collection name. */
     collections: () => existsSync(dir) ? readdirSync(dir, {withFileTypes: true}).filter(e => e.isDirectory()).map(e => decoded(e.name)).filter(Boolean) : [],
     get(c, id){ checkId(c, "collection"); checkId(id); return out(id, read(c, id)); },
@@ -133,7 +146,7 @@ export function openStore(dir = defaultDataDir()){
       try { for (const t of targets){ write(t.c, t.id, t.f); done.push(t); } }
       catch (e) {
         for (const t of done.reverse()){
-          try { if (t.before === null) rmSync(docPath(t.c, t.id), {force: true}); else writeFileSync(docPath(t.c, t.id), t.before); } catch { /* best effort */ }
+          try { cache.delete(docPath(t.c, t.id)); if (t.before === null) rmSync(docPath(t.c, t.id), {force: true}); else writeFileSync(docPath(t.c, t.id), t.before); } catch { /* best effort */ }
         }
         throw e;
       }

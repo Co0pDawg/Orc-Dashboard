@@ -43,17 +43,18 @@ test("store: a corrupt doc, a stray name and leftover .tmp files are skipped by 
 test("store: a batch whose second write fails restores the first doc", () => {
   const s = openStore(tmp());
   s.set("cards", "c1", {a: 1});
-  s.set("cards", "c2", {b: 1});
+  s.set("locked", "c2", {b: 1});
   s.set("cards", "c3", {c: 1});
-  const locked = join(s.dir, "cards", "c2.json");
-  chmodSync(locked, 0o444); // read-only: the rename over it fails
+  // Windows refuses a rename over a read-only file; POSIX allows that, so there the folder is made read-only instead.
+  const locked = process.platform === "win32" ? join(s.dir, "locked", "c2.json") : join(s.dir, "locked");
+  chmodSync(locked, process.platform === "win32" ? 0o444 : 0o555);
   try {
     assert.throws(() => s.batch([{op: "update", collection: "cards", id: "c1", data: {a: 2}}, {op: "set", collection: "new", id: "n1", data: {x: 1}},
-      {op: "update", collection: "cards", id: "c2", data: {b: 2}}, {op: "update", collection: "cards", id: "c3", data: {c: 2}}]));
-  } finally { chmodSync(locked, 0o644); }
+      {op: "update", collection: "locked", id: "c2", data: {b: 2}}, {op: "update", collection: "cards", id: "c3", data: {c: 2}}]));
+  } finally { chmodSync(locked, process.platform === "win32" ? 0o644 : 0o755); }
   assert.deepEqual(s.get("cards", "c1"), {id: "c1", version: 1, data: {a: 1}});
   assert.equal(s.get("new", "n1"), null);
-  assert.deepEqual(s.get("cards", "c2"), {id: "c2", version: 1, data: {b: 1}});
+  assert.deepEqual(s.get("locked", "c2"), {id: "c2", version: 1, data: {b: 1}});
   assert.deepEqual(s.get("cards", "c3"), {id: "c3", version: 1, data: {c: 1}});
 });
 

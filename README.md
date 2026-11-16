@@ -74,6 +74,9 @@ The sections below are read by agents at run time; their headings are linked by 
 | `local/server.js` | Local backend: the localhost server (page, `/api/db`, `/api/events`); never published |
 | `local/db-shim.js`, `local/query.js` | Local backend: the browser stand-in for `window.claude.use("db")` and its filter/sort logic |
 | `local/board.js` | Local backend: the CLI agents write with |
+| `local/ops.js` | Local backend: the high-level writes (`session start`, `stage`, `progress`, ...), each applied whole inside the server's write queue |
+| `local/lint.js` | Local backend: write-time checks against the data contract (warnings only) |
+| `.github/workflows/test.yml` | CI: `npm test` and `npm run check` on Linux and Windows, Node 22 |
 | `tests/local-*.test.js` | `node:test` suites for `local/` |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
 
@@ -94,7 +97,7 @@ The single source for when the board is written. `~/.claude/CLAUDE.md` says to f
 Two backends take the same data. Which one a machine uses: `~/.claude/board.local.md` holds either a `claude.ai/artifact/...` URL (artifact) or a `http://localhost:<port>` URL (local). The table below says WHEN to write and holds for both.
 
 - **Artifact backend.** Writes go through the ArtifactData tool (load it with ToolSearch `select:ArtifactData`) against the board URL. If ToolSearch finds no `ArtifactData`, use `mcp__claude-artifacts__db_get`/`db_write` instead: resolve the board URL to its UUID slug with `get_artifact` first (the short id in the URL returns 400), and pass `ifVersion` on every write to an existing doc. (Learned 2026-10-29, PR 6324: ArtifactData was absent and the builder skipped its card.) Writing more than one doc uses `batch`, and every write to an existing doc pins `if_version` to the version last read; on a conflict, re-get and redo. Take times from `date -Iseconds` so they carry an offset. Bump the session's `updated` on every write so it sorts first. Never republish the page for data.
-- **Local backend.** Writes go through the CLI, `node <board repo>/local/board.js` (see "Local board"). Use `batch` for the Start write, `append` for progress lines and events (atomic in the server, so no pin is needed), and `update` for fields. Pins (`--if-version`) are optional; a conflict exits 2. The CLI adds no fields, so pass `updated` and every time yourself (`date -Iseconds`).
+- **Local backend.** Writes go through the high-level commands of the CLI, `node <board repo>/local/board.js` (see "Local board"). Each is one request the server applies whole, stamps with its own clock (ISO with offset) and bumps `updated`, so no read, no pin and no `date` call is needed; `--if-version N` is optional and a conflict exits 2. Start = `session start` + one `card add` per card; Dispatch = `set-field cards/<id> agent <name>`, `stage <card> <label> active`, `event <session> "<agent> dispatched on #<task>" --card <card>`, `set-field sessions/<id> now "<text>"`; Check-in = `checkin <session> "<text>" --card <card>`; Report = `stage <card> <label> done|rework`, `set-field cards/<id> note "<text>"` and `tokens <n>`, `event <session> "<outcome>" --card <card>`; Commit = `set-field cards/<id> commit <hash>` and an `event`; PR opened = `set-field sessions/<id> pr '<json>'` (or `--stdin`); Finish = `finish <session> --now "<closing line>"`. Text with quotes, `$`, backticks or newlines goes through `--stdin`.
 
 | When | Write |
 |---|---|
@@ -133,35 +136,52 @@ npm run board                      # or: node local/server.js [--port N]
 
 Open http://localhost:8377/. The CLI starts the server by itself (detached) when nothing answers; `--no-start` turns that off.
 
-- Data dir: `ORC_BOARD_DATA`, else `~/.orc-board/data`, one file per doc: `<collection>/<id>.json` = `{"version", "data"}`.
+- Data dir: `--data <dir>` (or `--data-dir <dir>`), else `ORC_BOARD_DATA`, else `~/.orc-board/data`, one file per doc: `<collection>/<id>.json` = `{"version", "data"}`. On `set`, `update`, `append` and `batch`, `--data` is the JSON input as before, so use `--data-dir` there. The flag is passed to an auto-started server.
 - Port: `--port`, else `ORC_BOARD_PORT`, else 8377.
 
 CLI (`node local/board.js <command>`; JSON on stdout, errors on stderr, exit 1, a conflict exits 2):
 
 | Command | Does |
 |---|---|
-| `serve [--port N]`, `url` | Run the server in the foreground; print the board URL |
+| `serve [--port N]`, `url` | Run the server in the foreground; print the board URL (stderr says when nothing is running on the port) |
 | `get <col>/<id>`, `list <col>` | Read one doc or a collection |
 | `set <col>/<id> (--data <json> \| --file <path> \| --stdin) [--if-version N]` | Replace a doc |
 | `update <col>/<id> (...) [--if-version N]` | Merge top-level fields; `{"__delete__": true}` removes one |
 | `append <col>/<id> <field> (...) [--if-version N]` | Push the JSON value onto the array `field` (creating it) |
-| `delete <col>/<id> [--if-version N]` | Delete a doc |
+| `delete <col>/<id> [--if-version N] [--cascade]` | Delete a doc. Deleting a session that still has cards warns how many are orphaned; `--cascade` deletes them too, in one batch |
 | `batch (--file \| --stdin)` | `{"writes": [{op: "set"\|"update"\|"append"\|"delete", collection, id, data \| field + value, ifVersion?}]}`, all or nothing |
 | `export [--out <file>]`, `import <file>` | `{"<collection>": {"<id>": <data>}}` for every doc; import sets each doc, in batches of about 1 MiB |
+| `session start <id> --title <t> [--branch b] [--ticket t] [--status s] [--now n] [--links-ticket <tpl>] [--ado org/project]` | Create a session with `started`, `updated`, `status` (default Planning) and empty `events`; fails if it exists |
+| `card add <card> --session <id> --title <t> --stages "Build,Refute,Commit" [--order n] [--ticket t] [--task t] [--kind k]` | Create a card with every stage `pending`; the session must exist |
+| `stage <card> <label> <state>` | Set one stage to `pending\|active\|rework\|done\|skipped` (`active` and `rework` set `started`); an unknown label lists the card's labels |
+| `progress <card> <text...>` | Append `{at, text}` to `progress` |
+| `event <session> <text...> [--card <card>]` | Append `{at, text, card?}` to `events` |
+| `checkin <session> <text...> [--card <card>]` | Append `{at, text}` to the `sub` of the newest event (naming `--card` when given) |
+| `set-field <col>/<id> <field> <value>` | Set one top-level field (`now`, `status`, `agent`, `tokens`, `commit`, `note`, `pr`, ...); the value is JSON when it parses, else a string |
+| `finish <session> [--now <text>] [--status Done]` | Set `status`, `completed`, `now` and append a final event |
+| `lint [<col>/<id>]` | Check one doc or every session and card against the data contract; exit 1 with warnings |
+| `orphans` | List cards whose session does not exist |
+| `prune --before <yyyy-MM-dd> [--archive <file> --apply]` | Finished sessions last touched before the date, with their cards: a dry run by default; `--apply` merges them into the archive (the `export` shape) and then deletes them in one pinned batch. Never touches unfinished sessions or `timeline` |
+| `status` | URL, pid, data dir, start time, doc counts and `stale`; exit 0 running, 3 not running, 4 stale |
+| `stop`, `restart` | Ask the server to exit and wait until the port is free (exit 3 when nothing ran); `restart` then starts it detached |
 
-Quoting JSON on a PowerShell command line is unreliable, so pipe it through `--stdin`. A progress line, PowerShell:
+The high-level commands (`session` to `finish`) are each one request that the server applies inside its write queue, so concurrent writers never lose a line and no pin is needed. They take the time from the server clock (ISO with offset, like `date -Iseconds`), bump `updated`, refuse a result that would fail `lint`, accept `--if-version N` and print `{id, version}` plus the changed field. Text is the remaining words joined by spaces, or stdin with `--stdin` (one trailing newline dropped), which keeps quotes, `$`, backticks and newlines intact. The raw commands add no fields.
 
-```powershell
-'{"at":"' + (Get-Date -Format o) + '","text":"build green"}' | node local/board.js append cards/c1 progress --stdin
+These run verbatim in bash and in PowerShell:
+
+```
+node local/board.js session start 2026-11-15-orc-search --title "Header search" --branch feature/search
+node local/board.js card add c1 --session 2026-11-15-orc-search --title "Build search" --order 1 --stages "Build,Refute,Commit"
+node local/board.js stage c1 Build active
+node local/board.js progress c1 build green 31 of 40 tests pass
+echo 'say "done" for $5 `now`' | node local/board.js progress c1 --stdin
+echo '{"id":"7","url":"https://example.com/pr/7","status":"draft"}' | node local/board.js set-field sessions/2026-11-15-orc-search pr --stdin
+node local/board.js finish 2026-11-15-orc-search --now "Draft PR 7 opened"
 ```
 
-bash:
+Validation: after every raw write to `sessions` or `cards` the server lints the result (missing `title`; `updated`, `started` or an `at` that is not ISO with offset; `stages` that are not `{label, state}` or carry an unknown state; `events`, `sub` or `progress` entries without `at` or `text`; a card whose session does not exist; `links` templates that are not `https://` or lack `{id}`) and returns `warnings`. The CLI prints them to stderr and still exits 0, and stdout keeps its shape.
 
-```bash
-echo "{\"at\":\"$(date -Iseconds)\",\"text\":\"build green\"}" | node local/board.js append cards/c1 progress --stdin
-```
-
-After updating the repo, restart the server so it runs the new code: `/api/health` gives its `pid` and `dataDir`. A CLI call with `ORC_BOARD_DATA` set fails when the running server uses another data dir.
+Lifecycle: `/api/health` gives `pid`, `dataDir`, `started` and `code`, a hash of `local/*.js` taken at start. When the files on disk change (a repo update), the server is stale: `status` exits 4 and the next CLI command restarts it once, with a one-line notice on stderr (`--no-start` turns that off too). A detached server appends its output to `<data dir>/../server.log` (cleared at start once over 1 MiB), and a failed start prints the end of that log. `stop` goes through `POST /api/shutdown`, which needs the same headers as any write. A CLI call with a data dir set fails when the running server uses another one.
 
 For a headless screenshot, use the Preview command with `--timeout=6000` in place of `--virtual-time-budget=6000`: the page's open event stream keeps virtual time from ever finishing.
 
