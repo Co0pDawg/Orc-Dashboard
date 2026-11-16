@@ -1,6 +1,6 @@
 // Pure: builds the morning-meeting summary of one day from segments and the board data. No DOM, no storage, no model.
 import {normTicket, cardTicket} from "./segments.js";
-import {stagesOf, cardState, orchestratorDone} from "../model.js";
+import {stagesOf, cardState, orchestratorDone, prOpen, eventsOf as docEvents} from "../model.js";
 
 const t = e => Date.parse(e.at);
 // Process talk (agents, reviews, commits, PR housekeeping, test runs, reading and filing) is not what the work was.
@@ -12,6 +12,18 @@ const boardTitle = s => scrub(s).replace(/^(?:PR feedback:|PR:|Peer review PR\b:
 // A note that is only the ADO "<Type>: <title>" fallback says nothing the label does not.
 const ADO_NOTE = /^(?:User Story|Task|Bug|Support Item|Feature|Epic): /;
 
+// A model name. Opus, sonnet and haiku go even alone ("reviewed by sonnet"), but not after an article ("the opus of work"),
+// with an optional "Claude" before and version after (Claude Opus 4.1, opus 5.5, claude-opus-5-5). Ambiguous words
+// (gemini, gpt, codex, mistral, ...) go only as part of an id or with a version (gemini-3.8-flash-high, GPT-6.1 Sol,
+// Gemini 4 Hydrogen, codex-1), with one variant word after; flash, pro or sol alone are ordinary words.
+// A hyphenated word is an id only when everything after the family word is a version or a known variant, so ordinary
+// work text (claude-code, llama-index, codex-cli, haiku-style) stays. A bare number counts as a version only when no
+// plural noun follows ("opus 6 files in scope" keeps "6 files").
+const NUM = String.raw`\d+(?:\.\d+)*[a-z]?`, VARIANT = "(?:sol|luna|terra|astra|carbon|argon|hydrogen|helium|flash|pro|mini|nano|high|low|medium|xhigh|max|ultra|lite|turbo)";
+const HY = String.raw`(?:-(?:${NUM}|opus|sonnet|haiku|flash|pro|mini|nano|lite|turbo|sol|luna|terra|astra|carbon|argon|hydrogen|preview|latest|thinking|high|medium|low|xhigh|oss))`;
+const VER = String.raw`(?:\d+(?:\.\d+)+[a-z]?|\d+[a-z]?(?!\w|\.\d)(?!\s+[a-z]*[a-rt-z]s\b))`;
+const MODEL = new RegExp(String.raw`(?<!\b(?:the|a|an|this|that|his|her|their|its|magnum)\s)\b(?:(?:claude[-\s]+)?(?:opus|sonnet|haiku)${HY}*(?:\s+${VER})?`
+  + String.raw`|claude${HY}+|(?:gemini|gpt|codex|mistral|llama|grok|deepseek|qwen)(?:${HY}+|\s+${VER})(?:\s+${VARIANT})?)(?!-[a-z0-9])\b`, "gi");
 /** A line with commit hashes, PR numbers, counts, model names, arrows and the brackets they leave empty removed. */
 export function scrub(s){
   return String(s ?? "")
@@ -19,8 +31,8 @@ export function scrub(s){
     .replace(/\b(PR)\s*#?\d{3,}\b/gi, "$1").replace(/(^|[\s(])#\d{3,}\b/g, "$1")
     .replace(/\(\d+(?:\.\d+)?k\)/gi, "").replace(/\b\d+(?:\/\d+)+\b/g, "")
     .replace(/\b\d[\d,]*\s+(?:pass\w*|fail\w*|tests?|findings?|must-fix)\b/gi, "")
-    .replace(/\b(?:opus|sonnet|haiku)\b/gi, "").replace(/->|\u2192/g, "")
-    .replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+([,.;:)])/g, "$1").replace(/([,;:])[,;:]+/g, "$1").replace(/\s{2,}/g, " ")
+    .replace(MODEL, "").replace(/->|\u2192/g, "")
+    .replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+([,;:)]|\.(?!\w))/g, "$1").replace(/([,;:])[,;:]+/g, "$1").replace(/\s{2,}/g, " ")
     .trim().replace(/^[\s,;:.-]+|[\s,;:-]+$/g, "");
 }
 
@@ -64,7 +76,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
   const next = new Date(date + "T00:00:00"); next.setDate(next.getDate() + 1);
   const dayEnd = next.getTime();
   const sessionTicket = s => normTicket(s.data.ticket);
-  const eventsOf = s => (Array.isArray(s.data.events) ? s.data.events : []).filter(e => !isNaN(t(e)) && t(e) < dayEnd);
+  const eventsOf = s => docEvents(s.data).filter(e => !isNaN(t(e)) && t(e) < dayEnd);
   const driven = new Map();
   for (const g of segments) driven.set(normTicket(g.ticket), (driven.get(normTicket(g.ticket)) || 0) + (Date.parse(g.end) - Date.parse(g.start)) / 60000);
   const drivenTickets = new Set(driven.keys()), boardTitles = ticketTitles(sessions, cards, drivenTickets);
@@ -81,9 +93,9 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
   const open = sessions.filter(s => !finished(s) && (!s.data.started || Date.parse(s.data.started) < dayEnd));
   const today = open.map(s => {
     const nextStage = cards.filter(c => c.session === s.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap(stagesOf).find(x => x.state === "pending");
-    const inReview = s.data.pr && s.data.pr.id && /^(draft|active)$/i.test(s.data.pr.status || "");
+    const inReview = s.data.pr && s.data.pr.id && prOpen(s.data.pr.status);
     const head = scrub(s.data.title) || sessionTicket(s) || s.id;
-    return head + (nextStage ? ": next up " + nextStage.label.toLowerCase() : "") + (inReview ? "; PR in review" : "");
+    return head + (nextStage ? ": next up " + String(nextStage.label ?? "").toLowerCase() : "") + (inReview ? "; PR in review" : "");
   });
 
   const blockers = cards.filter(c => cardState(c) === "rework").flatMap(c => {

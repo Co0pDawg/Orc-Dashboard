@@ -3,6 +3,7 @@
 import {state} from "../state.js";
 import {saveEntryLine, saveEntriesFold} from "../prefs.js";
 import {$, say, setDay} from "../board.js";
+import {snapDocs} from "../model.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
 import {entryNotes} from "./notes.js";
@@ -30,9 +31,9 @@ function subscribe(){
   // The old range's docs stay until the new snapshot lands, so Month -> Day never flashes "No time synced".
   T.stop?.(); T.key = key;
   T.stop = state.db.collection("timeline").where("date", ">=", from).where("date", "<=", to).onSnapshot(snap => {
-    T.docs = new Map(snap.docs.map(d => { const x = d.data(); return [x.date || d.id, x]; }));
-    renderTime();
-  }, () => {});
+    T.docs = new Map(snapDocs(snap).map(d => [d.data.date || d.id, d.data]));
+    state.conn?.ok("timeline"); renderTime();
+  }, () => state.conn?.fail("timeline"));
 }
 
 /** One day computed from its timeline doc and the board's sessions and cards. */
@@ -46,7 +47,7 @@ function dayInfo(date){
 function dayView(){
   const d = dayInfo(T.date);
   if (!d.doc) return emptyHtml(T.date, true);
-  // Agent-only time counts too: Cooper is viewing and waiting while an agent runs and he is not driving.
+  // Agent-only time counts too: the user is viewing and waiting while an agent runs and he is not driving.
   const result = buildEntries(d.segments.concat(waitingSegments(d.segments, d.spans)), {unit: state.rounding});
   const flags = withReview(d.doc.flags, d.segments, d.doc.sessions);
   const notes = entryNotes(result.entries, {blocks: d.doc.blocks, notes: d.doc.notes, spans: d.spans, cards: state.cards}), rollup = rollupMin(d.doc);

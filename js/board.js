@@ -1,5 +1,5 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
-import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, QUIET_MS} from "./model.js";
+import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, eventsOf, snapDocs, QUIET_MS} from "./model.js";
 import {ago, esc, untilText} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
@@ -118,7 +118,7 @@ function renderTiles(v, sess){
   tiles.classList.toggle("log-only", !cards.length);
   const fills = logFills(tiles);
   for (const el of [...tiles.children]) if (!want.includes(el.dataset.id)) el.remove();
-  const events = sess.data.events || [];
+  const events = eventsOf(sess.data);
   want.forEach((id, i) => {
     let el = [...tiles.children].find(x => x.dataset.id === id);
     if (!el){ el = document.createElement("section"); el.dataset.id = id; }
@@ -132,7 +132,7 @@ function renderTiles(v, sess){
     try {
       body = log
         ? (skin === "leet" ? leetLog(events, sess.data.updated, !doneNow(sess), sess.id, v.cards) : sleekLog(events, !doneNow(sess), sess.id, v.cards))
-        : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
+        : (skin === "leet" ? leetCard(c, sess.data, min) : sleekCard(c, sess.data, min));
     } catch (err){
       console.error("Orc-istrator: pane", id, err);
       body = `<p class="note">${editBtn(id, paneName(id), skin === "leet")} This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
@@ -167,9 +167,9 @@ function openView(sid){
   ctl.append(mover, sedit, hide, fold); shead.append(summary, ctl); el.append(shead, tiles);
   const v = {el, summary, ctl, mover, sedit, hide, fold, tiles, cards: [], stop: null, sortable: null};
   v.stop = state.db.collection("cards").where("session", "==", sid).onSnapshot(snap => {
-    v.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    render();
-  }, () => {});
+    v.cards = snapDocs(snap).map(d => ({_id: d.id, ...d.data})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    state.conn?.ok("cards:" + sid); render();
+  }, () => state.conn?.fail("cards:" + sid));
   // Sortable is wired here, not in layout-edit.js, so this module never imports a DOM controller above it.
   // It stays enabled: only a pane in edit mode renders a .grip, so only that pane can be dragged.
   if (window.Sortable) v.sortable = Sortable.create(tiles, {
@@ -187,6 +187,7 @@ function openView(sid){
 }
 function closeView(sid){
   const v = state.views.get(sid); if (!v) return;
+  state.conn?.drop("cards:" + sid);
   v.stop?.(); v.sortable?.destroy(); v.el.remove(); state.views.delete(sid);
 }
 

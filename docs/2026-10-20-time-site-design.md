@@ -14,31 +14,31 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
    - **Day:** a column per ticket (mockup B in the brainstorm).
    - **Week:** one column per day with parallel work stacked as bands (mockup C).
    - **Month:** a compact calendar of days.
-2. The views show **actual session time to the minute**: when Cooper was driving a session, and when agents ran unattended.
+2. The views show **actual session time to the minute**: when the user was driving a session, and when agents ran unattended.
 3. Each day yields **suggested entries** shaped like the Work Detail form: Ticket (`APP-NNNNN`), Start Date, Start Time, End Time, Note, and the Unplanned Time and Review Time toggles.
    - Every field has its own copy button.
-   - Entries never overlap, and a day's entries add up to the time Cooper was actually driving.
+   - Entries never overlap, and a day's entries add up to the time the user was actually driving.
 4. A **rounding** setting, for the entries only: Exact (whole minutes), 5, 10, 15 or 30 minutes. The default is 15, which is how he enters time today. The views always show exact time.
 5. Times come from a reliable source, not from sessions remembering to report them (see Data).
 
 ## Non-goals
 
-- Entering time into the portal automatically. Cooper copies the fields himself.
-- Meetings, scrum, breaks and other non-Claude time. Cooper enters those himself. A session left running through a meeting does not count unless he prompts it.
+- Entering time into the portal automatically. The user copies the fields himself.
+- Meetings, scrum, breaks and other non-Claude time. The user enters those himself. A session left running through a meeting does not count unless he prompts it.
 - Replacing `worklog.ps1`. It stays. The Time page reuses its ticket attribution.
 - Billing for agent time. Agents running unattended are shown but never become entries.
 
 ## Anti-goals (a failure even if it works)
 
 - Entries that overlap, or a day total larger than the time actually driven.
-- Prompt text, or anything Cooper typed, leaving his machine. The sync uploads times, tickets, session ids and project names only.
+- Prompt text, or anything the user typed, leaving his machine. The sync uploads times, tickets, session ids and project names only.
 - A second set of ticket-attribution rules that drifts from the worklog's.
 
-## Decisions Cooper made
+## Decisions the user made
 
 - Two pages: Board and Time. Day, Week and Month are tabs under Time.
 - The Day view is a column per ticket; the Week view is one column per day with stacked bands.
-- When tickets overlap, the time goes to the session Cooper was **actively driving**.
+- When tickets overlap, the time goes to the session the user was **actively driving**.
 - Views show actual time. Rounding is a setting that applies to the entries only.
 - Data path is option 2: the existing worklog hooks keep recording locally, and a sync uploads to the board database. Agents' own records fill in the unattended spans.
 - Entries match the Work Detail form so they are easy to copy.
@@ -59,22 +59,22 @@ The rule that governs every entry: the portal records **hours worked**. Parallel
 
 ### New: `timeline/<YYYY-MM-DD>`
 
-> Built as (plan refinement, 2026-10-20): the sync uploads the day's re-ticketed **events** `{at, kind, session, ticket}` rather than precomputed segments, and the page computes driving segments (`js/time/segments.js`). The scheduled sync only builds the file; Claude sessions upload it (Cooper's choice: headless runs cannot write to the board without an approval).
+> Built as (plan refinement, 2026-10-20): the sync uploads the day's re-ticketed **events** `{at, kind, session, ticket}` rather than precomputed segments, and the page computes driving segments (`js/time/segments.js`). The scheduled sync only builds the file; Claude sessions upload it (the user's choice: headless runs cannot write to the board without an approval).
 
 One document per day, written only by the sync:
 
 ```
 {date, synced: <ISO>, tz: "<offset>",
  sessions: {<session id>: {project, title?}},
- segments: [{session, start, end, ticket}],        // Cooper driving, exact times; ticket null = No ticket
+ segments: [{session, start, end, ticket}],        // the user driving, exact times; ticket null = No ticket
  agents: [{session, at, ticket}],                  // agent dispatches outside the board (markers)
  notes: {<ticket>: "<one-line description>"},      // from the worklog's description step
  flags: {<ticket>: {review?: true, unplanned?: true}}}
 ```
 
-**Driving segments (Cooper's rule).** Cooper drives a session from a `prompt` in it through that turn's `stop`. A long silent turn still counts: the hooks do not log plain edits or test runs. He keeps driving for up to 15 minutes after the `stop`. The segment ends early the moment he prompts a different session, which takes over. The 15 minutes is a constant in the sync.
+**Driving segments (the user's rule).** The user drives a session from a `prompt` in it through that turn's `stop`. A long silent turn still counts: the hooks do not log plain edits or test runs. He keeps driving for up to 15 minutes after the `stop`. The segment ends early the moment he prompts a different session, which takes over. The 15 minutes is a constant in the sync.
 
-Time with no `APP-` ticket (`UNKNOWN`, a bare `PR-NNNN`, or a session mapped to `-`) stays in: it gets the ticket `null` and is drawn and entered as "No ticket" (Cooper's call).
+Time with no `APP-` ticket (`UNKNOWN`, a bare `PR-NNNN`, or a session mapped to `-`) stays in: it gets the ticket `null` and is drawn and entered as "No ticket" (the user's call).
 
 The segment's ticket comes from the worklog's existing attribution (per-session evidence re-ticketing, `sessions.map`, branch fallback). The sync gets it from the worklog code; it does not recompute it.
 
@@ -86,13 +86,13 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
 ### Sync
 
 1. A script in the worklog repo (proposed name: `sync-timeline.ps1`) reads one day's CSV and runs the worklog's attribution logic. It then emits the `timeline` JSON above. It drops prompt text and everything else not in that shape.
-   - **`worklog.ps1`'s existing output must stay byte-identical** (my call: Cooper uses it today). Any refactor for reuse must be proven by its existing tests.
+   - **`worklog.ps1`'s existing output must stay byte-identical** (my call: the user uses it today). Any refactor for reuse must be proven by its existing tests.
    - **The sync never calls a model**, so a 15-minute tick is cheap. `notes` come from the most recent `worklog.ps1` roll-up for that day (`<date>.txt`) when one exists, matched by ticket, else empty.
    - ADO lookups (for the Unplanned flag) are cached per ticket and day so a tick does not re-query.
    - CSV times are local with no offset. Convert each with the local time zone's offset at that instant (`TimeZoneInfo`), so DST is right for backfilled dates.
 2. A headless `claude -p` call (cheap model) writes that JSON to `timeline/<date>` with ArtifactData. It pins `if_version` when the document exists.
 3. Cadence:
-   - A Task Scheduler job every 15 minutes while Cooper is logged on, shaped like the jobs in `~/.claude/docs/ops-automation.md` (state folder, unchanged-input marker so an idle day costs no model call, time limit, log). The marker covers the day's CSV, `sessions.map` and the day's `.map`/`.txt`, which are the inputs that change the output. Missed ticks while logged off are fine, because the next run or a backfill catches up (my call).
+   - A Task Scheduler job every 15 minutes while the user is logged on, shaped like the jobs in `~/.claude/docs/ops-automation.md` (state folder, unchanged-input marker so an idle day costs no model call, time limit, log). The marker covers the day's CSV, `sessions.map` and the day's `.map`/`.txt`, which are the inputs that change the output. Missed ticks while logged off are fine, because the next run or a backfill catches up (my call).
    - Each run replaces `timeline/<date>` wholesale. The sync is its only writer, so pinned `if_version` with one re-read and retry is the only conflict handling, and no history is kept (my call).
    - The same script runs on demand for a given date.
 4. **Backfill:** run the script once per existing CSV, from 2026-09-22 onward.
@@ -108,7 +108,7 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
 
 - A time axis runs down the left; one column per ticket that had driving or agent time that day.
 - In each column:
-  - Cooper's driving time is drawn solid.
+  - The user's driving time is drawn solid.
   - Agent spans for that ticket's cards are drawn hatched, beside the solid blocks.
   - The header shows the ticket, its driven total, and its agent total.
 - Beside the columns, an **Entries** panel lists the day's suggested entries in time order, with a copy button per field.
@@ -130,7 +130,7 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
 5. An entry that rounds to zero length merges into a neighbor it touches after rounding, preferring one with the same ticket. If it touches nothing, it is not entered. (Built narrower than first written: extending a neighbor across a gap of up to one unit broke rule 6's bound.) It is listed under the entries as "Not entered: N min" so no time disappears silently (my call).
 6. The rounded total plus the "Not entered" minutes must stay within one unit per entry of the exact driven total. Unit tests check this.
 7. Split any entry longer than **2 hours** (the portal's maximum) into pieces of at most 2 hours.
-8. "No ticket" entries keep an empty Ticket field and a visible "needs a ticket" flag. Cooper fills them in by hand.
+8. "No ticket" entries keep an empty Ticket field and a visible "needs a ticket" flag. The user fills them in by hand.
 
 - **Note:** the ticket's `notes` line, editable on the page before copying. The edit is not saved. My call.
 - **Toggles:** shown as suggestions from `flags`, which are my guess:
@@ -138,7 +138,7 @@ The segment's ticket comes from the worklog's existing attribution (per-session 
   - **Unplanned** when the ticket is a Support Item.
 - **Rounding** is a Settings choice, saved per viewer like the other settings.
 
-### Month tab (Cooper's addition)
+### Month tab (the user's addition)
 
 A calendar grid, one cell per day, Monday-first, with weeks as rows. The tab is reached as `#time-month`.
 
@@ -152,7 +152,7 @@ A calendar grid, one cell per day, Monday-first, with weeks as rows. The tab is 
 - Month navigation: previous, next, and this month.
 - At phone width the grid collapses to a list of days (my call).
 
-### Scrum summary (Cooper's addition)
+### Scrum summary (the user's addition)
 
 A summary of one day to bring to the morning meeting.
 
@@ -160,7 +160,7 @@ A summary of one day to bring to the morning meeting.
   - The Day tab has one, in its header.
   - The Week tab has one in each day column's header.
   - The Month tab has one in each cell.
-- **Output:** a modal that shows the summary as a plain list Cooper can read and copy from. It has one Copy button for the whole list, and the text is selectable. There is no editing and no separate tab.
+- **Output:** a modal that shows the summary as a plain list the user can read and copy from. It has one Copy button for the whole list, and the text is selectable. There is no editing and no separate tab.
 - **Content**, generated from the data with no model call (my call):
   - **Yesterday:** one line per ticket worked that day, most driven time first: `APP-NNNNN <title>, <driven time>: <outcomes>`.
     - Titles come from the board cards and sessions for that ticket, else the ticket alone.
@@ -189,7 +189,7 @@ The Time page uses the board's existing skins (Sleek and 1337), color schemes an
 - How the sync script reuses `worklog.ps1`'s attribution: shared functions, or an `-Export` mode on `worklog.ps1`.
 - Handling a day that spans a timezone change. Times are stored as ISO with offset.
 
-## Calls made in the design (not Cooper's; check these)
+## Calls made in the design (not the user's; check these)
 
 - Board and Time are views of the one existing page, with plain hash tokens (`#time`, `#time-week`), not separate HTML files.
 - The idle tail after a `stop` is 15 minutes.

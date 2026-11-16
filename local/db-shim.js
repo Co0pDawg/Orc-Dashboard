@@ -15,6 +15,8 @@
     es = new EventSource("/api/events");
     es.addEventListener("open", () => feed.refreshAll());
     es.addEventListener("change", e => JSON.parse(e.data).collections.forEach(feed.refresh));
+    // A dropped stream reaches every subscriber's error callback; the browser reconnects and "open" refreshes them.
+    es.addEventListener("error", () => feed.fail(new Error("board server not reachable")));
   }
   const query = (name, wheres = [], order = null) => ({
     where: (f, op, v) => query(name, [...wheres, [f, op, v]], order),
@@ -24,6 +26,7 @@
       return feed.subscribe(name, wheres, order, onNext, onError);
     },
   });
-  const db = {collection: name => query(name)};
+  // `backend` lets the page tell the local board from the artifact database (the empty state names the CLI).
+  const db = {backend: "local", collection: name => query(name)};
   window.claude = {use: async n => n === "db" ? db : null};
 })();

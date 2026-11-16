@@ -120,7 +120,7 @@ test("agentSpans: fc-wrapup shape, an unanswered dispatch ends at the session's 
   const sessions = [{id: "fc", data: {ticket: "17994", updated: "2026-10-20T18:03:22", events: [
     {at: at("18:46"), text: "Rerun green. Committed #17999 as 9e7b3d56b."},
     {at: at("18:55"), text: "Pre-PR review (full tier, 7 agents) batch 1 dispatched: code-reviewer", card: "fc-wrapup"},
-    {at: at("19:05"), text: "Cooper: ship it"},
+    {at: at("19:05"), text: "User: ship it"},
     {at: at("19:15"), text: "Pre-PR review done: needs changes, 1 issue / 3 warning"},
     {at: at("19:16"), text: "builder done", card: "other"}]}}];
   const s = agentSpans(sessions, [{_id: "fc-wrapup", ticket: "17994"}], day.dayStart, day.dayEnd);
@@ -207,4 +207,12 @@ test("waitingSegments: the last-driven ticket beats a later-started span of anot
   const drive = [S("APP-1", "09:30", "10:00"), S("APP-1", "11:00", "11:15")];
   const w = waitingSegments(drive, [S("APP-1", "10:00", "11:00"), S("APP-2", "10:20", "10:50")]).map(x => x.ticket + " " + hm(x.start) + "-" + hm(x.end));
   assert.deepEqual(w, ["APP-1 10:00-11:00"]);
+});
+
+test("drivingSegments: wid-42, WID-42 and WID-42* are one ticket and merge into one segment", () => {
+  const ev = [{kind: "prompt", session: "s", ticket: "wid-42", at: "2026-10-21T10:00:00Z"}, {kind: "stop", session: "s", ticket: "WID-42*", at: "2026-10-21T10:05:00Z"},
+    {kind: "prompt", session: "s", ticket: "WID-42", at: "2026-10-21T10:10:00Z"}, {kind: "stop", session: "s", ticket: "WID-42", at: "2026-10-21T10:12:00Z"}];
+  const segs = drivingSegments(ev, {tailMin: 15});
+  assert.equal(segs.length, 1);
+  assert.equal(normTicket(segs[0].ticket), "WID-42");
 });

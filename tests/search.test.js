@@ -20,7 +20,7 @@ test("partial ticket number: own ticket and a card's task match, ticket hits out
 test("ticket forms: APP-17983, #17983 and the bare number", () => {
   for (const q of ["APP-17983", "#17983", "17983", "app 17983"]) assert.deepEqual(ids(q), ["2026-10-19-acmeapp-search"], q);
   // No "app" anywhere else in this session, so the APP- prefix itself must be dropped.
-  assert.deepEqual(searchSessions([sess("atlas", {title: "Atlas", ticket: "4512"})], [], "APP-4512").hits.length, 1);
+  assert.deepEqual(searchSessions([sess("harbor", {title: "Harbor", ticket: "4512"})], [], "APP-4512").hits.length, 1);
 });
 test("title words: every word must appear, any order, any case", () => {
   assert.deepEqual(ids("calendar FACILITY"), ["2026-10-02-cal"]);

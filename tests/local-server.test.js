@@ -62,9 +62,11 @@ test("server: body cap of 2 MiB", async () => {
 });
 
 test("server: static serving is limited to the page's files", async () => {
-  assert.equal((await fetch(base + "/css/tokens.css")).status, 200);
-  assert.equal((await fetch(base + "/js/main.js")).status, 200);
-  for (const p of ["/dev/fixture.js", "/package.json", "/local/server.js", "/local/store.js", "/tests/model.test.js", "/README.md"]) assert.equal((await fetch(base + p)).status, 404, p);
+  // Read each body: an unread response keeps its connection busy, and on Node 22 the next fetch then waits on it until the server's keep-alive timeout.
+  const status = async p => { const r = await fetch(base + p); await r.arrayBuffer(); return r.status; };
+  assert.equal(await status("/css/tokens.css"), 200);
+  assert.equal(await status("/js/main.js"), 200);
+  for (const p of ["/dev/fixture.js", "/package.json", "/local/server.js", "/local/store.js", "/tests/model.test.js", "/README.md"]) assert.equal(await status(p), 404, p);
   for (const p of ["/css/../package.json", "/css/%2e%2e/package.json", "/js/..%5c..%5cpackage.json", "/../package.json"]) assert.notEqual(await raw(p), 200, p);
   const shim = await (await fetch(base + "/local/db-shim.js")).text();
   assert.match(shim, /function runQuery/);

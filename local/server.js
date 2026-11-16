@@ -2,10 +2,13 @@
 // over the file store, and Server-Sent Events. Binds 127.0.0.1 only; the page reads, only the CLI writes.
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
-import {realpathSync} from "node:fs";
-import {extname, join, normalize, resolve, sep} from "node:path";
+import {readdirSync, readFileSync, realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
+import {dirname, extname, join, normalize, resolve, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import {openStore, StoreError, defaultDataDir} from "./store.js";
+import {lint} from "./lint.js";
+import {applyOp, isoNow} from "./ops.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 const types = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json"};
@@ -19,11 +22,23 @@ const skeleton = page => `<!doctype html><html><head><meta charset=utf-8><meta n
 <script src="local/db-shim.js"></script>
 ${page}</html>`;
 
+/** A short hash of the contents of every local/*.js file in dir (default: this file's folder), to tell a stale server. */
+export function codeHash(dir = dirname(fileURLToPath(import.meta.url))){
+  const h = createHash("sha256");
+  for (const f of readdirSync(dir).filter(f => f.endsWith(".js")).sort()) h.update(f + "\0").update(readFileSync(join(dir, f))).update("\0");
+  return h.digest("hex").slice(0, 12);
+}
+
 class HttpError extends Error { constructor(status, message){ super(message); this.status = status; } }
 
-/** Starts the server on {port, dataDir}; resolves to the listening http.Server (port 0 picks a free port). */
-export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
+/** Starts the server on {port, dataDir, onShutdown}; resolves to the listening http.Server (port 0 picks a free port). */
+export function start({port = DEFAULT_PORT, dataDir = defaultDataDir(), onShutdown} = {}){
   const store = openStore(dataDir);
+  const started = isoNow(), code = codeHash(), localRoot = realpathSync(dirname(fileURLToPath(import.meta.url)));
+  let inflight = 0, closing = false;
+  // Lint warnings for the docs a write produced (deleted docs and other collections have none).
+  const warn = docs => docs.flatMap(([col, d]) => d && d.data ? lint(col, d.data, {sessionExists: s => !!store.get("sessions", s)}).map(w => `${col}/${d.id}: ${w}`) : []);
+  const withWarnings = (body, docs) => { const w = warn(docs); return w.length ? {...body, warnings: w} : body; };
   const clients = new Set();
   let queue = Promise.resolve();
   // One queue for every write, so concurrent requests touching the same doc apply one after another.
@@ -68,7 +83,21 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
       const page = await readFile(join(root, "orchestration-board.html"), "utf8");
       return res.writeHead(200, {"content-type": types[".html"], "cache-control": "no-store"}).end(skeleton(page));
     }
-    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid, dataDir: resolve(dataDir)});
+    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid, dataDir: resolve(dataDir), started, code, root: localRoot});
+    if (req.method === "POST" && path === "/api/shutdown"){
+      const b = await readJson(req);
+      // A pid names the server the caller judged stale; a newer server that took the port since is left running.
+      if (b.pid !== undefined && b.pid !== process.pid) return send(res, 412, {error: "pid mismatch: another server took the port", pid: process.pid});
+      res.on("finish", shutdown);
+      return send(res, 200, {ok: true, pid: process.pid});
+    }
+    if (req.method === "POST" && path === "/api/op"){
+      const b = await readJson(req);
+      const out = await enqueue(() => applyOp(store, b.op, b.args && typeof b.args === "object" ? b.args : {}));
+      const col = b.op === "cardAdd" || b.op === "stage" || b.op === "progress" ? "cards" : b.op === "setField" ? b.args.collection : "sessions";
+      notify(b.op === "deleteCascade" ? ["sessions", "cards"] : [col]);
+      return send(res, 200, out);
+    }
     if (req.method === "GET" && path === "/api/events"){
       res.writeHead(200, {"content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive"});
       res.write(": connected\n\n");
@@ -80,7 +109,7 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
       const {writes} = await readJson(req);
       const docs = await enqueue(() => store.batch(writes));
       notify(writes.map(w => w.collection));
-      return send(res, 200, {docs});
+      return send(res, 200, withWarnings({docs}, docs.map((d, i) => [writes[i].collection, d])));
     }
     const m = path.match(/^\/api\/db(?:\/([^/]+)(?:\/([^/]+)(\/append)?)?)?$/);
     if (!m){
@@ -101,7 +130,7 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
       const b = await readJson(req);
       const doc = await enqueue(() => store.append(col, id, b.field, b.value, {ifVersion: b.ifVersion}));
       notify([col]);
-      return send(res, 200, doc);
+      return send(res, 200, withWarnings(doc, [[col, doc]]));
     }
     if (req.method === "GET"){ const doc = store.get(col, id); return doc ? send(res, 200, doc) : send(res, 404, {error: "not found"}); }
     let doc;
@@ -113,14 +142,37 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir()} = {}){
     }
     else return send(res, 405, {error: "method not allowed"});
     notify([col]);
-    send(res, 200, doc);
+    send(res, 200, withWarnings(doc, [[col, doc]]));
+  }
+
+  // Graceful exit: refuse new connections, let queued writes and in-flight requests finish (at most 2 s), then exit.
+  function shutdown(){
+    if (closing) return;
+    closing = true;
+    server.close();
+    clients.forEach(c => c.end());
+    const until = Date.now() + 2000;
+    (async () => {
+      await Promise.race([queue, new Promise(r => setTimeout(r, 2000))]);
+      while (inflight > 0 && Date.now() < until){ server.closeIdleConnections(); await new Promise(r => setTimeout(r, 20)); }
+      server.closeAllConnections();
+      onShutdown?.();
+    })();
   }
 
   const server = createServer((req, res) => {
+    inflight++;
+    res.on("close", () => inflight--);
+    if (closing) res.setHeader("connection", "close");
     handle(req, res, server.address().port).catch(e => {
       if (res.headersSent) return res.end();
       if (e instanceof StoreError) return send(res, {conflict: 409, notfound: 404, corrupt: 500}[e.code] || 400, e.code === "conflict" ? {error: "conflict", version: e.version, message: e.message} : {error: e.message});
-      if (e instanceof HttpError) return send(res, e.status, {error: e.message});
+      if (e instanceof HttpError){
+        // An oversized body is answered before it is fully read: close this connection, or the unread remainder
+        // corrupts the next request a keep-alive client sends on it.
+        if (e.status === 413){ res.setHeader("connection", "close"); res.once("finish", () => req.destroy()); }
+        return send(res, e.status, {error: e.message});
+      }
       send(res, 500, {error: String(e?.message || e)});
     });
   });
@@ -145,7 +197,9 @@ export function isMain(moduleUrl){
 
 if (isMain(import.meta.url)){
   try {
-    const server = await start({port: portFrom()});
-    console.log(`orc-board: http://localhost:${server.address().port}/ (data: ${defaultDataDir()})`);
+    const argv = process.argv.slice(2), i = argv.indexOf("--data");
+    if (i >= 0){ if (!argv[i + 1]) throw new Error("--data needs a value"); process.env.ORC_BOARD_DATA = resolve(argv[i + 1]); }
+    const server = await start({port: portFrom(), onShutdown: () => setImmediate(() => process.exit(0))});
+    console.log(`orc-board: http://localhost:${server.address().port}/ (data: ${defaultDataDir()}, started ${isoNow()})`);
   } catch (e) { console.error(`orc-board: ${e.message}`); process.exitCode = 1; }
 }

@@ -3,8 +3,10 @@
 import "./partials/settings-menu.js";
 import {state} from "./state.js";
 import {saveSkin, saveShown} from "./prefs.js";
-import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay} from "./board.js";
-import {hashDay, pageHash} from "./util.js";
+import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay, say} from "./board.js";
+import {hashDay, pageHash, t12} from "./util.js";
+import {createConn, connText, showNotice} from "./conn.js";
+import {snapDocs, prunedShown} from "./model.js";
 import {renderChooser, initChooser, openSearch} from "./chooser.js";
 import {keepOpened} from "./search.js";
 import {initLayoutEdit} from "./layout-edit.js";
@@ -44,27 +46,33 @@ function rollDay(){
   setDay(today()); route();
 }
 
+// Every subscription reports here: a failed load or dropped stream shows the notice (announced once), a good load hides it.
+state.conn = createConn((down, lastOk) => {
+  showNotice($("conn"), down, connText(lastOk, t12));
+  say(down ? connText(lastOk, t12) : "Board server reachable again.");
+});
 // window.claude.use("db") resolves after first paint, so the empty state renders before any data arrives.
 async function boot(){
   state.db = await (window.claude?.use?.("db") ?? null);
   if (!state.db){ autoTour(); return; }
   state.db.collection("sessions").orderBy("updated", "desc").onSnapshot(snap => {
-    state.sessions = snap.docs.map(d => ({id: d.id, data: d.data()}));
-    if (!state.sessions.length) return;
-    const keep = state.shown.filter(id => state.sessions.some(x => x.id === id));
+    state.conn.ok("sessions");
+    state.sessions = snapDocs(snap);
+    const keep = prunedShown(state.shown, state.sessions);
     if (keep.length !== state.shown.length){ state.shown = keep; saveShown(state.shown); }
     renderChooser(); render(); renderTime();
-  }, () => {});
+  }, () => state.conn.fail("sessions"));
   // Progress lines arrive often: the chips re-render only when the day's chip set changes, so a focused chip keeps focus.
   const chipKey = () => visible().map(s => s.id).join() + "|" + doneOnDay();
   state.db.collection("cards").onSnapshot(snap => {
+    state.conn.ok("cards");
     const before = chipKey();
-    state.cards = snap.docs.map(d => ({_id: d.id, ...d.data()}));
+    state.cards = snapDocs(snap).map(d => ({_id: d.id, ...d.data}));
     if (chipKey() !== before) renderChooser();
     render(); renderTime();
     // ponytail: a short wait lets the per-session card subscriptions paint before the first-visit tour looks for targets.
     setTimeout(autoTour, 400);
-  }, () => {});
+  }, () => state.conn.fail("cards"));
   try { route(); } catch (err){ console.error("Orc-istrator: route", err); }
 }
 

@@ -4,17 +4,21 @@ const MIN = 60000;
 const iso = ms => new Date(ms).toISOString();
 const ms = t => Date.parse(t);
 
-/** "APP-NNNNN" for APP-17619, APP-17619*, 17619, #17619 or 17619 (number); null for UNKNOWN, PR-6243, "-", "" or null. */
+/** "APP-NNNNN" for APP-17619, APP-17619*, 17619, #17619 or 17619 (number); any other letters-digits id (PROJ-9) or
+ * owner/repo#N as one upper-cased key (trimmed, a trailing * dropped: wid-42, WID-42 and WID-42* are one ticket); null for UNKNOWN, PR-6243, "-", "" or null. */
 export function normTicket(t){
-  const m = /^(?:APP-|#)?(\d+)\*?$/i.exec(String(t ?? "").trim());
-  return m ? "APP-" + m[1] : null;
+  const s = String(t ?? "").trim(), m = /^(?:APP-|#)?(\d+)\*?$/i.exec(s);
+  if (m) return "APP-" + m[1];
+  // A bare PR-NNNN is a pull request, not a ticket, and APP- with no number is no ticket.
+  const k = s.replace(/\*$/, "");
+  return /^(?!PR-|APP-)[A-Za-z][A-Za-z0-9_]*-\d+$/i.test(k) || /^[\w.-]+\/[\w.-]+#\d+$/.test(k) ? k.toUpperCase() : null;
 }
 
 /** The `agent` events as markers. */
 export const agentMarkers = events => (events || []).filter(e => e.kind === "agent").map(e => ({session: e.session, ticket: e.ticket, at: e.at}));
 
 /**
- * Cooper driving: from a prompt through its turn's stop, then tailMin more, cut short by the next
+ * The user driving: from a prompt through its turn's stop, then tailMin more, cut short by the next
  * prompt for another session or ticket. Events outside [dayStart, dayEnd] are ignored and spans are
  * clipped to it. A turn with no stop ends at the session's last event + tail, or at `now` if earlier.
  * Returns [{session, ticket (as logged), start, end}] (UTC ISO), sorted, non-overlapping.
@@ -70,13 +74,13 @@ const REPORT = /\b(done|accept\w*|rework|partial|blocked|report\w*)\b/i;
 export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = new Set()){
   const lo = ms(dayStart), hi = ms(dayEnd), out = [];
   for (const s of sessions || []){
-    const byCard = {}, events = ((s.data && s.data.events) || []).filter(e => !isNaN(ms(e.at)));
+    const byCard = {}, events = (Array.isArray(s.data && s.data.events) ? s.data.events : []).filter(e => e && typeof e === "object" && !isNaN(ms(e.at)));
     for (const e of events) if (e.card) (byCard[e.card] ||= []).push(e);
     for (const [id, list] of Object.entries(byCard)){
       list.sort((a, b) => ms(a.at) - ms(b.at));
-      const card = (cards || []).find(c => c._id === id);
+      const card = (cards || []).find(c => c && c._id === id);
       const ticket = cardTicket(card, s.data.ticket, drivenTickets);
-      const progress = ((card && card.progress) || []).map(p => ms(p.at)).filter(t => !isNaN(t));
+      const progress = (Array.isArray(card && card.progress) ? card.progress : []).filter(p => p && typeof p === "object").map(p => ms(p.at)).filter(t => !isNaN(t));
       list.forEach((e, i) => {
         if (!DISPATCH.test(e.text || "")) return;
         const a = ms(e.at), later = progress.filter(t => t >= a), upd = ms(s.data.updated);
@@ -95,7 +99,7 @@ export function agentSpans(sessions, cards, dayStart, dayEnd, drivenTickets = ne
 }
 
 /**
- * Agent-only time as segments: a moment an agent span covers while Cooper is not driving (viewing and waiting), but only
+ * Agent-only time as segments: a moment an agent span covers while the user is not driving (viewing and waiting), but only
  * between two of his turns no more than maxGapMin apart, so a run nobody came back to (overnight) never counts.
  * At a moment several agents cover, the ticket he last drove wins if one of them has it, else the latest-started span.
  * Returns [{ticket, start, end, waiting: true}] (UTC ISO), sorted, non-overlapping, never overlapping `driving`.

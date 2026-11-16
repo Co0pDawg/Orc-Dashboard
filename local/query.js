@@ -25,7 +25,7 @@ export function runQuery(docs, wheres = [], order = null){
 
 /** Live subscriptions over load(name) -> Promise<docs>: one load per collection, shared by all its subscriptions,
  * and only the newest load's result is delivered (an older response that lands late is dropped). */
-export function createFeed(load){
+export function createFeed(load, {retryMs = 5000, setTimer = (f, ms) => setTimeout(f, ms), clearTimer = id => clearTimeout(id)} = {}){
   const cols = new Map();
   async function refresh(name){
     const c = cols.get(name);
@@ -34,29 +34,39 @@ export function createFeed(load){
     let docs, err;
     try { docs = await load(name); } catch (e) { err = e; }
     if (gen !== c.gen) return;
+    // A failed load retries on a timer while the collection has subscribers, so recovery does not wait for a data change.
+    if (c.retry) clearTimer(c.retry);
+    c.retry = err && retryMs ? setTimer(() => { c.retry = null; refresh(name); }, retryMs) : null;
     for (const s of [...c.subs]){
       if (!c.subs.has(s)) continue;
+      let out, key;
       try {
         if (err) throw err;
-        const out = runQuery(docs, s.wheres, s.order), key = JSON.stringify(out.map(d => [d.id, d.data]));
-        // The page re-renders on every snapshot, so an unchanged result is not delivered again.
-        if (key === s.last) continue;
-        s.last = key;
-        s.onNext({docs: out.map(d => ({id: d.id, data: () => d.data}))});
-      } catch (e) { if (s.onError) s.onError(e); }
+        out = runQuery(docs, s.wheres, s.order); key = JSON.stringify(out.map(d => [d.id, d.data]));
+      } catch (e) { report(s, e); continue; }
+      // The page re-renders on every snapshot, so an unchanged result is not delivered again.
+      if (key === s.last) continue;
+      s.last = key;
+      // A throwing page handler is the page's bug, not a load failure: it never reaches onError.
+      try { s.onNext({docs: out.map(d => ({id: d.id, data: () => d.data}))}); } catch (e) { console.error("Orc-istrator: snapshot handler", e); }
     }
   }
+  // After an error the next good load is delivered even when unchanged, so the page learns the server is back.
+  function report(s, e){ s.last = null; if (s.onError) s.onError(e); }
   return {
     refresh,
     /** Refreshes every collection that has a live subscription. */
     refreshAll: () => Promise.all([...cols.keys()].map(refresh)),
+    /** Reports err (e.g. a dropped event stream) to every live subscription. */
+    fail: err => { for (const c of cols.values()) for (const s of [...c.subs]) report(s, err); },
     /** Adds a subscription, loads its collection and returns the unsubscribe function. */
     subscribe(name, wheres, order, onNext, onError){
       if (!cols.has(name)) cols.set(name, {gen: 0, subs: new Set()});
       const s = {wheres, order, onNext, onError, last: null};
       cols.get(name).subs.add(s);
       refresh(name);
-      return () => { cols.get(name).subs.delete(s); };
+      // The last subscriber leaving also cancels a pending retry, so nothing keeps loading a collection no one reads.
+      return () => { const c = cols.get(name); c.subs.delete(s); if (!c.subs.size && c.retry){ clearTimer(c.retry); c.retry = null; } };
     },
   };
 }

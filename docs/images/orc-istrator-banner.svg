@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" width="1280" height="360" role="img" aria-labelledby="t d">
+  <title id="t">Orc-istrator</title>
+  <desc id="d">Terminal-style banner: the name Orc-istrator, the line "A live status board for orchestrated agent work", and one task card moving through its stages: Build done, Refute running, Commit queued.</desc>
+  <defs>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="2" fill="#ffffff" opacity="0.018"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="360" rx="14" fill="#0a0f0a"/>
+  <rect width="1280" height="360" rx="14" fill="url(#scan)"/>
+  <rect x="1.5" y="1.5" width="1277" height="357" rx="13" fill="none" stroke="#2f7a2f" stroke-width="3"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">
+    <!-- prompt line -->
+    <text x="56" y="76" font-size="22" fill="#6fdc6f">orc@board<tspan fill="#8a968a">:</tspan><tspan fill="#7fb4ff">~</tspan><tspan fill="#8a968a">$ </tspan><tspan fill="#d6e6d6">watch board</tspan></text>
+
+    <!-- wordmark -->
+    <text x="54" y="176" font-size="88" font-weight="700" fill="#b8ffb0" letter-spacing="1">ORC-ISTRATOR</text>
+
+    <!-- tagline -->
+    <text x="58" y="226" font-size="25" fill="#d6e6d6">A live status board for orchestrated agent work.</text>
+
+    <!-- one card moving through its stages -->
+    <g font-size="19">
+      <rect x="58" y="262" width="1122" height="64" rx="8" fill="none" stroke="#2f7a2f" stroke-width="2"/>
+      <text x="80" y="301" fill="#8a968a">card</text>
+      <text x="142" y="301" fill="#d6e6d6">Add input validation</text>
+
+      <rect x="470" y="278" width="190" height="32" rx="6" fill="#143214" stroke="#6fdc6f" stroke-width="2"/>
+      <text x="565" y="300" text-anchor="middle" fill="#b8ffb0">Build  done</text>
+
+      <rect x="684" y="278" width="230" height="32" rx="6" fill="none" stroke="#e0a83a" stroke-width="2"/>
+      <text x="799" y="300" text-anchor="middle" fill="#e0a83a">Refute  running</text>
+
+      <rect x="938" y="278" width="220" height="32" rx="6" fill="none" stroke="#4a564a" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="1048" y="300" text-anchor="middle" fill="#8a968a">Commit  queued</text>
+    </g>
+
+    <!-- corner status -->
+    <text x="1224" y="76" text-anchor="end" font-size="18" fill="#8a968a">2 skins <tspan fill="#2f7a2f">|</tspan> 2 backends <tspan fill="#2f7a2f">|</tspan> no build step</text>
+  </g>
+</svg>

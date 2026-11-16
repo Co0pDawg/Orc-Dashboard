@@ -1,8 +1,16 @@
-# Orc-istrator
+# `Orc-istrator`
 
-Orc-istrator is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
+<img src="docs/images/orc-istrator-banner.svg" alt="Orc-istrator banner in a green terminal style: the name, the line 'A live status board for orchestrated agent work', and one task card with its stages: Build done, Refute running, Commit queued" width="880">
 
-It exists so the person running the agents can see what each one is doing, how long it has been quiet and what it reported, without reading transcripts. It is the board half of [Orc-istration](https://github.com/Co0pDawg/Orc-istration), the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
+[![Tests on main](https://github.com/Co0pDawg/Orc-Dashboard/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/Co0pDawg/Orc-Dashboard/actions/workflows/test.yml?query=branch%3Amain+event%3Apush)
+
+**See what every agent is doing without reading transcripts.**
+
+`Orc-istrator` is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
+
+It is not a task manager: nobody assigns or edits work on the page. It shows what each agent is doing, how long it has been quiet and what it reported.
+
+> **Part of [Orc-istration](https://github.com/Co0pDawg/Orc-istration)**, the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
 
 ## Screenshots
 
@@ -51,7 +59,7 @@ The sections below are read by agents at run time; their headings are linked by 
 | `css/tokens.css` | Color and font tokens (light, dark, 1337) and the body base |
 | `css/base.css` | Skin-neutral layout and controls |
 | `css/sleek.css`, `css/leet.css` | Every rule of one skin, prefixed `.sleek` / `.leet` |
-| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `adoUrl` (per-session ADO project), the day in a page hash (`hashDay`, `pageHash`, `fmtDay`) |
+| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `ticketUrl` (ticket and task links from a session's `links` or `ado`), `httpsUrl`, `idText`, the day in a page hash (`hashDay`, `pageHash`, `fmtDay`) |
 | `js/model.js` | Pure data logic: card state, stage timing, sub-event windows, which sessions were touched on a day, visible/live sessions |
 | `js/prefs.js` | Every localStorage read and write |
 | `js/state.js` | The shared runtime state object |
@@ -67,23 +75,28 @@ The sections below are read by agents at run time; their headings are linked by 
 | `js/theme.js`, `js/theme-ui.js` | Themes: the pure parts (token list, merge, hex/rgb, contrast, migration, editor rows) and the Customize colors editor |
 | `js/partials/settings-menu.js` | The Settings menu markup (static). Imported first by `main.js`, so its controls exist before other modules look them up |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
+| `js/conn.js` | Connection state per subscription and the top-bar notice ("Board server not reachable") |
 | `tests/search.test.js` | `node:test` suite for `search.js` |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
 | `local/store.js` | Local backend: the file-backed document store (`<data dir>/<collection>/<id>.json`) |
 | `local/server.js` | Local backend: the localhost server (page, `/api/db`, `/api/events`); never published |
 | `local/db-shim.js`, `local/query.js` | Local backend: the browser stand-in for `window.claude.use("db")` and its filter/sort logic |
 | `local/board.js` | Local backend: the CLI agents write with |
+| `local/ops.js` | Local backend: the high-level writes (`session start`, `stage`, `progress`, ...), each applied whole inside the server's write queue |
+| `local/lint.js` | Local backend: write-time checks against the data contract (warnings only) |
+| `.github/workflows/test.yml` | CI: `npm test` and `npm run check` on Linux and Windows, Node 22 |
 | `tests/local-*.test.js` | `node:test` suites for `local/` |
 | `dev/` | Preview harness (`preview.html`, `preview.js`, `fixture.js`), static server, `check.js`; never published |
 
 ## Data contract (what the page reads)
 
-- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, ado?, pr?, events[]`. `pr` is `{id, url, status}` with `status` one of `draft|active|completed|abandoned`; with the viewer's Settings rule "Its pull request is completed", a finished session whose PR is still draft or active stays unfinished on the board. `ado` is the Azure DevOps `"org/project"` that the session's ticket and task links open in. It defaults to `contoso/AcmeApp`; set `"contoso/Contoso Payments"` for Atlas. AcmeApp and ContosoAccountingModule use the default. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
+- `sessions/<date>-<project>-<slug>`: `title, ticket, branch, status, started, updated, now, completed?, links?, ado?, pr?, events[]`. `pr` is `{id, url, status}` from any host (an `https://` `url` is a link); `status` is `draft|active|open|ready` while in review and `completed|merged|closed|abandoned` once final; with the viewer's Settings rule "Its pull request is completed", a finished session whose PR is still in review stays unfinished on the board. Ticket and task links (the session's and its cards') come from `links: {ticket?, task?}`, URL templates in which `{id}` is replaced by the URL-encoded id (`task` falls back to `ticket`; only `https://` templates are used), else from `ado`, the Azure DevOps `"org/project"` (e.g. `"contoso/AcmeApp"`). With neither, ids show as plain text. An all-digit id shows as `#123`, any other id (`PROJ-9`) as written. Each event is `{at, text, sub?: [{at, text}], card?: "<card id>"}`. Events are append-only; the page keys expand/collapse state by event index. Sessions sort by `updated` descending. A session is finished when `completed` is set or `status` is Done/Complete/Completed/Finished (any case); finished sessions start minimized and stay off the chips until Show finished is on.
 - The chips show only the sessions touched on the selected day (today by default): a session counts when its `started`, `updated`, `completed`, an event or sub-event `at`, or one of its cards' `updated`, `progress[].at` or `stages[].started` falls on that local day. On today finished sessions stay behind Show finished, whose count is today's finished sessions; on a past day they always show and Show finished hides. A day with nothing touched shows "Nothing touched on <day>". The day control (◀, date, ▶, Today) sits beside the chips.
 - `cards/<id>`: `session, order, ticket, task, kind, title, agent, tokens, commit, note, updated, stages[], progress[]`. `stages` is an array of `{label, state, started?}` with `state` one of `done|active|rework|pending|skipped`, in plan order (the page also reads an object `{label: state}`, but write the array); `started` (ISO) is set when a stage turns active or rework, else the page falls back to the card's `updated`. `progress[]` is `{at, text}` lines posted by agents.
 - A dispatch event that names `card` nests that card's `progress` from the event's time until the next dispatch for the same card. A running card shows its last three progress lines. The log shows "quiet Nm" since the newest event, sub-event or progress line, amber after 45 minutes.
-- Times are ISO with offset.
-- `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, titles:{<ticket>:ADO title}, blocks:[{start, end, ticket, text}], flags:{<ticket>:{unplanned:true}}}`. `ticket` is `APP-NNNNN` or null (no ticket); events carry no prompt text. `blocks` are the worklog roll-up's time blocks (model-written descriptions, ISO times with offset); an entry's Note joins the same-ticket blocks it overlaps, a waiting-only entry's Note names the agent runs it covers (card title, else dispatch text), and `notes[ticket]` is the fallback (js/time/notes.js entryNotes). `titles` labels the scrum's Yesterday lines (an older doc without it falls back to the board's session or card title). The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
+- Times are ISO with offset; a missing or bad time shows as "no time". A stage `state` outside the list above shows as written, in the warning color, and never counts as done. A malformed `events`, `sub`, `stages` or `progress` entry is skipped, so the rest of the board still renders.
+- When a load fails or the local event stream drops, the top bar shows "Board server not reachable; showing data from <time>" (or "Cannot reach the board server" before any data), announced once to screen readers, until a load succeeds again.
+- `timeline/<yyyy-MM-dd>` (written only by the worklog sync, never by the page): `{date, synced, tz, events:[{at, kind, session, ticket}], sessions:{<id>:{project, review}}, notes:{<ticket>:text}, titles:{<ticket>:ADO title}, blocks:[{start, end, ticket, text}], flags:{<ticket>:{unplanned:true}}}`. `ticket` is `APP-NNNNN`, another tracker id (`PROJ-9`, `owner/repo#N`) or null (no ticket); events carry no prompt text. `blocks` are the worklog roll-up's time blocks (model-written descriptions, ISO times with offset); an entry's Note joins the same-ticket blocks it overlaps, a waiting-only entry's Note names the agent runs it covers (card title, else dispatch text), and `notes[ticket]` is the fallback (js/time/notes.js entryNotes). `titles` labels the scrum's Yesterday lines (an older doc without it falls back to the board's session or card title). The Time page computes driving time from these events (a prompt drives its session through that turn's `stop` plus 15 minutes, cut short by a prompt in another session) and agent time from the board's own sessions and cards.
 
 ## Writing protocol (the orchestrator and its agents)
 
@@ -92,11 +105,11 @@ The single source for when the board is written. `~/.claude/CLAUDE.md` says to f
 Two backends take the same data. Which one a machine uses: `~/.claude/board.local.md` holds either a `claude.ai/artifact/...` URL (artifact) or a `http://localhost:<port>` URL (local). The table below says WHEN to write and holds for both.
 
 - **Artifact backend.** Writes go through the ArtifactData tool (load it with ToolSearch `select:ArtifactData`) against the board URL. If ToolSearch finds no `ArtifactData`, use `mcp__claude-artifacts__db_get`/`db_write` instead: resolve the board URL to its UUID slug with `get_artifact` first (the short id in the URL returns 400), and pass `ifVersion` on every write to an existing doc. (Learned 2026-10-29, PR 6324: ArtifactData was absent and the builder skipped its card.) Writing more than one doc uses `batch`, and every write to an existing doc pins `if_version` to the version last read; on a conflict, re-get and redo. Take times from `date -Iseconds` so they carry an offset. Bump the session's `updated` on every write so it sorts first. Never republish the page for data.
-- **Local backend.** Writes go through the CLI, `node <board repo>/local/board.js` (see "Local board"). Use `batch` for the Start write, `append` for progress lines and events (atomic in the server, so no pin is needed), and `update` for fields. Pins (`--if-version`) are optional; a conflict exits 2. The CLI adds no fields, so pass `updated` and every time yourself (`date -Iseconds`).
+- **Local backend.** Writes go through the high-level commands of the CLI, `node <board repo>/local/board.js` (see "Local board"). Each is one request the server applies whole, stamps with its own clock (ISO with offset) and bumps `updated`, so no read, no pin and no `date` call is needed; `--if-version N` is optional and a conflict exits 2. Start = `session start` + one `card add` per card; Dispatch = `set-field cards/<id> agent <name>`, `stage <card> <label> active`, `event <session> "<agent> dispatched on #<task>" --card <card>`, `set-field sessions/<id> now "<text>"`; Check-in = `checkin <session> "<text>" --card <card>`; Report = `stage <card> <label> done|rework`, `set-field cards/<id> note "<text>"` and `tokens <n>`, `event <session> "<outcome>" --card <card>`; Commit = `set-field cards/<id> commit <hash>` and an `event`; PR opened = `echo '<json>' | node local/board.js set-field sessions/<id> pr --stdin` (JSON on a PowerShell command line loses its quotes, so JSON always goes through `--stdin`); Finish = `finish <session> --now "<closing line>"`. Text with quotes, `$`, backticks or newlines goes through `--stdin`.
 
 | When | Write |
 |---|---|
-| **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line], plus `ado` when the repo's work items are not in contoso/AcmeApp) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
+| **Start**: before the first dispatch of an orchestrated task | Create `sessions/<YYYY-MM-DD>-<project>-<slug>` (title, ticket, branch, status "Planning", started, updated, now, events: [the plan line], plus `links` (URL templates for any tracker) or `ado` (Azure DevOps `org/project`); with neither, ids show as plain text) and one `cards/<id>` per ticket or task (session, order, ticket, task, kind, title, stages with every planned stage `pending`, updated). Use one batch. Card ids are short and unique, e.g. the task id. |
 | **Dispatch** | Set `agent`. The agent turns its stage `active` with `started` when its brief names the stage; otherwise the orchestrator does. Append an event `{at, text: "<agent> dispatched on #<task>", card: "<card id>"}`. Update `now` and `status`. The brief carries `BOARD: <board URL> card <card id> stage <label>` (marching orders item 10). |
 | **Check-in** (the orchestrator reads a running agent's report file, test log or a late notice) | Append `{at, text}` to that dispatch event's `sub`, only if something changed. |
 | **Heartbeat** (a dispatch expected to run past ~30 min) | Schedule a check every 20-30 min (Monitor on the agent's report or test-log file, or ScheduleWakeup/CronCreate). Each check posts a check-in. |
@@ -104,8 +117,8 @@ Two backends take the same data. Which one a machine uses: `~/.claude/board.loca
 | **Commit** | Set the card's `commit`; append an event naming the hash. |
 | **PR opened** | Set the session's `pr: {id, url, status: "draft"}` (url is the PR's Azure DevOps link). |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
-| **Timeline upload**: at the Start of every orchestrated task, and when Cooper says "sync my timeline" | For each file in `~/.claude/timeline-sync/pending/` (`timeline-<date>.json`, built every 15 minutes by the worklog's scheduled sync), `get` `timeline/<date>`, then `set` it with `file_path` = that file, pinned to `if_version` when the doc exists, and delete the file after the write succeeds. A session with only `db_write` cannot send a file: inline a doc under 64 KB, otherwise leave the file pending for a session with ArtifactData and tell Cooper. See the worklog README, "Uploading". |
-| **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not `completed` or `abandoned`, read the PR (AcmeApp: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
+| **Timeline upload**: at the Start of every orchestrated task, and when the user says "sync my timeline" | For each file in `~/.claude/timeline-sync/pending/` (`timeline-<date>.json`, built every 15 minutes by the worklog's scheduled sync), `get` `timeline/<date>`, then `set` it with `file_path` = that file, pinned to `if_version` when the doc exists, and delete the file after the write succeeds. A session with only `db_write` cannot send a file: inline a doc under 64 KB, otherwise leave the file pending for a session with ArtifactData and tell the user. See the worklog README, "Uploading". |
+| **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not final (`completed`, `merged`, `closed` or `abandoned`), read the PR with the host's own tooling and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
 
 `tokens` and `note` are card fields. The page never shows them inside a stage entry.
 
@@ -131,35 +144,52 @@ npm run board                      # or: node local/server.js [--port N]
 
 Open http://localhost:8377/. The CLI starts the server by itself (detached) when nothing answers; `--no-start` turns that off.
 
-- Data dir: `ORC_BOARD_DATA`, else `~/.orc-board/data`, one file per doc: `<collection>/<id>.json` = `{"version", "data"}`.
+- Data dir: `--data <dir>` (or `--data-dir <dir>`), else `ORC_BOARD_DATA`, else `~/.orc-board/data`, one file per doc: `<collection>/<id>.json` = `{"version", "data"}`. On `set`, `update`, `append` and `batch`, `--data` is the JSON input as before, so use `--data-dir` there. The flag is passed to an auto-started server.
 - Port: `--port`, else `ORC_BOARD_PORT`, else 8377.
 
 CLI (`node local/board.js <command>`; JSON on stdout, errors on stderr, exit 1, a conflict exits 2):
 
 | Command | Does |
 |---|---|
-| `serve [--port N]`, `url` | Run the server in the foreground; print the board URL |
+| `serve [--port N]`, `url` | Run the server in the foreground; print the board URL (stderr says when nothing is running on the port) |
 | `get <col>/<id>`, `list <col>` | Read one doc or a collection |
 | `set <col>/<id> (--data <json> \| --file <path> \| --stdin) [--if-version N]` | Replace a doc |
 | `update <col>/<id> (...) [--if-version N]` | Merge top-level fields; `{"__delete__": true}` removes one |
 | `append <col>/<id> <field> (...) [--if-version N]` | Push the JSON value onto the array `field` (creating it) |
-| `delete <col>/<id> [--if-version N]` | Delete a doc |
+| `delete <col>/<id> [--if-version N] [--cascade]` | Delete a doc. Deleting a session that still has cards warns how many are orphaned; `--cascade` deletes them too, in one batch |
 | `batch (--file \| --stdin)` | `{"writes": [{op: "set"\|"update"\|"append"\|"delete", collection, id, data \| field + value, ifVersion?}]}`, all or nothing |
 | `export [--out <file>]`, `import <file>` | `{"<collection>": {"<id>": <data>}}` for every doc; import sets each doc, in batches of about 1 MiB |
+| `session start <id> --title <t> [--branch b] [--ticket t] [--status s] [--now n] [--links-ticket <tpl>] [--ado org/project]` | Create a session with `started`, `updated`, `status` (default Planning) and empty `events`; fails if it exists |
+| `card add <card> --session <id> --title <t> --stages "Build,Refute,Commit" [--order n] [--ticket t] [--task t] [--kind k]` | Create a card with every stage `pending`; the session must exist |
+| `stage <card> <label> <state>` | Set one stage to `pending\|active\|rework\|done\|skipped` (`active` and `rework` set `started`); an unknown label lists the card's labels |
+| `progress <card> <text...>` | Append `{at, text}` to `progress` |
+| `event <session> <text...> [--card <card>]` | Append `{at, text, card?}` to `events` |
+| `checkin <session> <text...> [--card <card>]` | Append `{at, text}` to the `sub` of the newest event (naming `--card` when given) |
+| `set-field <col>/<id> <field> <value...> [--json]` | Set one top-level field; the value is the remaining words joined by spaces (`now Builder on Task 18001` stores the whole sentence), or `--stdin`. The contract's string fields (`title`, `status`, `now`, `branch`, `ticket`, `task`, `kind`, `agent`, `commit`, `note`) are stored as given (`2024` stays a string); any other field (`tokens`, `pr`, `completed`, ...) is JSON when it parses, else a string. `--json` forces JSON parsing, fails on invalid JSON, and takes the value as exactly one argument (quote it) or from `--stdin` |
+| `finish <session> [--now <text>] [--status Done]` | Set `status`, `completed`, `now` and append a final event |
+| `lint [<col>/<id>]` | Check one doc or every session and card against the data contract; exit 1 with warnings. `notes` (a legacy `stages` object) never change the exit code |
+| `orphans` | List cards whose session does not exist |
+| `prune --before <yyyy-MM-dd> [--archive <file> --apply]` | Finished sessions last touched before the date, with their cards: a dry run by default; `--apply` merges them into the archive (the `export` shape) and then deletes them in one pinned batch. Never touches unfinished sessions or `timeline` |
+| `status` | URL, pid, data dir, start time, doc counts and `stale`; `otherCheckout: true` when the server runs another checkout's code; exit 0 running, 3 not running, 4 stale |
+| `stop`, `restart` | Ask the server to exit and wait until the port is free (exit 3 when nothing ran); `restart` then starts it detached on the same data dir. `stop` exits 1 with `{stopped: false, running: true, pid}` when an orc-board server still answers afterwards (a refused shutdown), and `restart` then fails instead of starting into a busy port |
 
-Quoting JSON on a PowerShell command line is unreliable, so pipe it through `--stdin`. A progress line, PowerShell:
+The high-level commands (`session` to `finish`) are each one request that the server applies inside its write queue, so concurrent writers never lose a line and no pin is needed. They take the time from the server clock (ISO with offset, like `date -Iseconds`), bump `updated`, refuse a result that would fail `lint`, accept `--if-version N` and print `{id, version}` plus the changed field. Text is the remaining words joined by spaces, or stdin with `--stdin` (one trailing newline dropped), which keeps quotes, `$`, backticks and newlines intact. The raw commands add no fields.
 
-```powershell
-'{"at":"' + (Get-Date -Format o) + '","text":"build green"}' | node local/board.js append cards/c1 progress --stdin
+These run verbatim in bash and in PowerShell:
+
+```
+node local/board.js session start 2026-11-15-orc-search --title "Header search" --branch feature/search
+node local/board.js card add c1 --session 2026-11-15-orc-search --title "Build search" --order 1 --stages "Build,Refute,Commit"
+node local/board.js stage c1 Build active
+node local/board.js progress c1 build green 31 of 40 tests pass
+echo 'say "done" for $5 `now`' | node local/board.js progress c1 --stdin
+echo '{"id":"7","url":"https://example.com/pr/7","status":"draft"}' | node local/board.js set-field sessions/2026-11-15-orc-search pr --stdin
+node local/board.js finish 2026-11-15-orc-search --now "Draft PR 7 opened"
 ```
 
-bash:
+Validation: after every raw write to `sessions` or `cards` the server lints the result (missing `title`; `updated`, `started` or an `at` that is not ISO with offset; `stages` that are not `{label, state}` or carry an unknown state; `events`, `sub` or `progress` entries without `at` or `text`; a card whose session does not exist or is not a valid id (a warning, never an error: the write stays applied); `links` templates that are not `https://` or lack `{id}`) and returns `warnings`. The CLI prints them to stderr and still exits 0, and stdout keeps its shape. A high-level command refuses a result with a new warning, prints the warnings a doc already had, refuses to append to a `progress`, `events` or `sub` that is not an array, and `stage` rewrites a legacy `stages` object (`{build: "done"}`, which the page still reads and `lint` lists as a note) as the array, in stored order (an entry with no state becomes `pending`; an unknown state stays as written and shows as a warning).
 
-```bash
-echo "{\"at\":\"$(date -Iseconds)\",\"text\":\"build green\"}" | node local/board.js append cards/c1 progress --stdin
-```
-
-After updating the repo, restart the server so it runs the new code: `/api/health` gives its `pid` and `dataDir`. A CLI call with `ORC_BOARD_DATA` set fails when the running server uses another data dir.
+Lifecycle: `/api/health` gives `pid`, `dataDir`, `started`, `code` (a hash of `local/*.js` taken at start) and `root` (the real path of the server's `local/`). When the server runs this CLI's own checkout and its files on disk changed (a repo update), it is stale: `status` exits 4 and the next CLI command restarts it once on the same data dir, with a one-line notice on stderr (`--no-start` turns that off too). A server from another checkout (the board repo and a worktree on one port) is never restarted automatically: the CLI prints one line naming both checkouts and uses it. A detached server appends its output to `<data dir>/.server.log` (cleared at start once over 1 MiB), and a failed start prints the end of that log. `stop` goes through `POST /api/shutdown`, which needs the same headers as any write; the server then takes no new connections, lets queued writes and open requests finish (at most 2 s) and exits. A server from before `code` and `/api/shutdown` existed (its health has neither) counts as stale: the next command restarts it on its own data dir, and since it cannot be asked to exit, the CLI stops it by the pid its health reports (only when health says `app: "orc-board"`), after one stderr line saying so; `stop` and `restart` do the same on a 404 from `/api/shutdown`. A CLI call with a data dir set fails when the running server uses another one.
 
 For a headless screenshot, use the Preview command with `--timeout=6000` in place of `--virtual-time-budget=6000`: the page's open event stream keeps virtual time from ever finishing.
 
@@ -177,7 +207,7 @@ The magnifier on the top bar's second row, after the day control, (or `/`) opens
 
 ## Time page
 
-`#time` (Day), `#time-week` and `#time-month`, each optionally followed by `-yyyy-MM-dd`, open the Time page; `#board` or no hash is the board on today, `#board-yyyy-MM-dd` the board on that day. The Board and Time share one selected day: a Time step, Today or date pick moves the Board's chips, the Board's day control moves Time, and switching pages keeps it. A viewer who never picked a day follows today, which rolls over at midnight; a picked day stays until Today. Day draws a column per ticket (Cooper's driving time solid, agent time hatched) beside the day's Work Detail entries, each value copies on click. Day and Week span the full day at 30-minute rows; the Entries list scrolls beside the calendar, and an entry marker (white in dark schemes and 1337, `--ink` in Sleek light; the Marker button beside Scrum, with a hover tip; on by default) shows on the calendar the time of the entry under a probe in the list. The probe runs from the list's top edge when scrolled to the top to its bottom edge when scrolled to the end, so the first and last entries are reachable. The Marker button hides where the line cannot show (narrow screens, or a list that does not scroll). Week stacks what ran per day; Month is a compact calendar. Every day has a Scrum button that opens a copyable Yesterday / Today / Blockers summary, kept high level (js/time/scrum.js): Yesterday is one line per driven ticket, most time first, as `APP-NNNNN <ADO title>: <up to 3 clauses>` from that ticket's roll-up blocks (else its note, never the ADO "<Type>: <title>" note), with process talk (reviews, commits, merges, PR housekeeping, test runs) dropped and hashes, PR numbers, counts and model names scrubbed; unticketed time is "Other work". Today is each open session's title, its next stage and "PR in review"; Blockers give the scrubbed REWORK reason. No durations. Entries never overlap. They cover driven time plus waiting time (an agent running while Cooper is not driving, only between two of his turns that day no more than 2 h apart (a turn on the neighbouring day does not count), marked "waiting"; js/time/segments.js waitingSegments); Settings > Entry rounding rounds the entries only. Data arrives through the worklog sync (~/.claude/tools/worklog, README "Timeline sync") and the upload step in the writing protocol.
+`#time` (Day), `#time-week` and `#time-month`, each optionally followed by `-yyyy-MM-dd`, open the Time page; `#board` or no hash is the board on today, `#board-yyyy-MM-dd` the board on that day. The Board and Time share one selected day: a Time step, Today or date pick moves the Board's chips, the Board's day control moves Time, and switching pages keeps it. A viewer who never picked a day follows today, which rolls over at midnight; a picked day stays until Today. Day draws a column per ticket (the user's driving time solid, agent time hatched) beside the day's Work Detail entries, each value copies on click. Day and Week span the full day at 30-minute rows; the Entries list scrolls beside the calendar, and an entry marker (white in dark schemes and 1337, `--ink` in Sleek light; the Marker button beside Scrum, with a hover tip; on by default) shows on the calendar the time of the entry under a probe in the list. The probe runs from the list's top edge when scrolled to the top to its bottom edge when scrolled to the end, so the first and last entries are reachable. The Marker button hides where the line cannot show (narrow screens, or a list that does not scroll). Week stacks what ran per day; Month is a compact calendar. Every day has a Scrum button that opens a copyable Yesterday / Today / Blockers summary, kept high level (js/time/scrum.js): Yesterday is one line per driven ticket, most time first, as `APP-NNNNN <ADO title>: <up to 3 clauses>` from that ticket's roll-up blocks (else its note, never the ADO "<Type>: <title>" note), with process talk (reviews, commits, merges, PR housekeeping, test runs) dropped and hashes, PR numbers, counts and model names scrubbed; unticketed time is "Other work". Today is each open session's title, its next stage and "PR in review"; Blockers give the scrubbed REWORK reason. No durations. Entries never overlap. They cover driven time plus waiting time (an agent running while the user is not driving, only between two of his turns that day no more than 2 h apart (a turn on the neighbouring day does not count), marked "waiting"; js/time/segments.js waitingSegments); Settings > Entry rounding rounds the entries only. Data arrives through the worklog sync (~/.claude/tools/worklog, README "Timeline sync") and the upload step in the writing protocol.
 
 At 640px and under the page reads top to bottom: Day shows Scrum beside the date, then Entries with each Note in full (sized from its text, no inner scroll), then the timeline, and the fold arrow points up and down. Week swaps its columns for a card per day with a driven bar and a line per ticket, as `weekHtml` renders both and CSS picks one.
 
@@ -241,3 +271,7 @@ Credits (colors taken from each scheme's official palette file):
 ## Contributing
 
 Teammates: push a branch and open a pull request against `main`. Run `npm test` and `npm run check` before opening it. Report bugs and ideas in [Issues](https://github.com/Co0pDawg/Orc-Dashboard/issues).
+
+---
+
+<sub>Built with Orc-istration 🧌</sub>

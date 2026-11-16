@@ -125,3 +125,5 @@
   .sleek .wk-card-top .tl-tot,.sleek .wk-t,.sleek .wk-dur{color:var(--muted)}
   .sleek .wk-date{font-size:15px}
 }
+.sleek .steps li.unknown i{background:transparent;border:1px dashed var(--run-text)}
+.sleek .steps li.unknown span{color:var(--run-text);font-style:italic}
