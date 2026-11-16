@@ -34,7 +34,8 @@ class HttpError extends Error { constructor(status, message){ super(message); th
 /** Starts the server on {port, dataDir, onShutdown}; resolves to the listening http.Server (port 0 picks a free port). */
 export function start({port = DEFAULT_PORT, dataDir = defaultDataDir(), onShutdown} = {}){
   const store = openStore(dataDir);
-  const started = isoNow(), code = codeHash();
+  const started = isoNow(), code = codeHash(), localRoot = realpathSync(dirname(fileURLToPath(import.meta.url)));
+  let inflight = 0, closing = false;
   // Lint warnings for the docs a write produced (deleted docs and other collections have none).
   const warn = docs => docs.flatMap(([col, d]) => d && d.data ? lint(col, d.data, {sessionExists: s => !!store.get("sessions", s)}).map(w => `${col}/${d.id}: ${w}`) : []);
   const withWarnings = (body, docs) => { const w = warn(docs); return w.length ? {...body, warnings: w} : body; };
@@ -82,10 +83,12 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir(), onShutdo
       const page = await readFile(join(root, "orchestration-board.html"), "utf8");
       return res.writeHead(200, {"content-type": types[".html"], "cache-control": "no-store"}).end(skeleton(page));
     }
-    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid, dataDir: resolve(dataDir), started, code});
+    if (req.method === "GET" && path === "/api/health") return send(res, 200, {ok: true, app: "orc-board", version: 1, pid: process.pid, dataDir: resolve(dataDir), started, code, root: localRoot});
     if (req.method === "POST" && path === "/api/shutdown"){
-      await readJson(req);
-      res.on("finish", () => { server.close(); server.closeAllConnections(); clients.forEach(c => c.end()); onShutdown?.(); });
+      const b = await readJson(req);
+      // A pid names the server the caller judged stale; a newer server that took the port since is left running.
+      if (b.pid !== undefined && b.pid !== process.pid) return send(res, 412, {error: "pid mismatch: another server took the port", pid: process.pid});
+      res.on("finish", shutdown);
       return send(res, 200, {ok: true, pid: process.pid});
     }
     if (req.method === "POST" && path === "/api/op"){
@@ -142,7 +145,25 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir(), onShutdo
     send(res, 200, withWarnings(doc, [[col, doc]]));
   }
 
+  // Graceful exit: refuse new connections, let queued writes and in-flight requests finish (at most 2 s), then exit.
+  function shutdown(){
+    if (closing) return;
+    closing = true;
+    server.close();
+    clients.forEach(c => c.end());
+    const until = Date.now() + 2000;
+    (async () => {
+      await Promise.race([queue, new Promise(r => setTimeout(r, 2000))]);
+      while (inflight > 0 && Date.now() < until){ server.closeIdleConnections(); await new Promise(r => setTimeout(r, 20)); }
+      server.closeAllConnections();
+      onShutdown?.();
+    })();
+  }
+
   const server = createServer((req, res) => {
+    inflight++;
+    res.on("close", () => inflight--);
+    if (closing) res.setHeader("connection", "close");
     handle(req, res, server.address().port).catch(e => {
       if (res.headersSent) return res.end();
       if (e instanceof StoreError) return send(res, {conflict: 409, notfound: 404, corrupt: 500}[e.code] || 400, e.code === "conflict" ? {error: "conflict", version: e.version, message: e.message} : {error: e.message});

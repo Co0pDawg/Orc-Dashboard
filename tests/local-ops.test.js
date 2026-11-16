@@ -189,7 +189,7 @@ test("lint: one warning per contract rule", () => {
   one("sessions", {...ok, events: [{at: ok.updated, text: "x", sub: [{at: ok.updated}]}]}, /sub\[0\] needs at and text/);
   one("sessions", {...ok, links: {ticket: "http://t/{id}"}}, /links\.ticket/);
   one("sessions", {...ok, links: {task: "https://t/"}}, /links\.task/);
-  one("cards", {...ok, stages: {Build: "done"}}, /stages is not an array/);
+  one("cards", {...ok, stages: "Build done"}, /stages is not an array/);
   one("cards", {...ok, stages: [{label: "Build"}]}, /stages\[0\] is not \{label, state\}/);
   one("cards", {...ok, stages: [{label: "Build", state: "finished"}]}, /state "finished"/);
   one("cards", {...ok, progress: [{at: ok.updated}]}, /progress\[0\] needs at and text/);

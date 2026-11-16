@@ -65,7 +65,8 @@ export function createFeed(load, {retryMs = 5000, setTimer = (f, ms) => setTimeo
       const s = {wheres, order, onNext, onError, last: null};
       cols.get(name).subs.add(s);
       refresh(name);
-      return () => { cols.get(name).subs.delete(s); };
+      // The last subscriber leaving also cancels a pending retry, so nothing keeps loading a collection no one reads.
+      return () => { const c = cols.get(name); c.subs.delete(s); if (!c.subs.size && c.retry){ clearTimer(c.retry); c.retry = null; } };
     },
   };
 }

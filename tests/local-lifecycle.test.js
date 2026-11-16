@@ -64,7 +64,8 @@ test("cli: status exits 3 when down and 0 when up; restart replaces the pid; sto
     assert.equal((await run(cli, ["list", "sessions", "--data", data], env)).code, 0);
     const h = await health(port);
     assert.equal(h.dataDir, resolve(data));
-    assert.ok(existsSync(join(dir, "server.log")), "the detached server logs beside the data dir");
+    assert.ok(existsSync(join(data, ".server.log")), "the detached server logs inside the data dir");
+    assert.ok(!existsSync(join(dir, "server.log")), "nothing is written beside the data dir");
     await run(cli, ["session", "start", "s1", "--title", "t", "--data", data], env);
     const st = await run(cli, ["status", "--data", data], env);
     assert.equal(st.code, 0, st.err);
@@ -121,6 +122,6 @@ test("cli: a server that fails to start prints the end of server.log", async () 
     assert.equal(r.code, 1);
     assert.match(r.err, /did not answer within 5 s; last lines of/);
     assert.match(r.err, /boom at startup/);
-    assert.match(readFileSync(join(dir, "server.log"), "utf8"), /boom at startup/);
+    assert.match(readFileSync(join(dir, "data", ".server.log"), "utf8"), /boom at startup/);
   } finally { await cleanup(port); }
 });

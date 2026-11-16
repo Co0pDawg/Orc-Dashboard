@@ -114,7 +114,7 @@ export function openStore(dir = defaultDataDir()){
     /** Counts actual doc file reads (cache misses), for tests. */
     stats,
     /** Every collection name. */
-    collections: () => existsSync(dir) ? readdirSync(dir, {withFileTypes: true}).filter(e => e.isDirectory()).map(e => decoded(e.name)).filter(Boolean) : [],
+    collections: () => existsSync(dir) ? readdirSync(dir, {withFileTypes: true}).filter(e => e.isDirectory() && !e.name.startsWith(".")).map(e => decoded(e.name)).filter(Boolean) : [],
     get(c, id){ checkId(c, "collection"); checkId(id); return out(id, read(c, id)); },
     list(c){
       checkId(c, "collection");

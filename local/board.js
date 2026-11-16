@@ -3,12 +3,12 @@
 // The raw commands never add fields such as timestamps or `updated`; the high-level commands (session start, stage,
 // progress, ...) do, from the server clock, each as one request applied inside the server's write queue.
 import {spawn} from "node:child_process";
-import {closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync} from "node:fs";
+import {closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, statSync, writeFileSync} from "node:fs";
 import {homedir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {codeHash, isMain, portFrom, start} from "./server.js";
-import {lint} from "./lint.js";
+import {lint, notes, touchTimes} from "./lint.js";
 import {defaultDataDir} from "./store.js";
 
 const USAGE = `usage: node local/board.js <command> [--no-start] [--port N]
@@ -30,7 +30,7 @@ function parse(argv){
   const opts = {_: []};
   for (let i = 0; i < argv.length; i++){
     const a = argv[i];
-    if (["--stdin", "--no-start", "--cascade", "--apply"].includes(a)) opts[a.slice(2)] = true;
+    if (["--stdin", "--no-start", "--cascade", "--apply", "--json"].includes(a)) opts[a.slice(2)] = true;
     else if (["--data", "--file", "--if-version", "--out", "--port", "--data-dir", "--title", "--branch", "--ticket", "--status", "--now",
       "--links-ticket", "--ado", "--session", "--order", "--task", "--kind", "--stages", "--card", "--before", "--archive"].includes(a)){ if (i + 1 >= argv.length) throw new CliError(`${a} needs a value`); opts[a.slice(2)] = argv[++i]; }
     else if (a.startsWith("--")) throw new CliError(`unknown option ${a}`);
@@ -68,18 +68,24 @@ async function health(base){
 function sameData(h){
   const want = process.env.ORC_BOARD_DATA;
   if (!want) return;
-  const norm = p => process.platform === "win32" ? resolve(p).toLowerCase() : resolve(p);
   if (!h.dataDir || norm(h.dataDir) !== norm(want)) throw new CliError(`the board server on this port uses data dir ${h.dataDir || "(unknown: an older server, restart it)"}, not ORC_BOARD_DATA=${want}; stop it or set ORC_BOARD_PORT to another port`);
 }
 
-// Stale: the running server hashed other local/*.js contents at its start than the files on disk hold now.
-const isStale = h => !!h.code && h.code !== codeHash();
-const logPath = () => join(dirname(resolve(defaultDataDir())), "server.log");
+// Which checkout a server runs: its local/ real path. Only a server from this checkout can be stale; one from another
+// checkout (the board repo vs a worktree) is used as it is, or two CLIs would restart each other's server on every call.
+const norm = p => process.platform === "win32" ? resolve(p).toLowerCase() : resolve(p);
+const ownRoot = realpathSync(dirname(fileURLToPath(import.meta.url)));
+const otherCheckout = h => !!h.root && norm(h.root) !== norm(ownRoot);
+// Stale: a server from this checkout hashed other local/*.js contents at its start than the files on disk hold now.
+const isStale = h => !otherCheckout(h) && !!h.code && h.code !== codeHash();
+const otherNotice = (h, port) => console.error(`board server on port ${port} runs code from ${h.root}; this CLI is ${ownRoot}; using the running server`);
+// The log sits inside the data dir, so it never lands in whatever folder holds the data dir.
+const logPath = data => join(data, ".server.log");
 const tail = (file, n = 15) => { try { return readFileSync(file, "utf8").trimEnd().split(/\r?\n/).slice(-n).join("\n"); } catch { return "(no log)"; } };
 
-// Starts the server detached, logging to <data dir>/../server.log, and waits until it answers.
-async function spawnServer(base, port){
-  const data = resolve(defaultDataDir()), log = logPath();
+// Starts the server detached on dataDir (default: the CLI's), logging to <data dir>/.server.log, and waits until it answers.
+async function spawnServer(base, port, dataDir){
+  const data = resolve(dataDir ?? defaultDataDir()), log = logPath(data);
   mkdirSync(dirname(log), {recursive: true});
   try { if (statSync(log).size > 1024 * 1024) writeFileSync(log, ""); } catch { /* no log yet */ }
   const fd = openSync(log, "a"), server = fileURLToPath(new URL("./server.js", import.meta.url));
@@ -94,10 +100,13 @@ async function spawnServer(base, port){
 }
 
 // Asks the server to exit (same protections as any write) and waits until the port stops answering.
-async function stopServer(base){
-  await call(base, "POST", "/api/shutdown", {});
+// With pid, only that server stops; false when another server has taken the port since.
+async function stopServer(base, pid){
+  try { await call(base, "POST", "/api/shutdown", {pid}); }
+  // 412: another server took the port; a failed connection: it is already going. Either way the caller re-checks.
+  catch (e) { if (/ 412 /.test(e.message) || !(e instanceof CliError)) return false; throw e; }
   for (const until = Date.now() + 5000; Date.now() < until;){
-    if (!(await health(base))) return;
+    if (!(await health(base))) return true;
     await new Promise(r => setTimeout(r, 100));
   }
   throw new CliError(`asked the board server on ${base} to stop but it still answers after 5 s`);
@@ -109,9 +118,13 @@ async function ensureServer(base, port, noStart){
   if (h && h.app !== "orc-board") throw new CliError(`port ${port} answers but is not the orc board; set ORC_BOARD_PORT to a free port`);
   if (h){
     sameData(h);
+    if (otherCheckout(h)){ otherNotice(h, port); return h; }
     if (noStart || !isStale(h)) return h;
     console.error(`orc-board: the server on port ${port} (pid ${h.pid}) runs older code; restarting it`);
-    await stopServer(base);
+    // The new server keeps the running one's data dir. When another CLI restarted it first, use that server.
+    const data = h.dataDir;
+    if (!(await stopServer(base, h.pid))){ const n = await health(base); if (n?.app === "orc-board") return n; }
+    return spawnServer(base, port, data);
   } else if (noStart) throw new CliError(`no board server on ${base} (started with --no-start); run: node local/board.js serve`);
   h = await spawnServer(base, port);
   sameData(h);
@@ -128,6 +141,10 @@ async function call(base, method, path, body){
 
 // A value printed as JSON with a non-zero exit (the code is not enumerable, so it is not printed).
 const withExit = (v, code) => Object.defineProperty(v, "exitCode", {value: code, enumerable: false});
+// Fields the data contract defines as strings: stored as given even when they look like JSON ("2024"), unless --json.
+const STRING_FIELDS = ["title", "status", "now", "branch", "ticket", "task", "kind", "agent", "commit", "note"];
+// A real calendar date in yyyy-MM-dd (2026-02-31 and 2026-13-45 are not).
+const isDate = s => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(s || ""); if (!m) return false; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3]; };
 const FINISHED = /^(done|complete|completed|finished)$/i;
 const RAW = ["get", "list", "set", "update", "append", "delete", "batch", "export", "import"];
 const HIGH = ["session", "card", "stage", "progress", "event", "checkin", "set-field", "finish", "lint", "orphans", "prune"];
@@ -153,15 +170,15 @@ export async function run(argv){
     sameData(h);
     const counts = {};
     for (const c of (await call(base, "GET", "/api/db")).collections) counts[c] = (await call(base, "GET", "/api/db/" + encodeURIComponent(c))).docs.length;
-    const stale = isStale(h);
-    return withExit({running: true, url: `http://localhost:${port}/`, pid: h.pid, dataDir: h.dataDir, started: h.started, counts, stale}, stale ? 4 : 0);
+    const stale = isStale(h), other = otherCheckout(h);
+    return withExit({running: true, url: `http://localhost:${port}/`, pid: h.pid, dataDir: h.dataDir, started: h.started, counts, stale, ...(other ? {otherCheckout: true, root: h.root} : {})}, stale ? 4 : 0);
   }
   if (cmd === "stop" || cmd === "restart"){
     const h = await health(base);
     if (h && h.app !== "orc-board") throw new CliError(`port ${port} answers but is not the orc board; not stopping it`);
-    if (h){ sameData(h); await stopServer(base); }
+    if (h){ sameData(h); if (cmd === "restart" && otherCheckout(h)) otherNotice(h, port); await stopServer(base, h.pid); }
     if (cmd === "stop") return h ? {stopped: true, pid: h.pid} : withExit({stopped: false, running: false}, 3);
-    const n = await spawnServer(base, port);
+    const n = await spawnServer(base, port, h?.dataDir);
     return {restarted: true, pid: n.pid, previousPid: h?.pid ?? null, started: n.started};
   }
   if (!RAW.includes(cmd) && !HIGH.includes(cmd)) throw new CliError(`unknown command ${cmd}\n${USAGE}`);
@@ -240,13 +257,16 @@ async function runHigh(cmd, rest, o, base, port){
     case "checkin": req = ["checkin", {id: need(rest[0], "a session id"), text: text(rest.slice(1)), card: o.card}]; break;
     case "set-field": {
       const [collection, id] = rawRef(rest[0]), field = need(rest[1], "a field"), raw = o.stdin ? stdin() : need(rest[2], "a value");
-      let value; try { value = JSON.parse(raw); } catch { value = raw; }
+      let value;
+      if (o.json){ try { value = JSON.parse(raw); } catch (e) { throw new CliError(`--json: invalid JSON: ${e.message}`); } }
+      else if (STRING_FIELDS.includes(field)) value = raw;
+      else try { value = JSON.parse(raw); } catch { value = raw; }
       req = ["setField", {collection, id, field, value}];
       break;
     }
     case "finish": req = ["finish", {id: need(rest[0], "a session id"), now: o.now, status: o.status}]; break;
     case "prune":
-      if (!/^\d{4}-\d\d-\d\d$/.test(o.before || "")) throw new CliError("prune needs --before <yyyy-MM-dd>");
+      if (!isDate(o.before)) throw new CliError("prune needs --before <yyyy-MM-dd>, a real calendar date");
       if (o.apply && !o.archive) throw new CliError("prune --apply needs --archive <file>");
   }
   const ifVersion = pin(o);
@@ -257,13 +277,13 @@ async function runHigh(cmd, rest, o, base, port){
   if (cmd === "lint"){
     const docs = rest[0] ? [[rawRef(rest[0])[0], await call(base, "GET", "/api/db/" + docRef(rest[0]))]] : [...sessions.map(d => ["sessions", d]), ...cards.map(d => ["cards", d])];
     const found = docs.flatMap(([c, d]) => lint(c, d.data, {sessionExists: exists}).map(w => `${c}/${d.id}: ${w}`));
-    return withExit({checked: docs.length, lint: found}, found.length ? 1 : 0);
+    const noted = docs.flatMap(([c, d]) => notes(c, d.data).map(w => `${c}/${d.id}: ${w}`));
+    return withExit({checked: docs.length, lint: found, notes: noted}, found.length ? 1 : 0);
   }
   if (cmd === "orphans") return {orphans: cards.filter(d => !exists(d.data.session)).map(d => ({id: d.id, session: d.data.session ?? null}))};
   // prune: finished sessions whose last touch (their own times and their cards' updated) is before local midnight of --before.
   const cutoff = new Date(`${o.before}T00:00:00`).getTime();
-  const touch = s => Math.max(...[s.data.updated, s.data.completed, s.data.started, ...cards.filter(c => c.data.session === s.id).map(c => c.data.updated)]
-    .map(t => Date.parse(t)).filter(Number.isFinite));
+  const touch = s => Math.max(...touchTimes(s, cards));
   const picked = sessions.filter(s => (s.data.completed || FINISHED.test(String(s.data.status ?? ""))) && Number.isFinite(touch(s)) && touch(s) < cutoff);
   const pickedCards = cards.filter(c => picked.some(s => s.id === c.data.session));
   const summary = {before: o.before, sessions: picked.map(d => d.id), cards: pickedCards.map(d => d.id)};

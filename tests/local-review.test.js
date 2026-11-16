@@ -40,7 +40,8 @@ test("store: a corrupt doc, a stray name and leftover .tmp files are skipped by 
   assert.throws(() => s.get("cards", "shape"), e => e.code === "corrupt");
 });
 
-test("store: a batch whose second write fails restores the first doc", () => {
+// Root ignores file and folder permissions, so the injected failure never happens (CI containers often run as root).
+test("store: a batch whose second write fails restores the first doc", {skip: process.getuid?.() === 0 && "running as root: chmod cannot make a write fail"}, () => {
   const s = openStore(tmp());
   s.set("cards", "c1", {a: 1});
   s.set("locked", "c2", {b: 1});
@@ -160,9 +161,10 @@ test("cli: a batch conflict names the entry and doc; a server on another data di
 test("cli: runs through a junction, and an auto-started server does not hold the caller's cwd", async () => {
   const link = join(tmp(), "link");
   symlinkSync(localDir, link, "junction");
-  const u = await run([join(link, "board.js"), "url"], {ORC_BOARD_PORT: "8500"});
+  const free = await freePort();
+  const u = await run([join(link, "board.js"), "url"], {ORC_BOARD_PORT: String(free)});
   assert.equal(u.code, 0, u.err);
-  assert.equal(u.out.trim(), "http://localhost:8500/");
+  assert.equal(u.out.trim(), `http://localhost:${free}/`);
   const port = await freePort(), cwd = tmp(), data = tmp();
   const r = await run([join(localDir, "board.js"), "list", "sessions"], {ORC_BOARD_PORT: String(port), ORC_BOARD_DATA: data}, {cwd});
   let pid;

@@ -1,6 +1,6 @@
 // High-level board writes, each applied whole inside the server's write queue (no read-modify-write in a client).
 import {StoreError} from "./store.js";
-import {lint, STATES} from "./lint.js";
+import {lint, stagesArray, STATES} from "./lint.js";
 
 /** The local time as ISO with its offset, the shape of `date -Iseconds`. */
 export function isoNow(d = new Date()){
@@ -10,6 +10,8 @@ export function isoNow(d = new Date()){
 
 const bad = m => new StoreError("invalid", m);
 const text = t => { if (typeof t !== "string" || !t.trim()) throw bad("text is required"); return t; };
+// An append target that exists but is not an array was written by hand: refuse rather than replace it.
+const arr = (v, where) => { if (v === undefined || v === null) return []; if (!Array.isArray(v)) throw bad(`${where} exists but is not an array; fix it with a raw write first`); return v; };
 const optional = (o, k, v) => { if (v !== undefined && v !== null && v !== "") o[k] = v; };
 
 /** Applies op (a name from OPS) with args to store; returns {id, version, <changed field>: value}. Synchronous. */
@@ -25,9 +27,10 @@ function change(store, col, id, a, fn){
   if (a.ifVersion !== undefined && a.ifVersion !== null && a.ifVersion !== cur.version) throw new StoreError("conflict", `${col}/${id} is at version ${cur.version}, not ${a.ifVersion}`, cur.version);
   // fn returns the changed field's name, or [name, value] when the report is an appended entry rather than the whole field.
   const data = structuredClone(cur.data), r = fn(data), [field, value] = Array.isArray(r) ? r : [r, data[r]];
-  newWarnings(store, col, cur.data, data);
+  const left = newWarnings(store, col, cur.data, data);
   const doc = store.set(col, id, data, {ifVersion: cur.version});
-  return {id, version: doc.version, [field]: value};
+  // Warnings the doc already had stay visible: the CLI prints them to stderr.
+  return {id, version: doc.version, [field]: value, ...(left.length ? {warnings: left.map(w => `${col}/${id}: ${w}`)} : {})};
 }
 
 function newWarnings(store, col, before, after){
@@ -35,6 +38,7 @@ function newWarnings(store, col, before, after){
   const old = new Set(before ? lint(col, before, {sessionExists: exists}) : []);
   const fresh = lint(col, after, {sessionExists: exists}).filter(w => !old.has(w));
   if (fresh.length) throw bad(`the result would not match the data contract: ${fresh.join("; ")}`);
+  return lint(col, after, {sessionExists: exists});
 }
 
 function create(store, col, id, data, pin){
@@ -76,29 +80,31 @@ const OPS = {
   },
   stage: (store, a, now) => change(store, "cards", a.id, a, d => {
     if (!STATES.includes(a.state)) throw bad(`state must be one of ${STATES.join("|")}, not ${JSON.stringify(a.state)}`);
-    const s = Array.isArray(d.stages) ? d.stages.find(x => x?.label === a.label) : null;
-    if (!s) throw bad(`card ${a.id} has no stage ${JSON.stringify(a.label)}; its stages: ${(Array.isArray(d.stages) ? d.stages.map(x => x?.label) : []).join(", ") || "(none)"}`);
+    // A legacy stages object becomes the array form, in its stored order.
+    d.stages = stagesArray(d.stages);
+    const s = d.stages.find(x => x?.label === a.label);
+    if (!s) throw bad(`card ${a.id} has no stage ${JSON.stringify(a.label)}; its stages: ${d.stages.map(x => x?.label).join(", ") || "(none)"}`);
     s.state = a.state;
     if (a.state === "active" || a.state === "rework") s.started = now;
     d.updated = now;
     return "stages";
   }),
   progress: (store, a, now) => change(store, "cards", a.id, a, d => {
-    d.progress = [...(Array.isArray(d.progress) ? d.progress : []), {at: now, text: text(a.text)}];
+    d.progress = [...arr(d.progress, "progress"), {at: now, text: text(a.text)}];
     d.updated = now;
     return ["progress", d.progress.at(-1)];
   }),
   event: (store, a, now) => change(store, "sessions", a.id, a, d => {
     const e = {at: now, text: text(a.text)};
     optional(e, "card", a.card);
-    d.events = [...(Array.isArray(d.events) ? d.events : []), e];
+    d.events = [...arr(d.events, "events"), e];
     d.updated = now;
     return ["event", e];
   }),
   checkin: (store, a, now) => change(store, "sessions", a.id, a, d => {
-    const e = newest(Array.isArray(d.events) ? d.events : [], a.card);
+    const e = newest(arr(d.events, "events"), a.card);
     if (!e) throw new StoreError("notfound", a.card ? `session ${a.id} has no event naming card ${a.card}` : `session ${a.id} has no events`);
-    e.sub = [...(Array.isArray(e.sub) ? e.sub : []), {at: now, text: text(a.text)}];
+    e.sub = [...arr(e.sub, "the event's sub"), {at: now, text: text(a.text)}];
     d.updated = now;
     return ["sub", e.sub.at(-1)];
   }),
@@ -113,7 +119,7 @@ const OPS = {
     d.status = a.status || "Done";
     d.completed = now;
     if (a.now) d.now = a.now;
-    d.events = [...(Array.isArray(d.events) ? d.events : []), {at: now, text: a.now || `Session ${d.status}`}];
+    d.events = [...arr(d.events, "events"), {at: now, text: a.now || `Session ${d.status}`}];
     d.updated = now;
     return "completed";
   }),

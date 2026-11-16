@@ -34,7 +34,7 @@ export function lint(collection, data, {sessionExists} = {}){
         if (typeof t !== "string" || !t.startsWith("https://") || !t.includes("{id}")) w.push(`links.${k} must be an https:// template containing {id}`);
     }
   } else {
-    if (data.stages !== undefined){
+    if (data.stages !== undefined && !isLegacyStages(data.stages)){
       if (!Array.isArray(data.stages)) w.push("stages is not an array of {label, state}");
       else data.stages.forEach((s, i) => {
         if (!isObj(s) || typeof s.label !== "string" || typeof s.state !== "string") { w.push(`stages[${i}] is not {label, state}`); return; }
@@ -46,4 +46,31 @@ export function lint(collection, data, {sessionExists} = {}){
     if (sessionExists && typeof data.session === "string" && !sessionExists(data.session)) w.push(`session ${data.session} does not exist`);
   }
   return w;
+}
+
+// The page also reads stages stored as an object ({build: "done"} or {build: {state, started}}); js/model.js stagesOf.
+const isLegacyStages = st => isObj(st);
+
+/** Lower-severity notes that never fail `lint` or block a write: today only the legacy stages object. */
+export function notes(collection, data){
+  return collection === "cards" && isObj(data) && isLegacyStages(data.stages) ? ["legacy stages object; write the array form"] : [];
+}
+
+/** A card's stages as [{label, state, started?}] in stored order, whatever shape was stored (mirrors js/model.js stagesOf). */
+export function stagesArray(st){
+  const cap = k => k.charAt(0).toUpperCase() + k.slice(1);
+  if (Array.isArray(st)) return st;
+  if (isObj(st)) return Object.entries(st).map(([k, v]) => isObj(v) ? {label: cap(k), ...v} : {label: cap(k), state: String(v)});
+  return [];
+}
+
+// README "Data contract", the chips rule: a session is touched by its started, updated, completed, every event and
+// sub-event at, and each of its cards' updated, progress[].at and stages[].started. Mirrors js/model.js touchTimes,
+// which local/ cannot import (the CLI must run from a copy of local/ alone).
+/** Every touch time (ms) of session doc s ({id, data}) and its cards ({data}); unparseable times are left out. */
+export function touchTimes(s, cards = []){
+  const d = isObj(s.data) ? s.data : {}, list = x => Array.isArray(x) ? x.filter(isObj) : [];
+  return [d.started, d.updated, d.completed, ...list(d.events).flatMap(e => [e.at, ...list(e.sub).map(x => x.at)]),
+    ...cards.map(c => c.data).filter(c => isObj(c) && c.session === s.id).flatMap(c => [c.updated, ...list(c.progress).map(p => p.at), ...stagesArray(c.stages).filter(isObj).map(x => x.started)])]
+    .map(t => typeof t === "string" ? Date.parse(t) : NaN).filter(Number.isFinite);
 }
