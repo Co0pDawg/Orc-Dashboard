@@ -37,8 +37,11 @@ function newWarnings(store, col, before, after){
   if (fresh.length) throw bad(`the result would not match the data contract: ${fresh.join("; ")}`);
 }
 
-function create(store, col, id, data){
-  if (store.get(col, id)) throw bad(`${col}/${id} already exists`);
+function create(store, col, id, data, pin){
+  const cur = store.get(col, id), v = cur ? cur.version : 0;
+  // A pin on a create follows store.next: an absent doc is version 0, so any pin conflicts.
+  if (pin !== undefined && pin !== null && pin !== v) throw new StoreError("conflict", `${col}/${id} is at version ${v}, not ${pin}`, v);
+  if (cur) throw bad(`${col}/${id} already exists`);
   newWarnings(store, col, null, data);
   return store.set(col, id, data);
 }
@@ -56,7 +59,7 @@ const OPS = {
     if (a.linksTicket) data.links = {ticket: a.linksTicket};
     optional(data, "ado", a.ado);
     data.events = [];
-    const doc = create(store, "sessions", a.id, data);
+    const doc = create(store, "sessions", a.id, data, a.ifVersion);
     return {id: a.id, version: doc.version, started: now};
   },
   cardAdd(store, a, now){
@@ -68,7 +71,7 @@ const OPS = {
     if (a.order !== undefined) { const n = Number(a.order); if (!Number.isFinite(n)) throw bad("order must be a number"); data.order = n; }
     optional(data, "ticket", a.ticket); optional(data, "task", a.task); optional(data, "kind", a.kind);
     Object.assign(data, {title: a.title, updated: now, stages: labels.map(label => ({label, state: "pending"}))});
-    const doc = create(store, "cards", a.id, data);
+    const doc = create(store, "cards", a.id, data, a.ifVersion);
     return {id: a.id, version: doc.version, stages: data.stages};
   },
   stage: (store, a, now) => change(store, "cards", a.id, a, d => {

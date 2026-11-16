@@ -137,6 +137,12 @@ test("cli: --if-version on each high-level command; a stale pin exits 2 and writ
     assert.equal((await get(ref)).version, v);
     assert.equal((await run([...c, "--if-version", String(v)])).code, 0, c.join(" "));
   }
+  for (const c of [["session", "start", "s-pin2", "--title", "t"], ["card", "add", "s-pin-c", "--session", "s-pin", "--title", "t", "--stages", "Build"]]){
+    const r = await run([...c, "--if-version", "3"]);
+    assert.equal(r.code, 2, c.join(" ") + r.err);
+    assert.match(r.err, /current version is 0/);
+  }
+  assert.equal((await run(["get", "sessions/s-pin2"])).code, 1);
   assert.equal((await run(["session", "start", "s-pin", "--title", "t", "--if-version", "0"])).code, 1);
 });
 
