@@ -1,8 +1,16 @@
-# Orc-istrator
+# `Orc-istrator`
 
-Orc-istrator is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
+<img src="docs/images/orc-istrator-banner.svg" alt="Orc-istrator banner in a green terminal style: the name, the line 'A live status board for orchestrated agent work', and one task card with its stages: Build done, Refute running, Commit queued" width="880">
 
-It exists so the person running the agents can see what each one is doing, how long it has been quiet and what it reported, without reading transcripts. It is the board half of [Orc-istration](https://github.com/Co0pDawg/Orc-istration), the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
+[![Tests on main](https://github.com/Co0pDawg/Orc-Dashboard/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/Co0pDawg/Orc-Dashboard/actions/workflows/test.yml?query=branch%3Amain+event%3Apush)
+
+**See what every agent is doing without reading transcripts.**
+
+`Orc-istrator` is a live status board for orchestrated agent work: one block per session, and one card per task moving through its stages (for example Build, Refute, Commit). The orchestrator (the main agent session) and its subagents write to it as they work, and the page only reads.
+
+It is not a task manager: nobody assigns or edits work on the page. It shows what each agent is doing, how long it has been quiet and what it reported.
+
+> **Part of [Orc-istration](https://github.com/Co0pDawg/Orc-istration)**, the method and toolkit whose rulebook points agents at this README's "Writing protocol" for when the board is written. The name keeps the repo family's spelling: Orc-istration for the setup, Orc-istrator for the board.
 
 ## Screenshots
 
@@ -263,3 +271,7 @@ Credits (colors taken from each scheme's official palette file):
 ## Contributing
 
 Teammates: push a branch and open a pull request against `main`. Run `npm test` and `npm run check` before opening it. Report bugs and ideas in [Issues](https://github.com/Co0pDawg/Orc-Dashboard/issues).
+
+---
+
+<sub>Built with Orc-istration 🧌</sub>
