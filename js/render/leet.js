@@ -23,7 +23,7 @@ export function leetCard(c, sess, min){
       ${c.updated ? `<time>${esc(t12Or(c.updated))}</time>` : ""}
       ${c.task ? idLink(c.task, ticketUrl(c.task, sess, "task"), "id") : ""}
       ${c.ticket && c.ticket !== c.task ? `<span>‹ ${idLink(c.ticket, ticketUrl(c.ticket, sess), "id")}</span>` : ""}
-      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, name, min, true)}${editBtn(c._id, name, true)}
+      <span>${esc(c.kind)}</span><span class="st ${s}">${esc(s !== "rework" && s !== "active" && stagesOf(c).some(x => !knownState(x.state)) ? "? check stages" : WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, name, min, true)}${editBtn(c._id, name, true)}
     </div>
     <h3>${esc(c.title)}</h3>
     <div><div class="lbl">plan</div><ol class="plan">${plan}</ol></div>

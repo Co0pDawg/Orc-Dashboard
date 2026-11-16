@@ -8,6 +8,9 @@ export const WORD = {done:"✓ done", active:"● running", rework:"✗ rework",
 export const knownState = st => Object.hasOwn(LABEL, String(st));
 /** x when it is an array, without null and non-object entries; else []. A malformed doc must not stop the board. */
 export const listOf = x => Array.isArray(x) ? x.filter(o => o && typeof o === "object") : [];
+/** A snapshot's docs as [{id, data}], without docs whose data is not an object (a null doc must not stop the board). */
+export const snapDocs = snap => (snap && Array.isArray(snap.docs) ? snap.docs : []).map(d => ({id: d.id, data: d.data()}))
+  .filter(d => d.data && typeof d.data === "object" && !Array.isArray(d.data));
 /** A session doc's events, guarded like listOf. */
 export const eventsOf = d => listOf(d && d.events);
 /** The activity log turns amber after this long without an event. */

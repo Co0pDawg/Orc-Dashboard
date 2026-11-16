@@ -51,7 +51,7 @@ The sections below are read by agents at run time; their headings are linked by 
 | `css/tokens.css` | Color and font tokens (light, dark, 1337) and the body base |
 | `css/base.css` | Skin-neutral layout and controls |
 | `css/sleek.css`, `css/leet.css` | Every rule of one skin, prefixed `.sleek` / `.leet` |
-| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `adoUrl` (per-session ADO project), the day in a page hash (`hashDay`, `pageHash`, `fmtDay`) |
+| `js/util.js` | Pure helpers: `esc`, `fmt`, `t12`, `clamp`, `ago`, `ticketUrl` (ticket and task links from a session's `links` or `ado`), `httpsUrl`, `idText`, the day in a page hash (`hashDay`, `pageHash`, `fmtDay`) |
 | `js/model.js` | Pure data logic: card state, stage timing, sub-event windows, which sessions were touched on a day, visible/live sessions |
 | `js/prefs.js` | Every localStorage read and write |
 | `js/state.js` | The shared runtime state object |
@@ -67,6 +67,7 @@ The sections below are read by agents at run time; their headings are linked by 
 | `js/theme.js`, `js/theme-ui.js` | Themes: the pure parts (token list, merge, hex/rgb, contrast, migration, editor rows) and the Customize colors editor |
 | `js/partials/settings-menu.js` | The Settings menu markup (static). Imported first by `main.js`, so its controls exist before other modules look them up |
 | `js/main.js` | The only entry: binds the controllers, applies the skin, subscribes to the db |
+| `js/conn.js` | Connection state per subscription and the top-bar notice ("Board server not reachable") |
 | `tests/search.test.js` | `node:test` suite for `search.js` |
 | `tests/model.test.js`, `tests/day.test.js` | `node:test` suites for `model.js` and `util.js` (`day.test.js`: the day filter and the hash helpers) |
 | `local/store.js` | Local backend: the file-backed document store (`<data dir>/<collection>/<id>.json`) |
@@ -106,7 +107,7 @@ Two backends take the same data. Which one a machine uses: `~/.claude/board.loca
 | **PR opened** | Set the session's `pr: {id, url, status: "draft"}` (url is the PR's Azure DevOps link). |
 | **Finish**: the task's last write | Session `status: "Done"`, `completed`, a closing `now` ("Draft PR #### opened"), and a final event. Never delete session or card docs unless the user asks. |
 | **Timeline upload**: at the Start of every orchestrated task, and when the user says "sync my timeline" | For each file in `~/.claude/timeline-sync/pending/` (`timeline-<date>.json`, built every 15 minutes by the worklog's scheduled sync), `get` `timeline/<date>`, then `set` it with `file_path` = that file, pinned to `if_version` when the doc exists, and delete the file after the write succeeds. A session with only `db_write` cannot send a file: inline a doc under 64 KB, otherwise leave the file pending for a session with ArtifactData and tell the user. See the worklog README, "Uploading". |
-| **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not `completed` or `abandoned`, read the PR (AcmeApp: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
+| **PR refresh**: at the Start of every orchestrated task | For each session with `completed` whose `pr.status` is not final (`completed`, `merged`, `closed` or `abandoned`), read the PR (AcmeApp: `& ./.claude/scripts/ado.ps1 pr-get -Pr <id>`, cross-project for other repos) and write `pr.status`: `draft` while `isDraft`, else its `status`. One batch for all of them; skip when nothing changed. |
 
 `tokens` and `note` are card fields. The page never shows them inside a stage entry.
 

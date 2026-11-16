@@ -195,5 +195,5 @@
   .leet .wk-dot{border-radius:1px}
   .leet .dlg [data-copy]{background:var(--t-green);border-color:var(--t-green);color:var(--t-on-green)}
 }
-.leet ol.plan li.unknown{color:var(--t-red)}
+.leet ol.plan li.unknown{color:var(--t-amber);font-style:italic;text-decoration:underline dashed}
 .leet .conn{color:var(--t-red)}

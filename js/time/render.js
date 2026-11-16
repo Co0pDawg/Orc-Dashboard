@@ -27,9 +27,14 @@ const minutes = list => list.reduce((n, x) => n + (ms(x.end) - ms(x.start)) / MI
 /** The worklog roll-up's billed minutes: its blocks, which carry slot rounding, .map fixes and ADO actions; null with none. */
 export const rollupMin = doc => doc && Array.isArray(doc.blocks) && doc.blocks.length ? minutes(doc.blocks) : null;
 const rollupFact = min => min == null ? "" : `<span title="The worklog roll-up's billed total">Roll-up <b>${dur(min)}</b></span>`;
-// ponytail: color by ticket number mod 6, so a ticket keeps its color in every view and day; two tickets can share one.
+// ponytail: color by ticket number mod 6 (APP-<digits>), else by the id's char-code sum mod 6, so a ticket keeps its color
+// in every view and day; two tickets can share one.
 /** The ticket color class: tk-1..tk-6, or tk-none for No ticket. */
-export const tkClass = t => t ? "tk-" + (Number(t.slice(4)) % 6 + 1) : "tk-none";
+export const tkClass = t => {
+  if (!t) return "tk-none";
+  const m = /^APP-(\d+)$/.exec(t), n = m ? Number(m[1]) : [...String(t)].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return "tk-" + (n % 6 + 1);
+};
 const label = t => t || "No ticket";
 
 /** Review Time suggestion: a ticket every one of whose segments ran in a `review` session; merged into the doc's flags. */

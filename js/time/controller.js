@@ -3,6 +3,7 @@
 import {state} from "../state.js";
 import {saveEntryLine, saveEntriesFold} from "../prefs.js";
 import {$, say, setDay} from "../board.js";
+import {snapDocs} from "../model.js";
 import {drivingSegments, agentSpans, agentMarkers, normTicket, waitingSegments} from "./segments.js";
 import {buildEntries} from "./entries.js";
 import {entryNotes} from "./notes.js";
@@ -30,9 +31,9 @@ function subscribe(){
   // The old range's docs stay until the new snapshot lands, so Month -> Day never flashes "No time synced".
   T.stop?.(); T.key = key;
   T.stop = state.db.collection("timeline").where("date", ">=", from).where("date", "<=", to).onSnapshot(snap => {
-    T.docs = new Map(snap.docs.map(d => { const x = d.data(); return [x.date || d.id, x]; }));
-    state.conn?.ok(); renderTime();
-  }, () => state.conn?.fail());
+    T.docs = new Map(snapDocs(snap).map(d => [d.data.date || d.id, d.data]));
+    state.conn?.ok("timeline"); renderTime();
+  }, () => state.conn?.fail("timeline"));
 }
 
 /** One day computed from its timeline doc and the board's sessions and cards. */

@@ -12,9 +12,13 @@ const boardTitle = s => scrub(s).replace(/^(?:PR feedback:|PR:|Peer review PR\b:
 // A note that is only the ADO "<Type>: <title>" fallback says nothing the label does not.
 const ADO_NOTE = /^(?:User Story|Task|Bug|Support Item|Feature|Epic): /;
 
-// A model name: a family word, then any version or variant segments (claude-opus-5-5, gemini-3.8-flash-high, gpt-6.1-sol).
-// A family word alone counts too ("ran it on sonnet"); ordinary words that only start with one (Flashlight) are left alone.
-const MODEL = /\b(?:claude|opus|sonnet|haiku|gemini|gpt|codex|flash|llama|mistral|grok|deepseek|qwen)(?:[-.][a-z0-9]+)*\b/gi;
+// A model name. Opus, sonnet and haiku go even alone ("reviewed by sonnet"), but not after an article ("the opus of work"),
+// with an optional "Claude" before and version after (Claude Opus 4.1, opus 5.5, claude-opus-5-5). Ambiguous words
+// (gemini, gpt, codex, mistral, ...) go only as part of an id or with a version (gemini-3.8-flash-high, GPT-6.1 Sol,
+// Gemini 4 Hydrogen, codex-1), with one variant word after; flash, pro or sol alone are ordinary words.
+const VER = String.raw`\d+(?:\.\d+)*[a-z]?`, VARIANT = "(?:sol|luna|terra|hydrogen|helium|flash|pro|mini|nano|high|low|medium|max|ultra|lite|turbo)";
+const MODEL = new RegExp(String.raw`(?<!\b(?:the|a|an|this|that|his|her|their|its|magnum)\s)\b(?:(?:claude[-\s]+)?(?:opus|sonnet|haiku)(?:-[a-z0-9]+)*(?:\s+${VER})?`
+  + String.raw`|claude(?:-[a-z0-9.]+)+|(?:gemini|gpt|codex|mistral|llama|grok|deepseek|qwen)(?:(?:-[a-z0-9.]+)+|\s+${VER})(?:\s+${VARIANT})?)\b`, "gi");
 /** A line with commit hashes, PR numbers, counts, model names, arrows and the brackets they leave empty removed. */
 export function scrub(s){
   return String(s ?? "")
@@ -86,7 +90,7 @@ export function scrumSummary({date, segments = [], sessions = [], cards = [], no
     const nextStage = cards.filter(c => c.session === s.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).flatMap(stagesOf).find(x => x.state === "pending");
     const inReview = s.data.pr && s.data.pr.id && prOpen(s.data.pr.status);
     const head = scrub(s.data.title) || sessionTicket(s) || s.id;
-    return head + (nextStage ? ": next up " + nextStage.label.toLowerCase() : "") + (inReview ? "; PR in review" : "");
+    return head + (nextStage ? ": next up " + String(nextStage.label ?? "").toLowerCase() : "") + (inReview ? "; PR in review" : "");
   });
 
   const blockers = cards.filter(c => cardState(c) === "rework").flatMap(c => {

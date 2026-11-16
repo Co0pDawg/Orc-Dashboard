@@ -1,5 +1,5 @@
 // The session stack: one block per shown session (header + pane grid), live timers, and column fitting.
-import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, eventsOf, QUIET_MS} from "./model.js";
+import {cardState, isDone, visibleSessions, doneCount, touchedOn, liveIds, logId, isLog, mergeOrder, eventsOf, snapDocs, QUIET_MS} from "./model.js";
 import {ago, esc, untilText} from "./util.js";
 import {state} from "./state.js";
 import {saveLayout, saveFold, saveHideDone} from "./prefs.js";
@@ -167,9 +167,9 @@ function openView(sid){
   ctl.append(mover, sedit, hide, fold); shead.append(summary, ctl); el.append(shead, tiles);
   const v = {el, summary, ctl, mover, sedit, hide, fold, tiles, cards: [], stop: null, sortable: null};
   v.stop = state.db.collection("cards").where("session", "==", sid).onSnapshot(snap => {
-    v.cards = snap.docs.map(d => ({_id: d.id, ...d.data()})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    state.conn?.ok(); render();
-  }, () => state.conn?.fail());
+    v.cards = snapDocs(snap).map(d => ({_id: d.id, ...d.data})).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    state.conn?.ok("cards:" + sid); render();
+  }, () => state.conn?.fail("cards:" + sid));
   // Sortable is wired here, not in layout-edit.js, so this module never imports a DOM controller above it.
   // It stays enabled: only a pane in edit mode renders a .grip, so only that pane can be dragged.
   if (window.Sortable) v.sortable = Sortable.create(tiles, {
@@ -187,6 +187,7 @@ function openView(sid){
 }
 function closeView(sid){
   const v = state.views.get(sid); if (!v) return;
+  state.conn?.drop("cards:" + sid);
   v.stop?.(); v.sortable?.destroy(); v.el.remove(); state.views.delete(sid);
 }
 
