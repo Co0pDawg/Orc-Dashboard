@@ -142,8 +142,10 @@ test("scrub: model names from any vendor go, ordinary words stay", () => {
 test("normTicket: APP spellings join as before; other tracker ids keep their own column", () => {
   for (const t of ["APP-17619*", "17619", "#17619", 17619, "app-17619"]) assert.equal(normTicket(t), "APP-17619", String(t));
   assert.equal(normTicket(" PROJ-9 "), "PROJ-9");
-  assert.equal(normTicket("wid-42"), "wid-42");
-  assert.equal(normTicket("owner/repo#12"), "owner/repo#12");
+  for (const t of ["WID-42*", "wid-42", "WID-42", " wid-42* "]) assert.equal(normTicket(t), "WID-42", t);
+  assert.equal(normTicket("owner/repo#12"), "OWNER/REPO#12");
+  assert.notEqual(tkClass(normTicket("wid-42")), "tk-none");
+  assert.equal(tkClass(normTicket("wid-42*")), tkClass(normTicket("WID-42")), "one color for one ticket");
   for (const t of ["PR-6243", "APP-", "UNKNOWN", "-", "a-b", "", null]) assert.equal(normTicket(t), null, String(t));
 });
 
@@ -268,4 +270,12 @@ test("scrub of the owner's name: no tracked text file contains it", () => {
   const r = spawnSync("git", ["grep", "-n", "-i", "-I", "-w", name], {cwd: root, encoding: "utf8"});
   assert.equal(r.error, undefined);
   assert.equal(r.stdout, "", r.stdout);
+});
+
+test("scrub: ordinary work text that merely starts with a model family word stays whole", () => {
+  for (const s of ["Update claude-code hooks", "Fix .claude-plugin manifest", "Upgrade llama-index pin", "Migrate to codex-cli wrapper",
+    "Add haiku-style summaries"]) assert.equal(scrub(s), s, s);
+  assert.equal(scrub("Builder opus 6 files in scope"), "Builder 6 files in scope", "a number before a noun is not a version");
+  assert.equal(scrub("Builder opus 6 wrote the spec"), "Builder wrote the spec", "a bare version before a verb still goes");
+  assert.equal(scrub("Ran claude-3-5-sonnet on it"), "Ran on it");
 });

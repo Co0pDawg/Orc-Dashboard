@@ -143,3 +143,57 @@ test("store: a collection name may not start with a dot (it would be stored but 
   assert.equal(s.set("visible", ".dotid", {a: 1}).version, 1, "a doc id may still start with a dot");
   assert.deepEqual(s.collections(), ["visible"]);
 });
+
+// Raw JSON call against the same server, for the HTTP-level checks.
+const api = async (method, path, body) => { const r = await fetch(`http://127.0.0.1:${env.ORC_BOARD_PORT}${path}`, {method, headers: {"x-orc-board": "1", "content-type": "application/json"}, body: body && JSON.stringify(body)}); return {status: r.status, body: await r.json().catch(() => null)}; };
+
+test("lint: an invalid session reference is a warning; an applied PUT, append, batch and import answers 200 and lands once", async () => {
+  for (const bad of ["sessions/abc", ""]){
+    const k = bad ? "slash" : "empty", card = {title: "t", session: bad, stages: []};
+    const put = await api("PUT", `/api/db/cards/r1-put-${k}`, {data: card});
+    assert.equal(put.status, 200); assert.equal(put.body.version, 1);
+    assert.match(put.body.warnings.join(), /does not exist/);
+    const app = await api("POST", `/api/db/cards/r1-put-${k}/append`, {field: "progress", value: {at: "2026-11-15T10:00:00-05:00", text: "x"}});
+    assert.equal(app.status, 200); assert.equal(app.body.version, 2); assert.match(app.body.warnings.join(), /does not exist/);
+    const bat = await api("POST", "/api/batch", {writes: [{op: "set", collection: "cards", id: `r1-bat-${k}`, data: card}]});
+    assert.equal(bat.status, 200); assert.equal(bat.body.docs[0].version, 1); assert.match(bat.body.warnings.join(), /does not exist/);
+    const file = join(tmp(), "imp.json");
+    writeFileSync(file, JSON.stringify({cards: {[`r1-imp-${k}`]: card}}));
+    assert.equal(ok(await run(["import", file])).imported, 1);
+    assert.equal((await api("GET", `/api/db/cards/r1-imp-${k}`)).body.version, 1);
+    assert.equal((await api("GET", `/api/db/cards/r1-put-${k}`)).body.data.progress.length, 1, "applied exactly once");
+  }
+});
+
+test("ops: stage and progress on a card whose session reference is invalid still succeed, with a warning", async () => {
+  ok(await run(["set", "cards/r1-ops", "--data", '{"title":"t","session":"sessions/abc","stages":[{"label":"Build","state":"pending"}]}']));
+  const r = await run(["stage", "r1-ops", "Build", "active"]);
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.err, /does not exist/);
+  assert.equal((await run(["progress", "r1-ops", "went on"])).code, 0);
+});
+
+test("ops: stage on a legacy stages object converts every entry; an odd entry keeps its raw state with a warning, not a refusal", async () => {
+  ok(await run(["session", "start", "s-leg2", "--title", "t"]));
+  ok(await run(["set", "cards/leg2", "--data", '{"session":"s-leg2","title":"t","stages":{"spec":"done","build":{"started":"2026-11-15T19:07:00-05:00"},"refute":null,"commit":"weird","pr":{"state":"waiting"}}}']));
+  const r = await run(["stage", "leg2", "Spec", "done"]);
+  assert.equal(r.code, 0, r.err);
+  assert.deepEqual(r.json.stages.map(s => [s.label, s.state]), [["Spec", "done"], ["Build", "pending"], ["Refute", "null"], ["Commit", "weird"], ["Pr", "waiting"]]);
+  assert.equal(r.json.stages[1].started, "2026-11-15T19:07:00-05:00");
+  assert.match(r.err, /state "weird"/);
+  assert.match(r.err, /state "waiting"/);
+  assert.equal((await get("cards/leg2")).data.stages.length, 5);
+});
+
+test("set-field: the remaining words are the text; --json takes exactly one argument or --stdin", async () => {
+  ok(await run(["session", "start", "s-words", "--title", "t"]));
+  ok(await run(["set-field", "sessions/s-words", "now", "Builder", "on", "Task", "18001"]));
+  assert.equal((await get("sessions/s-words")).data.now, "Builder on Task 18001");
+  ok(await run(["set-field", "sessions/s-words", "note", "two", "words"]));
+  assert.equal((await get("sessions/s-words")).data.note, "two words");
+  ok(await run(["set-field", "sessions/s-words", "pr", "--json", '{"id": 5, "status": "open"}']));
+  assert.deepEqual((await get("sessions/s-words")).data.pr, {id: 5, status: "open"});
+  assert.match((await run(["set-field", "sessions/s-words", "pr", "--json", "{", '"id": 5}'])).err, /exactly one argument/);
+  ok(await run(["set-field", "sessions/s-words", "pr", "--json", "--stdin"], '{"id": 6}'));
+  assert.equal((await get("sessions/s-words")).data.pr.id, 6);
+});

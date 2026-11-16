@@ -43,10 +43,14 @@ export function lint(collection, data, {sessionExists} = {}){
       });
     }
     lines(data.progress, "progress", false);
-    if (sessionExists && typeof data.session === "string" && !sessionExists(data.session)) w.push(`session ${data.session} does not exist`);
+    if (sessionExists && typeof data.session === "string" && !exists(sessionExists, data.session)) w.push(`session ${data.session} does not exist`);
   }
   return w;
 }
+
+// A lookup that throws (an id the store rejects, like "sessions/abc") means the reference is bad: a warning, never an error,
+// because lint runs after a write was applied and must not change that write's answer.
+const exists = (fn, id) => { try { return !!fn(id); } catch { return false; } };
 
 // The page also reads stages stored as an object ({build: "done"} or {build: {state, started}}); js/model.js stagesOf.
 const isLegacyStages = st => isObj(st);
@@ -56,11 +60,15 @@ export function notes(collection, data){
   return collection === "cards" && isObj(data) && isLegacyStages(data.stages) ? ["legacy stages object; write the array form"] : [];
 }
 
-/** A card's stages as [{label, state, started?}] in stored order, whatever shape was stored (mirrors js/model.js stagesOf). */
+/**
+ * A card's stages as [{label, state, started?}] in stored order, whatever shape was stored. Mirrors js/model.js stagesOf
+ * (an object entry {build: "done"} or {build: {state, started}} becomes one stage, the key capitalised); an object entry
+ * without a state gets "pending", so every entry is a valid {label, state}. An unknown state stays raw (lint warns).
+ */
 export function stagesArray(st){
   const cap = k => k.charAt(0).toUpperCase() + k.slice(1);
   if (Array.isArray(st)) return st;
-  if (isObj(st)) return Object.entries(st).map(([k, v]) => isObj(v) ? {label: cap(k), ...v} : {label: cap(k), state: String(v)});
+  if (isObj(st)) return Object.entries(st).map(([k, v]) => isObj(v) ? {label: cap(k), ...v, state: v.state == null ? "pending" : String(v.state)} : {label: cap(k), state: String(v)});
   return [];
 }
 

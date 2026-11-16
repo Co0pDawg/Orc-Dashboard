@@ -5,12 +5,13 @@ const iso = ms => new Date(ms).toISOString();
 const ms = t => Date.parse(t);
 
 /** "APP-NNNNN" for APP-17619, APP-17619*, 17619, #17619 or 17619 (number); any other letters-digits id (PROJ-9) or
- * owner/repo#N as written (trimmed); null for UNKNOWN, PR-6243, "-", "" or null. */
+ * owner/repo#N as one upper-cased key (trimmed, a trailing * dropped: wid-42, WID-42 and WID-42* are one ticket); null for UNKNOWN, PR-6243, "-", "" or null. */
 export function normTicket(t){
   const s = String(t ?? "").trim(), m = /^(?:APP-|#)?(\d+)\*?$/i.exec(s);
   if (m) return "APP-" + m[1];
   // A bare PR-NNNN is a pull request, not a ticket, and APP- with no number is no ticket.
-  return /^(?!PR-|APP-)[A-Za-z][A-Za-z0-9_]*-\d+$/i.test(s) || /^[\w.-]+\/[\w.-]+#\d+$/.test(s) ? s : null;
+  const k = s.replace(/\*$/, "");
+  return /^(?!PR-|APP-)[A-Za-z][A-Za-z0-9_]*-\d+$/i.test(k) || /^[\w.-]+\/[\w.-]+#\d+$/.test(k) ? k.toUpperCase() : null;
 }
 
 /** The `agent` events as markers. */

@@ -6,7 +6,7 @@ import {saveSkin, saveShown} from "./prefs.js";
 import {$, toggle, render, fitCols, startBoard, setDay, today, visible, doneOnDay, say} from "./board.js";
 import {hashDay, pageHash, t12} from "./util.js";
 import {createConn, connText, showNotice} from "./conn.js";
-import {snapDocs} from "./model.js";
+import {snapDocs, prunedShown} from "./model.js";
 import {renderChooser, initChooser, openSearch} from "./chooser.js";
 import {keepOpened} from "./search.js";
 import {initLayoutEdit} from "./layout-edit.js";
@@ -58,7 +58,7 @@ async function boot(){
   state.db.collection("sessions").orderBy("updated", "desc").onSnapshot(snap => {
     state.conn.ok("sessions");
     state.sessions = snapDocs(snap);
-    const keep = state.shown.filter(id => state.sessions.some(x => x.id === id));
+    const keep = prunedShown(state.shown, state.sessions);
     if (keep.length !== state.shown.length){ state.shown = keep; saveShown(state.shown); }
     renderChooser(); render(); renderTime();
   }, () => state.conn.fail("sessions"));

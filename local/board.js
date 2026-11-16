@@ -77,7 +77,8 @@ const norm = p => process.platform === "win32" ? resolve(p).toLowerCase() : reso
 const ownRoot = realpathSync(dirname(fileURLToPath(import.meta.url)));
 const otherCheckout = h => !!h.root && norm(h.root) !== norm(ownRoot);
 // Stale: a server from this checkout hashed other local/*.js contents at its start than the files on disk hold now.
-const isStale = h => !otherCheckout(h) && !!h.code && h.code !== codeHash();
+// A health with no code is a server from before the code hash (no /api/op, no /api/shutdown), so it is stale too.
+const isStale = h => !otherCheckout(h) && (!h.code || h.code !== codeHash());
 const otherNotice = (h, port) => console.error(`board server on port ${port} runs code from ${h.root}; this CLI is ${ownRoot}; using the running server`);
 // The log sits inside the data dir, so it never lands in whatever folder holds the data dir.
 const logPath = data => join(data, ".server.log");
@@ -99,12 +100,27 @@ async function spawnServer(base, port, dataDir){
   throw new CliError(`started the board server but ${base} did not answer within 5 s; last lines of ${log}:\n${tail(log)}`);
 }
 
+// An older server has no /api/shutdown: stop it by the pid its own health reported, never one that health does not vouch for.
+async function killOld(base, pid){
+  const h = await health(base);
+  if (h?.app !== "orc-board" || !Number.isInteger(pid) || h.pid !== pid) return false;
+  console.error(`orc-board: the server on ${base} (pid ${pid}) is too old for /api/shutdown; stopping it by pid`);
+  try { process.kill(pid); } catch (e) { if (e.code !== "ESRCH") throw new CliError(`cannot stop pid ${pid}: ${e.message}`); }
+  return true;
+}
+
 // Asks the server to exit (same protections as any write) and waits until the port stops answering.
-// With pid, only that server stops; false when another server has taken the port since.
+// With pid, only that server stops. True once the server is gone; false when one still answers (another server has taken
+// the port since, or this one refused): the caller re-checks the health.
 async function stopServer(base, pid){
   try { await call(base, "POST", "/api/shutdown", {pid}); }
-  // 412: another server took the port; a failed connection: it is already going. Either way the caller re-checks.
-  catch (e) { if (/ 412 /.test(e.message) || !(e instanceof CliError)) return false; throw e; }
+  catch (e) {
+    // 412: another server took the port. 404: an older server, stopped by pid. A failed connection: it is already going.
+    if (/: 412\b/.test(e.message)) return false;
+    if (/: 404\b/.test(e.message)){ if (!(await killOld(base, pid))) return false; }
+    else if (e instanceof CliError) throw e;
+    else { for (const until = Date.now() + 3000; Date.now() < until && await health(base);) await new Promise(r => setTimeout(r, 100)); return !(await health(base)); }
+  }
   for (const until = Date.now() + 5000; Date.now() < until;){
     if (!(await health(base))){
       // The listener closes first and the process then drains for up to 2 s: wait for it to exit, so a restart never overlaps it on the data dir.
@@ -183,7 +199,15 @@ export async function run(argv){
   if (cmd === "stop" || cmd === "restart"){
     const h = await health(base);
     if (h && h.app !== "orc-board") throw new CliError(`port ${port} answers but is not the orc board; not stopping it`);
-    if (h){ sameData(h); if (cmd === "restart" && otherCheckout(h)) console.error(`board server on port ${port} runs code from ${h.root}; restarting it with this CLI's code (${ownRoot})`); await stopServer(base, h.pid); }
+    if (h){
+      sameData(h);
+      if (cmd === "restart" && otherCheckout(h)) console.error(`board server on port ${port} runs code from ${h.root}; restarting it with this CLI's code (${ownRoot})`);
+      await stopServer(base, h.pid);
+      // A refused shutdown (412) or a failed connection with the server still up must not read as success.
+      const n = await health(base);
+      if (n && cmd === "stop") return withExit({stopped: false, running: n.app === "orc-board", pid: n.pid}, 1);
+      if (n) throw new CliError(`the board server on port ${port} (pid ${n.pid}) did not stop; not restarting`);
+    }
     if (cmd === "stop") return h ? {stopped: true, pid: h.pid} : withExit({stopped: false, running: false}, 3);
     const n = await spawnServer(base, port, h?.dataDir);
     return {restarted: true, pid: n.pid, previousPid: h?.pid ?? null, started: n.started};
@@ -263,7 +287,10 @@ async function runHigh(cmd, rest, o, base, port){
     case "event": req = ["event", {id: need(rest[0], "a session id"), text: text(rest.slice(1)), card: o.card}]; break;
     case "checkin": req = ["checkin", {id: need(rest[0], "a session id"), text: text(rest.slice(1)), card: o.card}]; break;
     case "set-field": {
-      const [collection, id] = rawRef(rest[0]), field = need(rest[1], "a field"), raw = o.stdin ? stdin() : need(rest[2], "a value");
+      const [collection, id] = rawRef(rest[0]), field = need(rest[1], "a field"), words = rest.slice(2);
+      if (o.json && !o.stdin && words.length !== 1) throw new CliError("set-field --json takes the value as exactly one argument (quote it) or --stdin");
+      // Without --json the remaining words are the text, joined by spaces.
+      const raw = o.stdin ? stdin() : need(words.join(" "), "a value");
       let value;
       if (o.json){ try { value = JSON.parse(raw); } catch (e) { throw new CliError(`--json: invalid JSON: ${e.message}`); } }
       else if (STRING_FIELDS.includes(field)) value = raw;

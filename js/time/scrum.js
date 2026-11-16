@@ -16,9 +16,14 @@ const ADO_NOTE = /^(?:User Story|Task|Bug|Support Item|Feature|Epic): /;
 // with an optional "Claude" before and version after (Claude Opus 4.1, opus 5.5, claude-opus-5-5). Ambiguous words
 // (gemini, gpt, codex, mistral, ...) go only as part of an id or with a version (gemini-3.8-flash-high, GPT-6.1 Sol,
 // Gemini 4 Hydrogen, codex-1), with one variant word after; flash, pro or sol alone are ordinary words.
-const VER = String.raw`\d+(?:\.\d+)*[a-z]?`, VARIANT = "(?:sol|luna|terra|hydrogen|helium|flash|pro|mini|nano|high|low|medium|max|ultra|lite|turbo)";
-const MODEL = new RegExp(String.raw`(?<!\b(?:the|a|an|this|that|his|her|their|its|magnum)\s)\b(?:(?:claude[-\s]+)?(?:opus|sonnet|haiku)(?:-[a-z0-9]+)*(?:\s+${VER})?`
-  + String.raw`|claude(?:-[a-z0-9.]+)+|(?:gemini|gpt|codex|mistral|llama|grok|deepseek|qwen)(?:(?:-[a-z0-9.]+)+|\s+${VER})(?:\s+${VARIANT})?)\b`, "gi");
+// A hyphenated word is an id only when everything after the family word is a version or a known variant, so ordinary
+// work text (claude-code, llama-index, codex-cli, haiku-style) stays. A bare number counts as a version only when no
+// plural noun follows ("opus 6 files in scope" keeps "6 files").
+const NUM = String.raw`\d+(?:\.\d+)*[a-z]?`, VARIANT = "(?:sol|luna|terra|astra|carbon|argon|hydrogen|helium|flash|pro|mini|nano|high|low|medium|xhigh|max|ultra|lite|turbo)";
+const HY = String.raw`(?:-(?:${NUM}|opus|sonnet|haiku|flash|pro|mini|nano|lite|turbo|sol|luna|terra|astra|carbon|argon|hydrogen|preview|latest|thinking|high|medium|low|xhigh|oss))`;
+const VER = String.raw`(?:\d+(?:\.\d+)+[a-z]?|\d+[a-z]?(?!\w|\.\d)(?!\s+[a-z]*[a-rt-z]s\b))`;
+const MODEL = new RegExp(String.raw`(?<!\b(?:the|a|an|this|that|his|her|their|its|magnum)\s)\b(?:(?:claude[-\s]+)?(?:opus|sonnet|haiku)${HY}*(?:\s+${VER})?`
+  + String.raw`|claude${HY}+|(?:gemini|gpt|codex|mistral|llama|grok|deepseek|qwen)(?:${HY}+|\s+${VER})(?:\s+${VARIANT})?)(?!-[a-z0-9])\b`, "gi");
 /** A line with commit hashes, PR numbers, counts, model names, arrows and the brackets they leave empty removed. */
 export function scrub(s){
   return String(s ?? "")
@@ -27,7 +32,7 @@ export function scrub(s){
     .replace(/\(\d+(?:\.\d+)?k\)/gi, "").replace(/\b\d+(?:\/\d+)+\b/g, "")
     .replace(/\b\d[\d,]*\s+(?:pass\w*|fail\w*|tests?|findings?|must-fix)\b/gi, "")
     .replace(MODEL, "").replace(/->|\u2192/g, "")
-    .replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+([,.;:)])/g, "$1").replace(/([,;:])[,;:]+/g, "$1").replace(/\s{2,}/g, " ")
+    .replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+([,;:)]|\.(?!\w))/g, "$1").replace(/([,;:])[,;:]+/g, "$1").replace(/\s{2,}/g, " ")
     .trim().replace(/^[\s,;:.-]+|[\s,;:-]+$/g, "");
 }
 

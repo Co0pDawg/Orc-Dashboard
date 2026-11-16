@@ -33,9 +33,13 @@ function change(store, col, id, a, fn){
   return {id, version: doc.version, [field]: value, ...(left.length ? {warnings: left.map(w => `${col}/${id}: ${w}`)} : {})};
 }
 
+// A legacy stages object is read as the array the page shows, so the warnings it would have are not new when stage converts it.
+const asRead = (col, d) => col === "cards" && d && d.stages && typeof d.stages === "object" && !Array.isArray(d.stages) ? {...d, stages: stagesArray(d.stages)} : d;
+
+// store.get throws on an id the store rejects; lint treats a throw as "does not exist", so a bad reference never fails a command.
 function newWarnings(store, col, before, after){
   const exists = s => !!store.get("sessions", s);
-  const old = new Set(before ? lint(col, before, {sessionExists: exists}) : []);
+  const old = new Set(before ? lint(col, asRead(col, before), {sessionExists: exists}) : []);
   const fresh = lint(col, after, {sessionExists: exists}).filter(w => !old.has(w));
   if (fresh.length) throw bad(`the result would not match the data contract: ${fresh.join("; ")}`);
   return lint(col, after, {sessionExists: exists});

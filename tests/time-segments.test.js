@@ -208,3 +208,11 @@ test("waitingSegments: the last-driven ticket beats a later-started span of anot
   const w = waitingSegments(drive, [S("APP-1", "10:00", "11:00"), S("APP-2", "10:20", "10:50")]).map(x => x.ticket + " " + hm(x.start) + "-" + hm(x.end));
   assert.deepEqual(w, ["APP-1 10:00-11:00"]);
 });
+
+test("drivingSegments: wid-42, WID-42 and WID-42* are one ticket and merge into one segment", () => {
+  const ev = [{kind: "prompt", session: "s", ticket: "wid-42", at: "2026-10-21T10:00:00Z"}, {kind: "stop", session: "s", ticket: "WID-42*", at: "2026-10-21T10:05:00Z"},
+    {kind: "prompt", session: "s", ticket: "WID-42", at: "2026-10-21T10:10:00Z"}, {kind: "stop", session: "s", ticket: "WID-42", at: "2026-10-21T10:12:00Z"}];
+  const segs = drivingSegments(ev, {tailMin: 15});
+  assert.equal(segs.length, 1);
+  assert.equal(normTicket(segs[0].ticket), "WID-42");
+});

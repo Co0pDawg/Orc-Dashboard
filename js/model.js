@@ -128,3 +128,6 @@ export function mergeOrder(prev, next){
   prev.forEach((id, i) => { if (!out.includes(id)) out.splice(i ? out.indexOf(prev[i - 1]) + 1 : 0, 0, id); });
   return out;
 }
+// An empty snapshot (first load before data, a server restarted on an empty dir) says nothing about which sessions exist.
+/** The saved selection minus ids no session has; unchanged when there are no sessions at all. */
+export const prunedShown = (shown, sessions) => sessions.length ? shown.filter(id => sessions.some(x => x.id === id)) : shown;

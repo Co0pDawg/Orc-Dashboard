@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal, mergeOrder} from "../js/model.js";
+import {cardState, stagesOf, stageSince, isDone, subsOf, lastAt, liveIds, visibleSessions, progress, prFinal, mergeOrder, prunedShown} from "../js/model.js";
 import {ago, esc, ticketUrl} from "../js/util.js";
 
 const stages = (...s) => ({stages: s.map(state => ({label: state, state}))});
@@ -143,4 +143,9 @@ test("untilText counts down to a scheduled start and says starting now once it p
   assert.match(untilText("2026-10-22T14:05:00", now), /· in 5m$/);
   assert.match(untilText("2026-10-22T13:00:00", now), /^starting now/);
   assert.equal(untilText("nope", now), "");
+});
+
+test("prunedShown: drops ids no session has, but an empty snapshot keeps the saved selection", () => {
+  assert.deepEqual(prunedShown(["a", "gone"], [{id: "a"}, {id: "b"}]), ["a"]);
+  assert.deepEqual(prunedShown(["a", "b"], []), ["a", "b"]);
 });
