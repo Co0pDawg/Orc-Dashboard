@@ -167,7 +167,12 @@ export function start({port = DEFAULT_PORT, dataDir = defaultDataDir(), onShutdo
     handle(req, res, server.address().port).catch(e => {
       if (res.headersSent) return res.end();
       if (e instanceof StoreError) return send(res, {conflict: 409, notfound: 404, corrupt: 500}[e.code] || 400, e.code === "conflict" ? {error: "conflict", version: e.version, message: e.message} : {error: e.message});
-      if (e instanceof HttpError) return send(res, e.status, {error: e.message});
+      if (e instanceof HttpError){
+        // An oversized body is answered before it is fully read: close this connection, or the unread remainder
+        // corrupts the next request a keep-alive client sends on it.
+        if (e.status === 413){ res.setHeader("connection", "close"); res.once("finish", () => req.destroy()); }
+        return send(res, e.status, {error: e.message});
+      }
       send(res, 500, {error: String(e?.message || e)});
     });
   });
