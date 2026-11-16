@@ -106,7 +106,14 @@ async function stopServer(base, pid){
   // 412: another server took the port; a failed connection: it is already going. Either way the caller re-checks.
   catch (e) { if (/ 412 /.test(e.message) || !(e instanceof CliError)) return false; throw e; }
   for (const until = Date.now() + 5000; Date.now() < until;){
-    if (!(await health(base))) return true;
+    if (!(await health(base))){
+      // The listener closes first and the process then drains for up to 2 s: wait for it to exit, so a restart never overlaps it on the data dir.
+      for (const gone = Date.now() + 4000; pid && Date.now() < gone;){
+        try { process.kill(pid, 0); } catch { break; }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return true;
+    }
     await new Promise(r => setTimeout(r, 100));
   }
   throw new CliError(`asked the board server on ${base} to stop but it still answers after 5 s`);
@@ -176,7 +183,7 @@ export async function run(argv){
   if (cmd === "stop" || cmd === "restart"){
     const h = await health(base);
     if (h && h.app !== "orc-board") throw new CliError(`port ${port} answers but is not the orc board; not stopping it`);
-    if (h){ sameData(h); if (cmd === "restart" && otherCheckout(h)) otherNotice(h, port); await stopServer(base, h.pid); }
+    if (h){ sameData(h); if (cmd === "restart" && otherCheckout(h)) console.error(`board server on port ${port} runs code from ${h.root}; restarting it with this CLI's code (${ownRoot})`); await stopServer(base, h.pid); }
     if (cmd === "stop") return h ? {stopped: true, pid: h.pid} : withExit({stopped: false, running: false}, 3);
     const n = await spawnServer(base, port, h?.dataDir);
     return {restarted: true, pid: n.pid, previousPid: h?.pid ?? null, started: n.started};

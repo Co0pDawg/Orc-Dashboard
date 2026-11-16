@@ -44,7 +44,7 @@ test("cli: two checkouts on one port never restart each other's server; status n
     assert.equal(st.json.stale, false);
     const r = await run(join(b, "board.js"), ["restart"], env);
     assert.equal(r.code, 0, r.err);
-    assert.match(r.err, /using the running server/);
+    assert.match(r.err, /restarting it with this CLI.s code/);
     assert.equal((await health(port)).dataDir, resolve(data));
   } finally { await cleanup(port); }
 });

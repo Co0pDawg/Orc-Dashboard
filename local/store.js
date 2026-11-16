@@ -17,6 +17,8 @@ export const defaultDataDir = () => process.env.ORC_BOARD_DATA || join(homedir()
 /** Throws unless name is a valid collection or doc id (checked before any path is built, so no traversal). */
 export function checkId(name, what = "id"){
   if (typeof name !== "string" || !ID.test(name) || name === "." || name === ".." || name === "__proto__") throw new StoreError("invalid", `invalid ${what}: ${JSON.stringify(name)}`);
+  // Dot-entries at the top of the data dir (the server log) are not collections, so a collection may not start with one: it would be stored but left out of export.
+  if (what === "collection" && name.startsWith(".")) throw new StoreError("invalid", `invalid collection (may not start with "."): ${JSON.stringify(name)}`);
   // Escapes lengthen the file name (":" and capitals); past 200 it would no longer fit a 255-character file name with its suffixes.
   if (toFile(name).length > 200) throw new StoreError("invalid", `${what} too long once encoded as a file name: ${JSON.stringify(name)}`);
 }

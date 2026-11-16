@@ -135,3 +135,11 @@ test("store: collections ignore dot-files, dot-folders and plain files at the da
   mkdirSync(join(dir, ".hidden"));
   assert.deepEqual(s.collections(), ["cards"]);
 });
+
+test("store: a collection name may not start with a dot (it would be stored but left out of export)", () => {
+  const s = openStore(mkdtempSync(join(tmpdir(), "orc-dot-")));
+  assert.throws(() => s.set(".hidden", "x", {a: 1}), e => e.code === "invalid");
+  assert.throws(() => s.list(".hidden"), e => e.code === "invalid");
+  assert.equal(s.set("visible", ".dotid", {a: 1}).version, 1, "a doc id may still start with a dot");
+  assert.deepEqual(s.collections(), ["visible"]);
+});
