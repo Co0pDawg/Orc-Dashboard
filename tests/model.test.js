@@ -144,3 +144,23 @@ test("untilText counts down to a scheduled start and says starting now once it p
   assert.match(untilText("2026-10-22T13:00:00", now), /^starting now/);
   assert.equal(untilText("nope", now), "");
 });
+
+test("ticketUrl: a session's GitHub repo wins; a malformed one falls back to Azure DevOps", async () => {
+  const {ticketUrl} = await import("../js/github.js");
+  assert.equal(ticketUrl(19, {github: "octo/widgets"}), "https://github.com/octo/widgets/issues/19");
+  assert.equal(ticketUrl("19", {github: " octo/widgets ", ado: "contoso/Other"}), "https://github.com/octo/widgets/issues/19");
+  assert.equal(ticketUrl(`1" x`, {github: "octo/widgets"}), "https://github.com/octo/widgets/issues/1%22%20x");
+  for (const bad of ["octo", "a/b/c", "octo/wid gets", "https://evil.example/a", 7, null])
+    assert.equal(ticketUrl(1, {github: bad, ado: "contoso/Other"}), adoUrl(1, "contoso/Other"));
+  assert.equal(ticketUrl(1, {}), adoUrl(1));
+  assert.equal(ticketUrl(1, ""), adoUrl(1));
+});
+
+test("cards link tickets through the session's GitHub repo", async () => {
+  const {sleekCard} = await import("../js/render/sleek.js"), {leetCard} = await import("../js/render/leet.js");
+  const s = {github: "octo/widgets", ticket: "19", title: "t"}, c = {_id: "c1", ticket: "19", task: "20", kind: "Issue", title: "t", stages: []};
+  for (const html of [sleekCard(c, s, false), leetCard(c, s, false)]) {
+    assert.match(html, /github\.com\/octo\/widgets\/issues\/20"/);
+    assert.doesNotMatch(html, /dev\.azure\.com/);
+  }
+});

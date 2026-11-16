@@ -1,5 +1,6 @@
 // 1337 skin markup. Strings only: nothing here touches the DOM.
-import {esc, fmt, t12, adoUrl} from "../util.js";
+import {esc, fmt, t12} from "../util.js";
+import {ticketUrl} from "../github.js";
 import {WORD, cardState, stagesOf, stageSince, subsOf, lastAt, tone, progress, logId} from "../model.js";
 import {sinceHtml, progHtml, isOpen, subToggle, cardFoldBtn, editBtn, paneName, prHtml, schedHtml} from "./shared.js";
 
@@ -14,15 +15,15 @@ export function leetLog(events, updated, live, sid, cards){
   return `<div class="ph">${editBtn(logId(sid), paneName(logId(sid)), true)}<span class="id">activity</span><span>${events.length} events</span>${live ? sinceHtml(lastAt(events, cards), "quiet ", true) : ""}${updated ? `<span class="st">${esc(t12(updated))}</span>` : ""}</div>
     ${rows.length ? `<ol class="feed">${rows.map((r, i) => `<li class="${r.cls}${i === rows.length - 1 ? " cursor" : ""}">${r.html}</li>`).join("")}</ol>` : `<p class="lbl">nothing logged yet</p>`}`;
 }
-/** A ticket pane's body; ticket links open in the session's ADO project (`ado`). */
-export function leetCard(c, ado, min){
+/** A ticket pane's body; ticket links follow the session data `src` (its `github` repo, else its `ado` project). */
+export function leetCard(c, src, min){
   const s = cardState(c);
   const plan = stagesOf(c).map((x, i) => `<li class="${esc(x.state)}"><span class="n">${i + 1}.</span><span class="k">${esc(x.label)}</span><span class="s">${esc(WORD[x.state] || x.state)}${x.state === "active" || x.state === "rework" ? " " + sinceHtml(x.started || c.updated) : ""}</span></li>`).join("");
   const kv = [["agent", c.agent], ["tokens", c.tokens], ["commit", c.commit]].filter(([, v]) => v).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
   return `<div class="ph">
       ${c.updated ? `<time>${esc(t12(c.updated))}</time>` : ""}
-      ${c.task ? `<a class="id" href="${esc(adoUrl(c.task, ado))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
-      ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(adoUrl(c.ticket, ado))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
+      ${c.task ? `<a class="id" href="${esc(ticketUrl(c.task, src))}" target="_blank" rel="noopener">#${esc(c.task)}</a>` : ""}
+      ${c.ticket && c.ticket !== c.task ? `<span>‹ <a class="id" href="${esc(ticketUrl(c.ticket, src))}" target="_blank" rel="noopener">#${esc(c.ticket)}</a></span>` : ""}
       <span>${esc(c.kind)}</span><span class="st ${s}">${esc(WORD[s])}${stageSince(c) ? " " + sinceHtml(stageSince(c)) : ""}</span>${cardFoldBtn(c._id, `#${c.task || c.ticket} ${c.title}`, min, true)}${editBtn(c._id, `#${c.task || c.ticket} ${c.title}`, true)}
     </div>
     <h3>${esc(c.title)}</h3>
@@ -39,7 +40,7 @@ export function leetHead(sess, cards){
       <div class="prompt"><b>orc@board</b>:<i>~/${esc(sess.id)}</i>$ watch board</div>
       <h1 class="title">${esc(s.title)}</h1>
       <div class="facts">
-        ${s.ticket ? `<span>ticket <a href="${esc(adoUrl(s.ticket, s.ado))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}
+        ${s.ticket ? `<span>ticket <a href="${esc(ticketUrl(s.ticket, s))}" target="_blank" rel="noopener"><b>#${esc(s.ticket)}</b></a></span>` : ""}
         ${s.branch ? `<span>branch <b>${esc(s.branch)}</b></span>` : ""}
         ${s.started ? `<span>started <b>${esc(fmt(s.started))}</b></span>` : ""}
         ${s.scheduledAt && !s.completed ? schedHtml(s.scheduledAt, true) : s.status ? `<span>status <b>${esc(s.status)}</b></span>` : ""}

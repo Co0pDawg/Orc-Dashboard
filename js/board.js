@@ -132,7 +132,7 @@ function renderTiles(v, sess){
     try {
       body = log
         ? (skin === "leet" ? leetLog(events, sess.data.updated, !doneNow(sess), sess.id, v.cards) : sleekLog(events, !doneNow(sess), sess.id, v.cards))
-        : (skin === "leet" ? leetCard(c, sess.data.ado, min) : sleekCard(c, sess.data.ado, min));
+        : (skin === "leet" ? leetCard(c, sess.data, min) : sleekCard(c, sess.data, min));
     } catch (err){
       console.error("Orc-istrator: pane", id, err);
       body = `<p class="note">${editBtn(id, paneName(id), skin === "leet")} This ${log ? "log" : "card"} (${esc(id)}) could not be shown: ${esc(err.message)}</p>`;
